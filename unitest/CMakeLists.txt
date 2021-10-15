@@ -25,12 +25,15 @@ ELSE ()
     LINK_DIRECTORIES(/usr/local/lib)
 ENDIF ()
 
+SET(GOOGLETEST_PATH ${CMAKE_SOURCE_DIR}/deps/googletest)
+IF (EXISTS ${GOOGLETEST_PATH})
+    ADD_SUBDIRECTORY(${GOOGLETEST_PATH} ${CMAKE_BINARY_DIR}/googletest)
+ELSE ()
+    FIND_PACKAGE(GTest CONFIG REQUIRED)
+ENDIF ()
 
-find_package(GTest CONFIG REQUIRED)
-
-
-enable_testing()
-include(GoogleTest)
+ENABLE_TESTING()
+INCLUDE(GoogleTest)
 #get_filename_component(<VAR> FileName
 #        PATH|ABSOLUTE|NAME|EXT|NAME_WE|REALPATH
 #        [CACHE])
