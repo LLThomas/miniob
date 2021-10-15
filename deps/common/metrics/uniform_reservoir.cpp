@@ -23,89 +23,89 @@ namespace common {
 
 #define DEFAULT_SIZE 1023
 
-UniformReservoir::UniformReservoir(RandomGenerator &random)
-    : Reservoir(random), counter(0) {
-  pthread_mutexattr_t mutexatr;
-  pthread_mutexattr_init(&mutexatr);
-  pthread_mutexattr_settype(&mutexatr, PTHREAD_MUTEX_RECURSIVE);
+    UniformReservoir::UniformReservoir(RandomGenerator &random)
+            : Reservoir(random), counter(0) {
+        pthread_mutexattr_t mutexatr;
+        pthread_mutexattr_init(&mutexatr);
+        pthread_mutexattr_settype(&mutexatr, PTHREAD_MUTEX_RECURSIVE);
 
-  MUTEX_INIT(&mutex, &mutexatr);
+        MUTEX_INIT(&mutex, &mutexatr);
 
-  init(DEFAULT_SIZE);
-}
+        init(DEFAULT_SIZE);
+    }
 
-UniformReservoir::UniformReservoir(RandomGenerator &random, size_t size)
-    : Reservoir(random), counter(0) {
+    UniformReservoir::UniformReservoir(RandomGenerator &random, size_t size)
+            : Reservoir(random), counter(0) {
 
-  pthread_mutexattr_t mutexatr;
-  pthread_mutexattr_init(&mutexatr);
-  pthread_mutexattr_settype(&mutexatr, PTHREAD_MUTEX_RECURSIVE);
+        pthread_mutexattr_t mutexatr;
+        pthread_mutexattr_init(&mutexatr);
+        pthread_mutexattr_settype(&mutexatr, PTHREAD_MUTEX_RECURSIVE);
 
-  MUTEX_INIT(&mutex, &mutexatr);
-  init(size);
-}
+        MUTEX_INIT(&mutex, &mutexatr);
+        init(size);
+    }
 
-UniformReservoir::~UniformReservoir() {
-  if (snapshot_value_ == NULL) {
-    delete snapshot_value_;
-    snapshot_value_ = NULL;
-  }
-}
+    UniformReservoir::~UniformReservoir() {
+        if (snapshot_value_ == NULL) {
+            delete snapshot_value_;
+            snapshot_value_ = NULL;
+        }
+    }
 
-void UniformReservoir::init(size_t size) {
-  MUTEX_LOCK(&mutex);
-  counter = 0;
-  data.resize(size);
-  MUTEX_UNLOCK(&mutex);
-}
+    void UniformReservoir::init(size_t size) {
+        MUTEX_LOCK(&mutex);
+        counter = 0;
+        data.resize(size);
+        MUTEX_UNLOCK(&mutex);
+    }
 
-size_t UniformReservoir::size() {
-  MUTEX_LOCK(&mutex);
-  size_t size = (counter < data.size()) ? counter : data.size();
-  MUTEX_UNLOCK(&mutex);
-  return size;
-}
+    size_t UniformReservoir::size() {
+        MUTEX_LOCK(&mutex);
+        size_t size = (counter < data.size()) ? counter : data.size();
+        MUTEX_UNLOCK(&mutex);
+        return size;
+    }
 
-size_t UniformReservoir::get_count() {
-  MUTEX_LOCK(&mutex);
-  size_t ret = counter;
-  MUTEX_UNLOCK(&mutex);
-  return ret;
-}
+    size_t UniformReservoir::get_count() {
+        MUTEX_LOCK(&mutex);
+        size_t ret = counter;
+        MUTEX_UNLOCK(&mutex);
+        return ret;
+    }
 
-void UniformReservoir::update(double value) {
-  MUTEX_LOCK(&mutex);
-  size_t count = ++counter;
+    void UniformReservoir::update(double value) {
+        MUTEX_LOCK(&mutex);
+        size_t count = ++counter;
 
-  if (count < data.size()) {
-    data[count] = (value);
-  } else {
-    size_t rcount = next(data.size());
-    data[rcount] = (value);
-  }
+        if (count < data.size()) {
+            data[count] = (value);
+        } else {
+            size_t rcount = next(data.size());
+            data[rcount] = (value);
+        }
 
-  MUTEX_UNLOCK(&mutex);
-}
+        MUTEX_UNLOCK(&mutex);
+    }
 
-void UniformReservoir::snapshot() {
-  MUTEX_LOCK(&mutex);
-  std::vector<double> output = data;
-  MUTEX_UNLOCK(&mutex);
+    void UniformReservoir::snapshot() {
+        MUTEX_LOCK(&mutex);
+        std::vector<double> output = data;
+        MUTEX_UNLOCK(&mutex);
 
-  if (snapshot_value_ == NULL) {
-    snapshot_value_ = new HistogramSnapShot();
-  }
-  ((HistogramSnapShot *)snapshot_value_)->set_collection(output);
-}
+        if (snapshot_value_ == NULL) {
+            snapshot_value_ = new HistogramSnapShot();
+        }
+        ((HistogramSnapShot *) snapshot_value_)->set_collection(output);
+    }
 
-void UniformReservoir::reset() {
+    void UniformReservoir::reset() {
 
-  MUTEX_LOCK(&mutex);
-  counter = 0;
-  data.clear();
+        MUTEX_LOCK(&mutex);
+        counter = 0;
+        data.clear();
 
-  // clear snapshot
-  MUTEX_UNLOCK(&mutex);
-}
+        // clear snapshot
+        MUTEX_UNLOCK(&mutex);
+    }
 
 } // namespace common

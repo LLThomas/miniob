@@ -22,19 +22,21 @@ class SQLStageEvent;
 
 class ExecutionPlanEvent : public common::StageEvent {
 public:
-  ExecutionPlanEvent(SQLStageEvent *sql_event, Query *sqls);
-  virtual ~ExecutionPlanEvent();
+    ExecutionPlanEvent(SQLStageEvent *sql_event, Query *sqls);
 
-  Query * sqls() const {
-    return sqls_;
-  }
+    virtual ~ExecutionPlanEvent();
 
-  SQLStageEvent * sql_event() const {
-    return sql_event_;
-  }
+    Query *sqls() const {
+        return sqls_;
+    }
+
+    SQLStageEvent *sql_event() const {
+        return sql_event_;
+    }
+
 private:
-  SQLStageEvent *      sql_event_;
-  Query *             sqls_;
+    SQLStageEvent *sql_event_;
+    Query *sqls_;
 };
 
 #endif // __OBSERVER_EVENT_EXECUTION_PLAN_EVENT_H__

@@ -30,103 +30,104 @@ namespace common {
 //[section]
 // VARNAME=VALUE
 
-class Ini {
- public:
-  /**
-   * To simplify the logic, no lock's when loading configuration
-   * So don't modify the data parallel
-   */
-  Ini();
-  ~Ini();
+    class Ini {
+    public:
+        /**
+         * To simplify the logic, no lock's when loading configuration
+         * So don't modify the data parallel
+         */
+        Ini();
 
-  /**
-   * load one ini configuration
-   * it support load multiple ini configuration files
-   * @return, 0 means success, others means failed
-   */
-  int load(const std::string &ini_file);
+        ~Ini();
 
-  /**
-   * get the map of the section
-   * if the section doesn't exist, return one empty section
-   */
-  const std::map<std::string, std::string> &
-  get(const std::string &section = DEFAULT_SECTION);
+        /**
+         * load one ini configuration
+         * it support load multiple ini configuration files
+         * @return, 0 means success, others means failed
+         */
+        int load(const std::string &ini_file);
 
-  /**
-   * get the value of the key in the section,
-   * if the key-value doesn't exist,
-   * use the input default_value
-   */
-  std::string get(const std::string &key, const std::string &default_value,
-                  const std::string &section = DEFAULT_SECTION);
+        /**
+         * get the map of the section
+         * if the section doesn't exist, return one empty section
+         */
+        const std::map <std::string, std::string> &
+        get(const std::string &section = DEFAULT_SECTION);
 
-  /**
-   * put the key-value pair to the section
-   * if the key-value already exist, just replace it
-   * if the section doesn't exist, it will create this section
-   */
-  int put(const std::string &key, const std::string &value,
-          const std::string &section = DEFAULT_SECTION);
+        /**
+         * get the value of the key in the section,
+         * if the key-value doesn't exist,
+         * use the input default_value
+         */
+        std::string get(const std::string &key, const std::string &default_value,
+                        const std::string &section = DEFAULT_SECTION);
 
-  /**
-   * output all configuration to one string
-   */
-  void to_string(std::string &output_str);
+        /**
+         * put the key-value pair to the section
+         * if the key-value already exist, just replace it
+         * if the section doesn't exist, it will create this section
+         */
+        int put(const std::string &key, const std::string &value,
+                const std::string &section = DEFAULT_SECTION);
 
-  static const std::string DEFAULT_SECTION;
+        /**
+         * output all configuration to one string
+         */
+        void to_string(std::string &output_str);
 
-  // one line max length
-  static const int MAX_CFG_LINE_LEN = 1024;
+        static const std::string DEFAULT_SECTION;
 
-  // value split tag
-  static const char CFG_DELIMIT_TAG = ',';
+        // one line max length
+        static const int MAX_CFG_LINE_LEN = 1024;
 
-  // comments's tag
-  static const char CFG_COMMENT_TAG = '#';
+        // value split tag
+        static const char CFG_DELIMIT_TAG = ',';
 
-  // continue line tag
-  static const char CFG_CONTINUE_TAG = '\\';
+        // comments's tag
+        static const char CFG_COMMENT_TAG = '#';
 
-  // session name tag
-  static const char CFG_SESSION_START_TAG = '[';
-  static const char CFG_SESSION_END_TAG = ']';
+        // continue line tag
+        static const char CFG_CONTINUE_TAG = '\\';
 
- protected:
-  /**
-   * insert one empty session to sections_
-   */
-  void insert_session(const std::string &session_name);
+        // session name tag
+        static const char CFG_SESSION_START_TAG = '[';
+        static const char CFG_SESSION_END_TAG = ']';
 
-  /**
-   * switch session according to the session_name
-   * if the section doesn't exist, it will create one
-   */
-  std::map<std::string, std::string> *
-  switch_session(const std::string &session_name);
+    protected:
+        /**
+         * insert one empty session to sections_
+         */
+        void insert_session(const std::string &session_name);
 
-  /**
-   * insert one entry to session_map
-   * line's format is "key=value"
-   *
-   */
-  int insert_entry(std::map<std::string, std::string> *session_map,
-                  const std::string &line);
+        /**
+         * switch session according to the session_name
+         * if the section doesn't exist, it will create one
+         */
+        std::map <std::string, std::string> *
+        switch_session(const std::string &session_name);
 
-  typedef std::map<std::string, std::map<std::string, std::string>>
-    SessionsMap;
+        /**
+         * insert one entry to session_map
+         * line's format is "key=value"
+         *
+         */
+        int insert_entry(std::map <std::string, std::string> *session_map,
+                         const std::string &line);
 
- private:
-  static const std::map<std::string, std::string> empty_map_;
+        typedef std::map <std::string, std::map<std::string, std::string>>
+                SessionsMap;
 
-  std::set<std::string> file_names_;
-  SessionsMap sections_;
-};
+    private:
+        static const std::map <std::string, std::string> empty_map_;
+
+        std::set <std::string> file_names_;
+        SessionsMap sections_;
+    };
 
 /**
  * Global configurate propertis
  */
-Ini *&get_properties();
+    Ini *&get_properties();
 //********************************************************************
 
 }// namespace common

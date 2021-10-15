@@ -22,7 +22,7 @@ namespace common {
  * @param[in]   prog_full_name  process full name with full path
  * @return      process_name_   process name without directory path
  */
-std::string get_process_name(const char *prog_full_name);
+    std::string get_process_name(const char *prog_full_name);
 //! Runs the service as a daemon
 /**
  * Backgrounds the calling service as a system daemon by detaching it from
@@ -39,9 +39,9 @@ std::string get_process_name(const char *prog_full_name);
  * @param[in]   std_err_file  file to redirect stderr to (could be /dev/null)
  * @return  0 if success, error code otherwise
  */
-int daemonize_service(const char *std_out_file, const char *std_err_file);
+    int daemonize_service(const char *std_out_file, const char *std_err_file);
 
-void sys_log_redirect(const char *std_out_file, const char *std_err_file);
+    void sys_log_redirect(const char *std_out_file, const char *std_err_file);
 
 } //namespace common
 #endif //__COMMON_OS_PROCESS_H__

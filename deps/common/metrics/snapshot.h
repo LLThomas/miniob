@@ -21,55 +21,57 @@ See the Mulan PSL v2 for more details. */
 namespace common {
 
 
-class Snapshot {
-public:
-  virtual ~Snapshot() {};
-  virtual std::string to_string() = 0;
-};
+    class Snapshot {
+    public:
+        virtual ~Snapshot() {};
 
-template <class T>
-class SnapshotBasic : public Snapshot {
-public:
-  SnapshotBasic() : value(){
+        virtual std::string to_string() = 0;
+    };
 
-  };
+    template<class T>
+    class SnapshotBasic : public Snapshot {
+    public:
+        SnapshotBasic() : value() {
 
-  virtual ~SnapshotBasic() {}
+        };
 
-  void setValue(T &input) { value = input; }
+        virtual ~SnapshotBasic() {}
 
-  std::string to_string() {
-    std::string ret;
-    val_to_str(value, ret);
-    return ret;
-  }
+        void setValue(T &input) { value = input; }
 
-private:
-  T value;
-};
+        std::string to_string() {
+            std::string ret;
+            val_to_str(value, ret);
+            return ret;
+        }
 
-class SimplerTimerSnapshot: public  Snapshot{
-public:
-   SimplerTimerSnapshot() {
+    private:
+        T value;
+    };
 
-  }
+    class SimplerTimerSnapshot : public Snapshot {
+    public:
+        SimplerTimerSnapshot() {
 
-  virtual ~SimplerTimerSnapshot() {}
+        }
 
-  void setValue(double mean, double tps) {
-    this->mean = mean;
-    this->tps = tps;
-  }
+        virtual ~SimplerTimerSnapshot() {}
 
-  std::string to_string() {
-    std::stringstream oss;
-    oss << "mean:" << mean << ",tps:"<<tps;
+        void setValue(double mean, double tps) {
+            this->mean = mean;
+            this->tps = tps;
+        }
 
-    return oss.str();
-  }
-private:
-  double mean = 1.0;
-  double tps = 1.0;
-};
+        std::string to_string() {
+            std::stringstream oss;
+            oss << "mean:" << mean << ",tps:" << tps;
+
+            return oss.str();
+        }
+
+    private:
+        double mean = 1.0;
+        double tps = 1.0;
+    };
 } //namespace common
 #endif //__COMMON_METRICS_SNAPSHOT_H__

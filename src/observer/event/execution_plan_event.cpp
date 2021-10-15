@@ -17,13 +17,14 @@ See the Mulan PSL v2 for more details. */
 
 ExecutionPlanEvent::ExecutionPlanEvent(SQLStageEvent *sql_event, Query *sqls) : sql_event_(sql_event), sqls_(sqls) {
 }
-ExecutionPlanEvent::~ExecutionPlanEvent() {
-  sql_event_ = nullptr;
-  // if (sql_event_) {
-  //   sql_event_->doneImmediate();
-  // }
 
-  query_destroy(sqls_);
-  sqls_ = nullptr;
+ExecutionPlanEvent::~ExecutionPlanEvent() {
+    sql_event_ = nullptr;
+    // if (sql_event_) {
+    //   sql_event_->doneImmediate();
+    // }
+
+    query_destroy(sqls_);
+    sqls_ = nullptr;
 }
 

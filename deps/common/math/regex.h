@@ -16,7 +16,7 @@ See the Mulan PSL v2 for more details. */
 #define __COMMON_MATH_REGEX_H__
 namespace common {
 
-int regex_match(const char *str_, const char *pat_);
+    int regex_match(const char *str_, const char *pat_);
 
 } //namespace common
 #endif /* __COMMON_MATH_REGEX_H__ */

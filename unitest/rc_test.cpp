@@ -16,5 +16,5 @@ See the Mulan PSL v2 for more details. */
 
 int main(int argc, char **argv) {
 
-  std::cout << rc2SimpleStr(status) << std::endl ;
+    std::cout << rc2SimpleStr(status) << std::endl;
 }

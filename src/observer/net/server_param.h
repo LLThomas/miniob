@@ -19,23 +19,24 @@ See the Mulan PSL v2 for more details. */
 
 class ServerParam {
 public:
-  ServerParam();
+    ServerParam();
 
-  ServerParam(const ServerParam &other) = default;
-  ~ServerParam() = default;
+    ServerParam(const ServerParam &other) = default;
+
+    ~ServerParam() = default;
 
 public:
-  // accpet client's address, default is INADDR_ANY, means accept every address
-  long listen_addr;
+    // accpet client's address, default is INADDR_ANY, means accept every address
+    long listen_addr;
 
-  int max_connection_num;
-  // server listing port
-  int port;
+    int max_connection_num;
+    // server listing port
+    int port;
 
-  std::string unix_socket_path;
+    std::string unix_socket_path;
 
-  // 如果使用标准输入输出作为通信条件，就不再监听端口
-  bool use_unix_socket = false;
+    // 如果使用标准输入输出作为通信条件，就不再监听端口
+    bool use_unix_socket = false;
 };
 
 #endif //__SRC_OBSERVER_NET_SERVER_PARAM_H__

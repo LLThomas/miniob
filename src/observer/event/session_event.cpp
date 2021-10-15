@@ -23,20 +23,20 @@ SessionEvent::~SessionEvent() {
 
 ConnectionContext *SessionEvent::get_client() const { return client_; }
 
-const char *SessionEvent::get_response() const { 
-  return response_.c_str(); 
+const char *SessionEvent::get_response() const {
+    return response_.c_str();
 }
 
 void SessionEvent::set_response(const char *response) {
-  set_response(response, strlen(response));
+    set_response(response, strlen(response));
 }
 
 void SessionEvent::set_response(const char *response, int len) {
-  response_.assign(response, len);
+    response_.assign(response, len);
 }
 
 void SessionEvent::set_response(std::string &&response) {
-  response_ = std::move(response);
+    response_ = std::move(response);
 }
 
 int SessionEvent::get_response_len() const { return response_.size(); }

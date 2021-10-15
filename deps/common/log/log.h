@@ -31,136 +31,144 @@ See the Mulan PSL v2 for more details. */
 
 namespace common {
 
-const int LOG_STATUS_OK = 0;
-const int LOG_STATUS_ERR = 1;
-const int LOG_MAX_LINE = 100000;
+    const int LOG_STATUS_OK = 0;
+    const int LOG_STATUS_ERR = 1;
+    const int LOG_MAX_LINE = 100000;
 
-typedef enum {
-  LOG_LEVEL_PANIC = 0,
-  LOG_LEVEL_ERR = 1,
-  LOG_LEVEL_WARN = 2,
-  LOG_LEVEL_INFO = 3,
-  LOG_LEVEL_DEBUG = 4,
-  LOG_LEVEL_TRACE = 5,
-  LOG_LEVEL_LAST
-} LOG_LEVEL;
+    typedef enum {
+        LOG_LEVEL_PANIC = 0,
+        LOG_LEVEL_ERR = 1,
+        LOG_LEVEL_WARN = 2,
+        LOG_LEVEL_INFO = 3,
+        LOG_LEVEL_DEBUG = 4,
+        LOG_LEVEL_TRACE = 5,
+        LOG_LEVEL_LAST
+    } LOG_LEVEL;
 
-typedef enum {
-  LOG_ROTATE_BYDAY = 0,
-  LOG_ROTATE_BYSIZE,
-  LOG_ROTATE_LAST
-} LOG_ROTATE;
+    typedef enum {
+        LOG_ROTATE_BYDAY = 0,
+        LOG_ROTATE_BYSIZE,
+        LOG_ROTATE_LAST
+    } LOG_ROTATE;
 
-class Log {
- public:
-  Log(const std::string &log_name, const LOG_LEVEL log_level = LOG_LEVEL_INFO,
-      const LOG_LEVEL console_level = LOG_LEVEL_WARN);
-  ~Log(void);
+    class Log {
+    public:
+        Log(const std::string &log_name, const LOG_LEVEL log_level = LOG_LEVEL_INFO,
+            const LOG_LEVEL console_level = LOG_LEVEL_WARN);
 
-  static int init(const std::string &log_file);
+        ~Log(void);
 
-  /**
-   * These functions won't output header information such as __FUNCTION__,
-   * The user should control these information
-   * If the header information should be outputed
-   * please use LOG_PANIC, LOG_ERROR ...
-   */
-  template<class T>
-  Log &operator<<(T message);
+        static int init(const std::string &log_file);
 
-  template<class T>
-  int panic(T message);
+        /**
+         * These functions won't output header information such as __FUNCTION__,
+         * The user should control these information
+         * If the header information should be outputed
+         * please use LOG_PANIC, LOG_ERROR ...
+         */
+        template<class T>
+        Log &operator<<(T message);
 
-  template<class T>
-  int error(T message);
+        template<class T>
+        int panic(T message);
 
-  template<class T>
-  int warnning(T message);
+        template<class T>
+        int error(T message);
 
-  template<class T>
-  int info(T message);
+        template<class T>
+        int warnning(T message);
 
-  template<class T>
-  int debug(T message);
+        template<class T>
+        int info(T message);
 
-  template<class T>
-  int trace(T message);
+        template<class T>
+        int debug(T message);
 
-  int output(const LOG_LEVEL level, const char *module, const char *prefix,
-             const char *f, ...);
+        template<class T>
+        int trace(T message);
 
-  int set_console_level(const LOG_LEVEL console_level);
-  LOG_LEVEL get_console_level();
+        int output(const LOG_LEVEL level, const char *module, const char *prefix,
+                   const char *f, ...);
 
-  int set_log_level(const LOG_LEVEL log_level);
-  LOG_LEVEL get_log_level();
+        int set_console_level(const LOG_LEVEL console_level);
 
-  int set_rotate_type(LOG_ROTATE rotate_type);
-  LOG_ROTATE get_rotate_type();
+        LOG_LEVEL get_console_level();
 
-  const char *prefix_msg(const LOG_LEVEL level);
+        int set_log_level(const LOG_LEVEL log_level);
 
-  /**
-   * Set Default Module list
-   * if one module is default module,
-   * it will output whatever output level is lower than log_level_ or not
-   */
-  void set_default_module(const std::string &modules);
-  bool check_output(const LOG_LEVEL log_level, const char *module);
+        LOG_LEVEL get_log_level();
 
-  int rotate(const int year = 0, const int month = 0, const int day = 0);
+        int set_rotate_type(LOG_ROTATE rotate_type);
 
- private:
-  void check_param_valid();
+        LOG_ROTATE get_rotate_type();
 
-  int rotate_by_size();
-  int rename_old_logs();
-  int rotate_by_day(const int year, const int month, const int day);
+        const char *prefix_msg(const LOG_LEVEL level);
 
-  template<class T>
-  int out(const LOG_LEVEL console_level, const LOG_LEVEL log_level, T &message);
+        /**
+         * Set Default Module list
+         * if one module is default module,
+         * it will output whatever output level is lower than log_level_ or not
+         */
+        void set_default_module(const std::string &modules);
 
- private:
-  pthread_mutex_t lock_;
-  std::ofstream ofs_;
-  std::string log_name_;
-  LOG_LEVEL log_level_;
-  LOG_LEVEL console_level_;
+        bool check_output(const LOG_LEVEL log_level, const char *module);
 
-  typedef struct _LogDate {
-    int year_;
-    int mon_;
-    int day_;
-  } LogDate;
-  LogDate log_date_;
-  int log_line_;
-  int log_max_line_;
-  LOG_ROTATE rotate_type_;
+        int rotate(const int year = 0, const int month = 0, const int day = 0);
 
-  typedef std::map<LOG_LEVEL, std::string> LogPrefixMap;
-  LogPrefixMap prefix_map_;
+    private:
+        void check_param_valid();
 
-  typedef std::set<std::string> DefaultSet;
-  DefaultSet default_set_;
-};
+        int rotate_by_size();
 
-class LoggerFactory {
- public:
-  LoggerFactory();
-  virtual ~LoggerFactory();
+        int rename_old_logs();
 
-  static int init(const std::string &log_file, Log **logger,
-                  LOG_LEVEL log_level = LOG_LEVEL_INFO,
-                  LOG_LEVEL console_level = LOG_LEVEL_WARN,
-                  LOG_ROTATE rotate_type = LOG_ROTATE_BYDAY);
+        int rotate_by_day(const int year, const int month, const int day);
 
-  static int init_default(const std::string &log_file,
-                         LOG_LEVEL log_level = LOG_LEVEL_INFO,
-                         LOG_LEVEL console_level = LOG_LEVEL_WARN,
-                         LOG_ROTATE rotate_type = LOG_ROTATE_BYDAY);
-};
+        template<class T>
+        int out(const LOG_LEVEL console_level, const LOG_LEVEL log_level, T &message);
 
-extern Log *g_log;
+    private:
+        pthread_mutex_t lock_;
+        std::ofstream ofs_;
+        std::string log_name_;
+        LOG_LEVEL log_level_;
+        LOG_LEVEL console_level_;
+
+        typedef struct _LogDate {
+            int year_;
+            int mon_;
+            int day_;
+        } LogDate;
+        LogDate log_date_;
+        int log_line_;
+        int log_max_line_;
+        LOG_ROTATE rotate_type_;
+
+        typedef std::map <LOG_LEVEL, std::string> LogPrefixMap;
+        LogPrefixMap prefix_map_;
+
+        typedef std::set <std::string> DefaultSet;
+        DefaultSet default_set_;
+    };
+
+    class LoggerFactory {
+    public:
+        LoggerFactory();
+
+        virtual ~LoggerFactory();
+
+        static int init(const std::string &log_file, Log **logger,
+                        LOG_LEVEL log_level = LOG_LEVEL_INFO,
+                        LOG_LEVEL console_level = LOG_LEVEL_WARN,
+                        LOG_ROTATE rotate_type = LOG_ROTATE_BYDAY);
+
+        static int init_default(const std::string &log_file,
+                                LOG_LEVEL log_level = LOG_LEVEL_INFO,
+                                LOG_LEVEL console_level = LOG_LEVEL_WARN,
+                                LOG_ROTATE rotate_type = LOG_ROTATE_BYDAY);
+    };
+
+    extern Log *g_log;
 
 #define LOG_HEAD(prefix, level)                                                 \
   if (common::g_log) {                                                          \
@@ -198,77 +206,77 @@ extern Log *g_log;
 #define LOG_DEBUG(fmt, ...) LOG_OUTPUT(common::LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
 #define LOG_TRACE(fmt, ...) LOG_OUTPUT(common::LOG_LEVEL_TRACE, fmt, ##__VA_ARGS__)
 
-template<class T>
-Log &Log::operator<<(T msg) {
-  // at this time, the input level is the default log level
-  out(console_level_, log_level_, msg);
-  return *this;
-}
-
-template<class T>
-int Log::panic(T message) {
-  return out(LOG_LEVEL_PANIC, LOG_LEVEL_PANIC, message);
-}
-
-template<class T>
-int Log::error(T message) {
-  return out(LOG_LEVEL_ERR, LOG_LEVEL_ERR, message);
-}
-
-template<class T>
-int Log::warnning(T message) {
-  return out(LOG_LEVEL_WARN, LOG_LEVEL_WARN, message);
-}
-
-template<class T>
-int Log::info(T message) {
-  return out(LOG_LEVEL_INFO, LOG_LEVEL_INFO, message);
-}
-
-template<class T>
-int Log::debug(T message) {
-  return out(LOG_LEVEL_DEBUG, LOG_LEVEL_DEBUG, message);
-}
-
-template<class T>
-int Log::trace(T message) {
-  return out(LOG_LEVEL_TRACE, LOG_LEVEL_TRACE, message);
-}
-
-template<class T>
-int Log::out(const LOG_LEVEL console_level, const LOG_LEVEL log_level, T &msg) {
-  bool locked = false;
-  if (console_level < LOG_LEVEL_PANIC || console_level > console_level_ ||
-    log_level < LOG_LEVEL_PANIC || log_level > log_level_) {
-    return LOG_STATUS_OK;
-  }
-  try {
-    char prefix[ONE_KILO] = {0};
-    LOG_HEAD(prefix, log_level);
-    if (LOG_LEVEL_PANIC <= console_level && console_level <= console_level_) {
-      std::cout << prefix_map_[console_level] << msg;
+    template<class T>
+    Log &Log::operator<<(T msg) {
+        // at this time, the input level is the default log level
+        out(console_level_, log_level_, msg);
+        return *this;
     }
 
-    if (LOG_LEVEL_PANIC <= log_level && log_level <= log_level_) {
-      pthread_mutex_lock(&lock_);
-      locked = true;
-      ofs_ << prefix;
-      ofs_ << msg;
-      ofs_.flush();
-      log_line_++;
-      pthread_mutex_unlock(&lock_);
-      locked = false;
+    template<class T>
+    int Log::panic(T message) {
+        return out(LOG_LEVEL_PANIC, LOG_LEVEL_PANIC, message);
     }
-  } catch (std::exception &e) {
-    if (locked) {
-      pthread_mutex_unlock(&lock_);
-    }
-    std::cerr << e.what() << std::endl;
-    return LOG_STATUS_ERR;
-  }
 
-  return LOG_STATUS_OK;
-}
+    template<class T>
+    int Log::error(T message) {
+        return out(LOG_LEVEL_ERR, LOG_LEVEL_ERR, message);
+    }
+
+    template<class T>
+    int Log::warnning(T message) {
+        return out(LOG_LEVEL_WARN, LOG_LEVEL_WARN, message);
+    }
+
+    template<class T>
+    int Log::info(T message) {
+        return out(LOG_LEVEL_INFO, LOG_LEVEL_INFO, message);
+    }
+
+    template<class T>
+    int Log::debug(T message) {
+        return out(LOG_LEVEL_DEBUG, LOG_LEVEL_DEBUG, message);
+    }
+
+    template<class T>
+    int Log::trace(T message) {
+        return out(LOG_LEVEL_TRACE, LOG_LEVEL_TRACE, message);
+    }
+
+    template<class T>
+    int Log::out(const LOG_LEVEL console_level, const LOG_LEVEL log_level, T &msg) {
+        bool locked = false;
+        if (console_level < LOG_LEVEL_PANIC || console_level > console_level_ ||
+            log_level < LOG_LEVEL_PANIC || log_level > log_level_) {
+            return LOG_STATUS_OK;
+        }
+        try {
+            char prefix[ONE_KILO] = {0};
+            LOG_HEAD(prefix, log_level);
+            if (LOG_LEVEL_PANIC <= console_level && console_level <= console_level_) {
+                std::cout << prefix_map_[console_level] << msg;
+            }
+
+            if (LOG_LEVEL_PANIC <= log_level && log_level <= log_level_) {
+                pthread_mutex_lock(&lock_);
+                locked = true;
+                ofs_ << prefix;
+                ofs_ << msg;
+                ofs_.flush();
+                log_line_++;
+                pthread_mutex_unlock(&lock_);
+                locked = false;
+            }
+        } catch (std::exception &e) {
+            if (locked) {
+                pthread_mutex_unlock(&lock_);
+            }
+            std::cerr << e.what() << std::endl;
+            return LOG_STATUS_ERR;
+        }
+
+        return LOG_STATUS_OK;
+    }
 
 #ifndef ASSERT
 #define ASSERT(expression, description, ...)                                   \

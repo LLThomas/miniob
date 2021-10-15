@@ -22,29 +22,34 @@ class DefaultHandler;
 
 class DefaultStorageStage : public common::Stage {
 public:
-  ~DefaultStorageStage();
-  static Stage *make_stage(const std::string &tag);
+    ~DefaultStorageStage();
+
+    static Stage *make_stage(const std::string &tag);
 
 protected:
-  // common function
-  DefaultStorageStage(const char *tag);
-  bool set_properties() override;
+    // common function
+    DefaultStorageStage(const char *tag);
 
-  bool initialize() override;
-  void cleanup() override;
-  void handle_event(common::StageEvent *event) override;
-  void callback_event(common::StageEvent *event,
-                     common::CallbackContext *context) override;
+    bool set_properties() override;
+
+    bool initialize() override;
+
+    void cleanup() override;
+
+    void handle_event(common::StageEvent *event) override;
+
+    void callback_event(common::StageEvent *event,
+                        common::CallbackContext *context) override;
 
 private:
-  std::string load_data(const char *db_name, const char *table_name, const char *file_name);
+    std::string load_data(const char *db_name, const char *table_name, const char *file_name);
 
 protected:
-  common::SimpleTimer *query_metric_ = nullptr;
-  static const std::string QUERY_METRIC_TAG;
+    common::SimpleTimer *query_metric_ = nullptr;
+    static const std::string QUERY_METRIC_TAG;
 
 private:
-  DefaultHandler * handler_;
+    DefaultHandler *handler_;
 };
 
 #endif //__OBSERVER_STORAGE_DEFAULT_STORAGE_STAGE_H__

@@ -22,25 +22,28 @@ See the Mulan PSL v2 for more details. */
  */
 class ThreadTest {
 public:
-  ThreadTest();
-  virtual ~ThreadTest();
+    ThreadTest();
 
-  int create();
+    virtual ~ThreadTest();
 
-  int startTestCond();
-  int startTestDeadLock();
+    int create();
 
-  static void *testCond(void *param);
-  static void *testDeadLock(void *param);
+    int startTestCond();
+
+    int startTestDeadLock();
+
+    static void *testCond(void *param);
+
+    static void *testDeadLock(void *param);
 
 private:
-  int param[10];
+    int param[10];
 
-  pthread_mutex_t mutex;
-  pthread_cond_t cond;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
 
-  pthread_mutex_t dead_mutex1;
-  pthread_mutex_t dead_mutex2;
+    pthread_mutex_t dead_mutex1;
+    pthread_mutex_t dead_mutex2;
 };
 
 #endif /* CTESTTHREAD_H_ */

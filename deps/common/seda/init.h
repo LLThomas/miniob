@@ -27,14 +27,15 @@ See the Mulan PSL v2 for more details. */
 #include "common/conf/ini.h"
 #include "common/defs.h"
 #include "common/os/process_param.h"
+
 namespace common {
 
 /**
  * start the seda process, do this will trigger all threads
  */
-int init_seda(ProcessParam *process_cfg);
+    int init_seda(ProcessParam *process_cfg);
 
-void cleanup_seda();
+    void cleanup_seda();
 
 } //namespace common
 #endif // __COMMON_SEDA_INIT_H__

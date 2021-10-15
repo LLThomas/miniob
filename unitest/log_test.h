@@ -22,12 +22,13 @@ See the Mulan PSL v2 for more details. */
  */
 class LogTest {
 public:
-  LogTest();
-  virtual ~LogTest();
+    LogTest();
 
-  int init(const std::string &logFile = "test.log");
+    virtual ~LogTest();
 
-  void *log_loop(void *param);
+    int init(const std::string &logFile = "test.log");
+
+    void *log_loop(void *param);
 };
 
 #endif /* CTESTLOG_H_ */

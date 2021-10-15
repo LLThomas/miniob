@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include <assert.h>
 
 #include "common/seda/thread_pool.h"
+
 namespace common {
 
 
@@ -26,12 +27,12 @@ namespace common {
  *
  * @post  Call never returns.  Thread is killed.  Pool is notified.
  */
-void KillThreadStage::handle_event(StageEvent *event) {
-  get_pool()->thread_kill();
-  event->done();
-  this->release_event();
-  pthread_exit(0);
-}
+    void KillThreadStage::handle_event(StageEvent *event) {
+        get_pool()->thread_kill();
+        event->done();
+        this->release_event();
+        pthread_exit(0);
+    }
 
 /**
  * Process properties of the classes
@@ -39,13 +40,13 @@ void KillThreadStage::handle_event(StageEvent *event) {
  * @post initializing the class members
  * @return the class object
  */
-Stage *KillThreadStage::make_stage(const std::string &tag) {
-  return new KillThreadStage(tag.c_str());
-}
+    Stage *KillThreadStage::make_stage(const std::string &tag) {
+        return new KillThreadStage(tag.c_str());
+    }
 
-bool KillThreadStage::set_properties() {
-  // nothing to do
-  return true;
-}
+    bool KillThreadStage::set_properties() {
+        // nothing to do
+        return true;
+    }
 
 } //namespace common

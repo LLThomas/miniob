@@ -20,29 +20,34 @@ See the Mulan PSL v2 for more details. */
 #include "sql/executor/tuple.h"
 
 class Table;
+
 class Trx;
 
 class ExecutionNode {
 public:
-  ExecutionNode() = default;
-  virtual ~ExecutionNode() = default;
+    ExecutionNode() = default;
 
-  virtual RC execute(TupleSet &tuple_set) = 0;
+    virtual ~ExecutionNode() = default;
+
+    virtual RC execute(TupleSet &tuple_set) = 0;
 };
 
 class SelectExeNode : public ExecutionNode {
 public:
-  SelectExeNode();
-  virtual ~SelectExeNode();
+    SelectExeNode();
 
-  RC init(Trx *trx, Table *table, TupleSchema && tuple_schema, std::vector<DefaultConditionFilter *> &&condition_filters);
+    virtual ~SelectExeNode();
 
-  RC execute(TupleSet &tuple_set) override;
+    RC
+    init(Trx *trx, Table *table, TupleSchema &&tuple_schema, std::vector<DefaultConditionFilter *> &&condition_filters);
+
+    RC execute(TupleSet &tuple_set) override;
+
 private:
-  Trx *trx_ = nullptr;
-  Table  * table_;
-  TupleSchema  tuple_schema_;
-  std::vector<DefaultConditionFilter *> condition_filters_;
+    Trx *trx_ = nullptr;
+    Table *table_;
+    TupleSchema tuple_schema_;
+    std::vector<DefaultConditionFilter *> condition_filters_;
 };
 
 #endif //__OBSERVER_SQL_EXECUTOR_EXECUTION_NODE_H_

@@ -26,7 +26,6 @@ ELSE ()
 ENDIF ()
 
 
-
 #get_filename_component(<VAR> FileName
 #        PATH|ABSOLUTE|NAME|EXT|NAME_WE|REALPATH
 #        [CACHE])

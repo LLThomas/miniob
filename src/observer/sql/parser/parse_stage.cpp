@@ -37,98 +37,98 @@ ParseStage::~ParseStage() {}
 
 //! Parse properties, instantiate a stage object
 Stage *ParseStage::make_stage(const std::string &tag) {
-  ParseStage *stage = new (std::nothrow) ParseStage(tag.c_str());
-  if (stage == nullptr) {
-    LOG_ERROR("new ParseStage failed");
-    return nullptr;
-  }
-  stage->set_properties();
-  return stage;
+    ParseStage *stage = new(std::nothrow) ParseStage(tag.c_str());
+    if (stage == nullptr) {
+        LOG_ERROR("new ParseStage failed");
+        return nullptr;
+    }
+    stage->set_properties();
+    return stage;
 }
 
 //! Set properties for this object set in stage specific properties
 bool ParseStage::set_properties() {
-  //  std::string stageNameStr(stageName);
-  //  std::map<std::string, std::string> section = theGlobalProperties()->get(
-  //    stageNameStr);
-  //
-  //  std::map<std::string, std::string>::iterator it;
-  //
-  //  std::string key;
+    //  std::string stageNameStr(stageName);
+    //  std::map<std::string, std::string> section = theGlobalProperties()->get(
+    //    stageNameStr);
+    //
+    //  std::map<std::string, std::string>::iterator it;
+    //
+    //  std::string key;
 
-  return true;
+    return true;
 }
 
 //! Initialize stage params and validate outputs
 bool ParseStage::initialize() {
-  LOG_TRACE("Enter");
+    LOG_TRACE("Enter");
 
-  std::list<Stage *>::iterator stgp = next_stage_list_.begin();
-  optimize_stage_ = *(stgp++);
+    std::list<Stage *>::iterator stgp = next_stage_list_.begin();
+    optimize_stage_ = *(stgp++);
 
-  LOG_TRACE("Exit");
-  return true;
+    LOG_TRACE("Exit");
+    return true;
 }
 
 //! Cleanup after disconnection
 void ParseStage::cleanup() {
-  LOG_TRACE("Enter");
+    LOG_TRACE("Enter");
 
-  LOG_TRACE("Exit");
+    LOG_TRACE("Exit");
 }
 
 void ParseStage::handle_event(StageEvent *event) {
-  LOG_TRACE("Enter\n");
+    LOG_TRACE("Enter\n");
 
-  StageEvent *new_event = handle_request(event);
-  if (nullptr == new_event) {
-    callback_event(event, nullptr);
-    event->done_immediate();
+    StageEvent *new_event = handle_request(event);
+    if (nullptr == new_event) {
+        callback_event(event, nullptr);
+        event->done_immediate();
+        return;
+    }
+
+    CompletionCallback *cb = new(std::nothrow) CompletionCallback(this, nullptr);
+    if (cb == nullptr) {
+        LOG_ERROR("Failed to new callback for SQLStageEvent");
+        callback_event(event, nullptr);
+        event->done_immediate();
+        return;
+    }
+    event->push_callback(cb);
+    optimize_stage_->handle_event(new_event);
+
+    LOG_TRACE("Exit\n");
     return;
-  }
-
-  CompletionCallback *cb = new (std::nothrow) CompletionCallback(this, nullptr);
-  if (cb == nullptr) {
-    LOG_ERROR("Failed to new callback for SQLStageEvent");
-    callback_event(event, nullptr);
-    event->done_immediate();
-    return;
-  }
-  event->push_callback(cb);
-  optimize_stage_->handle_event(new_event);
-
-  LOG_TRACE("Exit\n");
-  return;
 }
 
 void ParseStage::callback_event(StageEvent *event, CallbackContext *context) {
-  LOG_TRACE("Enter\n");
-  SQLStageEvent *sql_event = static_cast<SQLStageEvent *>(event);
-  sql_event->session_event()->done_immediate();
-  LOG_TRACE("Exit\n");
-  return;
+    LOG_TRACE("Enter\n");
+    SQLStageEvent *sql_event = static_cast<SQLStageEvent *>(event);
+    sql_event->session_event()->done_immediate();
+    LOG_TRACE("Exit\n");
+    return;
 }
 
 StageEvent *ParseStage::handle_request(StageEvent *event) {
-  SQLStageEvent *sql_event = static_cast<SQLStageEvent *>(event);
-  const std::string &sql = sql_event->get_sql();
-  
-  Query *result = query_create();
-  if (nullptr == result) {
-    LOG_ERROR("Failed to create query.");
-    return nullptr;
-  }
+    SQLStageEvent *sql_event = static_cast<SQLStageEvent *>(event);
+    const std::string &sql = sql_event->get_sql();
 
-  RC ret = parse(sql.c_str(), result);
-  if (ret != RC::SUCCESS) {
-    // set error information to event
-    const char *error = result->sstr.errors != nullptr ? result->sstr.errors : "Unknown error";
-    char response[256];
-    snprintf(response, sizeof(response), "Failed to parse sql: %s, error msg: %s\n", sql.c_str(), error);
-    sql_event->session_event()->set_response(response);
-    query_destroy(result);
-    return nullptr;
-  }
+    Query *result = query_create();
+    if (nullptr == result) {
+        LOG_ERROR("Failed to create query.");
+        return nullptr;
+    }
 
-  return new ExecutionPlanEvent(sql_event, result);
+    RC ret = parse(sql.c_str(), result);
+    if (ret != RC::SUCCESS) {
+        // set error information to event
+        const char *error = result->sstr.errors != nullptr ? result->sstr.errors : "Unknown error";
+        char response[256];
+        snprintf(response, sizeof(response), "Failed to parse sql: %s, error msg: %s\n", sql.c_str(), error);
+        sql_event->session_event()->set_response(response);
+        query_destroy(result);
+        return nullptr;
+    }
+
+    return new ExecutionPlanEvent(sql_event, result);
 }

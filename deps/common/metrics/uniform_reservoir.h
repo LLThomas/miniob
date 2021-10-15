@@ -31,30 +31,33 @@ namespace common {
  * with a Reservoir</a>
  */
 
-class UniformReservoir : public Reservoir {
-public:
-  UniformReservoir(RandomGenerator &random);
-  UniformReservoir(RandomGenerator &random, size_t size);
-  virtual ~UniformReservoir();
+    class UniformReservoir : public Reservoir {
+    public:
+        UniformReservoir(RandomGenerator &random);
 
-public:
-  size_t size();  // data buffer size
-  size_t get_count(); // how many items have been insert?
+        UniformReservoir(RandomGenerator &random, size_t size);
 
-  void update(double one);
-  void snapshot();
+        virtual ~UniformReservoir();
 
-  void reset();
+    public:
+        size_t size();  // data buffer size
+        size_t get_count(); // how many items have been insert?
 
-protected:
-  void init(size_t size);
+        void update(double one);
 
-protected:
-  pthread_mutex_t mutex;
-  size_t counter; // counter is likely to be bigger than data.size()
-  std::vector<double> data;
-  RandomGenerator random;
-};
+        void snapshot();
+
+        void reset();
+
+    protected:
+        void init(size_t size);
+
+    protected:
+        pthread_mutex_t mutex;
+        size_t counter; // counter is likely to be bigger than data.size()
+        std::vector<double> data;
+        RandomGenerator random;
+    };
 
 } // namespace common
 

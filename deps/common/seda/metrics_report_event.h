@@ -18,15 +18,15 @@ See the Mulan PSL v2 for more details. */
 #include "common/seda/stage_event.h"
 
 namespace common {
-class MetricsReportEvent : public StageEvent {
-public:
-  MetricsReportEvent(){
+    class MetricsReportEvent : public StageEvent {
+    public:
+        MetricsReportEvent() {
 
-  };
+        };
 
-  ~MetricsReportEvent(){
+        ~MetricsReportEvent() {
 
-  };
-};
+        };
+    };
 } //namespace common
 #endif //__COMMON_SEDA_METRICS_REPORT_EVENT_H__

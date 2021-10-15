@@ -26,16 +26,16 @@ namespace common {
  * @param[in] programName as basis for file to write
  * @return    0 for success, error otherwise
  */
-int writePidFile(const char *progName);
+    int writePidFile(const char *progName);
 
 //! Cleanup PID file for the current component
 /**
  * Removes the PID file for the current component
  *
  */
-void removePidFile(void);
+    void removePidFile(void);
 
-std::string& getPidPath();
+    std::string &getPidPath();
 
 } //namespace common
 #endif // __COMMON_OS_PIDFILE_H__

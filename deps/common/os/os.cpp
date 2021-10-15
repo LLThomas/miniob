@@ -19,8 +19,8 @@ See the Mulan PSL v2 for more details. */
 
 namespace common {
 // Don't care windows
-u32_t getCpuNum() {
-  return std::thread::hardware_concurrency();
-}
+    u32_t getCpuNum() {
+        return std::thread::hardware_concurrency();
+    }
 
 }//namespace common

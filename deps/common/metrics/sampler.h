@@ -23,22 +23,24 @@ namespace common {
 /**
  * The most simple sample function
  */
-class Sampler {
-public:
-  Sampler();
-  virtual ~Sampler();
+    class Sampler {
+    public:
+        Sampler();
 
-  bool sampling();
+        virtual ~Sampler();
 
-  void set_ratio(double ratio);
-  double get_ratio();
+        bool sampling();
 
-private:
-  double ratio_ = 1.0;
-  int ratio_num_ = 1;
-  RandomGenerator random_;
-};
+        void set_ratio(double ratio);
 
-Sampler *&get_sampler();
+        double get_ratio();
+
+    private:
+        double ratio_ = 1.0;
+        int ratio_num_ = 1;
+        RandomGenerator random_;
+    };
+
+    Sampler *&get_sampler();
 } //namespace common
 #endif //__COMMON_METRICS_SAMPLER_H__

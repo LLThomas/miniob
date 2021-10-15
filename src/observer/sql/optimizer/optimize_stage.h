@@ -19,23 +19,28 @@ See the Mulan PSL v2 for more details. */
 
 class OptimizeStage : public common::Stage {
 public:
-  ~OptimizeStage();
-  static Stage *make_stage(const std::string &tag);
+    ~OptimizeStage();
+
+    static Stage *make_stage(const std::string &tag);
 
 protected:
-  // common function
-  OptimizeStage(const char *tag);
-  bool set_properties();
+    // common function
+    OptimizeStage(const char *tag);
 
-  bool initialize();
-  void cleanup();
-  void handle_event(common::StageEvent *event);
-  void callback_event(common::StageEvent *event,
-                     common::CallbackContext *context);
+    bool set_properties();
+
+    bool initialize();
+
+    void cleanup();
+
+    void handle_event(common::StageEvent *event);
+
+    void callback_event(common::StageEvent *event,
+                        common::CallbackContext *context);
 
 protected:
 private:
-  Stage *execute_stage = nullptr;
+    Stage *execute_stage = nullptr;
 };
 
 #endif //__OBSERVER_SQL_OPTIMIZE_STAGE_H__

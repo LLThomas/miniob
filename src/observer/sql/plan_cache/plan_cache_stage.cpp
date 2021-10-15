@@ -33,75 +33,75 @@ PlanCacheStage::~PlanCacheStage() {}
 
 //! Parse properties, instantiate a stage object
 Stage *PlanCacheStage::make_stage(const std::string &tag) {
-  PlanCacheStage *stage = new (std::nothrow) PlanCacheStage(tag.c_str());
-  if (stage == nullptr) {
-    LOG_ERROR("new PlanCacheStage failed");
-    return nullptr;
-  }
-  stage->set_properties();
-  return stage;
+    PlanCacheStage *stage = new(std::nothrow) PlanCacheStage(tag.c_str());
+    if (stage == nullptr) {
+        LOG_ERROR("new PlanCacheStage failed");
+        return nullptr;
+    }
+    stage->set_properties();
+    return stage;
 }
 
 //! Set properties for this object set in stage specific properties
 bool PlanCacheStage::set_properties() {
-  //  std::string stageNameStr(stage_name_);
-  //  std::map<std::string, std::string> section = g_properties()->get(
-  //    stageNameStr);
-  //
-  //  std::map<std::string, std::string>::iterator it;
-  //
-  //  std::string key;
+    //  std::string stageNameStr(stage_name_);
+    //  std::map<std::string, std::string> section = g_properties()->get(
+    //    stageNameStr);
+    //
+    //  std::map<std::string, std::string>::iterator it;
+    //
+    //  std::string key;
 
-  return true;
+    return true;
 }
 
 //! Initialize stage params and validate outputs
 bool PlanCacheStage::initialize() {
-  LOG_TRACE("Enter");
+    LOG_TRACE("Enter");
 
-  std::list<Stage *>::iterator stgp = next_stage_list_.begin();
-  execute_stage = *(stgp++);
-  parse_stage = *(stgp++);
+    std::list<Stage *>::iterator stgp = next_stage_list_.begin();
+    execute_stage = *(stgp++);
+    parse_stage = *(stgp++);
 
-  LOG_TRACE("Exit");
-  return true;
+    LOG_TRACE("Exit");
+    return true;
 }
 
 //! Cleanup after disconnection
 void PlanCacheStage::cleanup() {
-  LOG_TRACE("Enter");
+    LOG_TRACE("Enter");
 
-  LOG_TRACE("Exit");
+    LOG_TRACE("Exit");
 }
 
 void PlanCacheStage::handle_event(StageEvent *event) {
-  LOG_TRACE("Enter\n");
+    LOG_TRACE("Enter\n");
 
-  // Add callback to update plan cache
-  /*
-  CompletionCallback *cb = new (std::nothrow) CompletionCallback(this, nullptr);
-  if (cb == nullptr) {
-    LOG_ERROR("Failed to new callback for SQLStageEvent");
-    event->done_immediate();
+    // Add callback to update plan cache
+    /*
+    CompletionCallback *cb = new (std::nothrow) CompletionCallback(this, nullptr);
+    if (cb == nullptr) {
+      LOG_ERROR("Failed to new callback for SQLStageEvent");
+      event->done_immediate();
+      return;
+    }
+
+    event->push_callback(cb);
+     */
+    // do nothing here, pass the event to the next stage
+    parse_stage->handle_event(event);
+
+    LOG_TRACE("Exit\n");
     return;
-  }
-
-  event->push_callback(cb);
-   */
-  // do nothing here, pass the event to the next stage
-  parse_stage->handle_event(event);
-
-  LOG_TRACE("Exit\n");
-  return;
 }
 
 void PlanCacheStage::callback_event(StageEvent *event,
-                                   CallbackContext *context) {
-  LOG_TRACE("Enter\n");
+                                    CallbackContext *context) {
+    LOG_TRACE("Enter\n");
 
-  // update execute plan here
-  // event->done_immediate();
+    // update execute plan here
+    // event->done_immediate();
 
-  LOG_TRACE("Exit\n");
-  return;
+    LOG_TRACE("Exit\n");
+    return;
 }

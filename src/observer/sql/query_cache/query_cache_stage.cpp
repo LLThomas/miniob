@@ -33,74 +33,74 @@ QueryCacheStage::~QueryCacheStage() {}
 
 //! Parse properties, instantiate a stage object
 Stage *QueryCacheStage::make_stage(const std::string &tag) {
-  QueryCacheStage *stage = new (std::nothrow) QueryCacheStage(tag.c_str());
-  if (stage == nullptr) {
-    LOG_ERROR("new QueryCacheStage failed");
-    return nullptr;
-  }
-  stage->set_properties();
-  return stage;
+    QueryCacheStage *stage = new(std::nothrow) QueryCacheStage(tag.c_str());
+    if (stage == nullptr) {
+        LOG_ERROR("new QueryCacheStage failed");
+        return nullptr;
+    }
+    stage->set_properties();
+    return stage;
 }
 
 //! Set properties for this object set in stage specific properties
 bool QueryCacheStage::set_properties() {
-  //  std::string stageNameStr(stage_name_);
-  //  std::map<std::string, std::string> section = g_properties()->get(
-  //    stageNameStr);
-  //
-  //  std::map<std::string, std::string>::iterator it;
-  //
-  //  std::string key;
+    //  std::string stageNameStr(stage_name_);
+    //  std::map<std::string, std::string> section = g_properties()->get(
+    //    stageNameStr);
+    //
+    //  std::map<std::string, std::string>::iterator it;
+    //
+    //  std::string key;
 
-  return true;
+    return true;
 }
 
 //! Initialize stage params and validate outputs
 bool QueryCacheStage::initialize() {
-  LOG_TRACE("Enter");
+    LOG_TRACE("Enter");
 
-  std::list<Stage *>::iterator stgp = next_stage_list_.begin();
-  plan_cache_stage = *(stgp++);
+    std::list<Stage *>::iterator stgp = next_stage_list_.begin();
+    plan_cache_stage = *(stgp++);
 
-  LOG_TRACE("Exit");
-  return true;
+    LOG_TRACE("Exit");
+    return true;
 }
 
 //! Cleanup after disconnection
 void QueryCacheStage::cleanup() {
-  LOG_TRACE("Enter");
+    LOG_TRACE("Enter");
 
-  LOG_TRACE("Exit");
+    LOG_TRACE("Exit");
 }
 
 void QueryCacheStage::handle_event(StageEvent *event) {
-  LOG_TRACE("Enter\n");
+    LOG_TRACE("Enter\n");
 
-  // Add callback to update query cache
-  /*
-  CompletionCallback *cb = new (std::nothrow) CompletionCallback(this, nullptr);
-  if (cb == nullptr) {
-    LOG_ERROR("Failed to new callback for SQLStageEvent");
-    event->done_immediate();
+    // Add callback to update query cache
+    /*
+    CompletionCallback *cb = new (std::nothrow) CompletionCallback(this, nullptr);
+    if (cb == nullptr) {
+      LOG_ERROR("Failed to new callback for SQLStageEvent");
+      event->done_immediate();
+      return;
+    }
+
+    event->push_callback(cb);
+     */
+    // do nothing here, pass the event to the next stage
+    plan_cache_stage->handle_event(event);
+
+    LOG_TRACE("Exit\n");
     return;
-  }
-
-  event->push_callback(cb);
-   */
-  // do nothing here, pass the event to the next stage
-  plan_cache_stage->handle_event(event);
-
-  LOG_TRACE("Exit\n");
-  return;
 }
 
 void QueryCacheStage::callback_event(StageEvent *event,
-                                    CallbackContext *context) {
-  LOG_TRACE("Enter\n");
+                                     CallbackContext *context) {
+    LOG_TRACE("Enter\n");
 
-  // update data to query cache here
-  // event->done_immediate();
+    // update data to query cache here
+    // event->done_immediate();
 
-  LOG_TRACE("Exit\n");
-  return;
+    LOG_TRACE("Exit\n");
+    return;
 }

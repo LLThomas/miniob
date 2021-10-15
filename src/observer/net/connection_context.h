@@ -21,12 +21,12 @@ See the Mulan PSL v2 for more details. */
 class Session;
 
 typedef struct _ConnectionContext {
-  Session *session;
-  int fd;
-  struct event read_event;
-  pthread_mutex_t mutex;
-  char addr[24];
-  char buf[SOCKET_BUFFER_SIZE];
+    Session *session;
+    int fd;
+    struct event read_event;
+    pthread_mutex_t mutex;
+    char addr[24];
+    char buf[SOCKET_BUFFER_SIZE];
 } ConnectionContext;
 
 #endif //__SRC_OBSERVER_NET_CONNECTION_CONTEXT_H__

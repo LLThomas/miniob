@@ -16,26 +16,27 @@ See the Mulan PSL v2 for more details. */
 
 #include <stdlib.h>
 #include <random>
-namespace common
-{
+
+namespace common {
 
 #define DEFAULT_RANDOM_BUFF_SIZE 512
 
-class RandomGenerator
-{
+    class RandomGenerator {
 
-public:
-    RandomGenerator();
-    virtual ~RandomGenerator();
+    public:
+        RandomGenerator();
 
-public:
-    unsigned int next();
-    unsigned int next(unsigned int range);
+        virtual ~RandomGenerator();
 
-private:
-     // The GUN Extended TLS Version
-     std::mt19937 randomData;
-};
+    public:
+        unsigned int next();
+
+        unsigned int next(unsigned int range);
+
+    private:
+        // The GUN Extended TLS Version
+        std::mt19937 randomData;
+    };
 
 }
 

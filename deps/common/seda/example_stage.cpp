@@ -33,57 +33,57 @@ ExampleStage::~ExampleStage() {}
 
 // Parse properties, instantiate a stage object
 Stage *ExampleStage::make_stage(const std::string &tag) {
-  ExampleStage *stage = new ExampleStage(tag.c_str());
-  if (stage == NULL) {
-    LOG_ERROR("new ExampleStage failed");
-    return NULL;
-  }
-  stage->set_properties();
-  return stage;
+    ExampleStage *stage = new ExampleStage(tag.c_str());
+    if (stage == NULL) {
+        LOG_ERROR("new ExampleStage failed");
+        return NULL;
+    }
+    stage->set_properties();
+    return stage;
 }
 
 // Set properties for this object set in stage specific properties
 bool ExampleStage::set_properties() {
-  //  std::string stageNameStr(stage_name_);
-  //  std::map<std::string, std::string> section = g_properties()->get(
-  //    stageNameStr);
-  //
-  //  std::map<std::string, std::string>::iterator it;
-  //
-  //  std::string key;
+    //  std::string stageNameStr(stage_name_);
+    //  std::map<std::string, std::string> section = g_properties()->get(
+    //    stageNameStr);
+    //
+    //  std::map<std::string, std::string>::iterator it;
+    //
+    //  std::string key;
 
-  return true;
+    return true;
 }
 
 // Initialize stage params and validate outputs
 bool ExampleStage::initialize() {
-  LOG_TRACE("Enter");
+    LOG_TRACE("Enter");
 
-  //  std::list<Stage*>::iterator stgp = next_stage_list_.begin();
-  //  mTimerStage = *(stgp++);
-  //  mCommStage = *(stgp++);
+    //  std::list<Stage*>::iterator stgp = next_stage_list_.begin();
+    //  mTimerStage = *(stgp++);
+    //  mCommStage = *(stgp++);
 
-  LOG_TRACE("Exit");
-  return true;
+    LOG_TRACE("Exit");
+    return true;
 }
 
 // Cleanup after disconnection
 void ExampleStage::cleanup() {
-  LOG_TRACE("Enter");
+    LOG_TRACE("Enter");
 
-  LOG_TRACE("Exit");
+    LOG_TRACE("Exit");
 }
 
 void ExampleStage::handle_event(StageEvent *event) {
-  LOG_TRACE("Enter\n");
+    LOG_TRACE("Enter\n");
 
-  LOG_TRACE("Exit\n");
-  return;
+    LOG_TRACE("Exit\n");
+    return;
 }
 
 void ExampleStage::callback_event(StageEvent *event, CallbackContext *context) {
-  LOG_TRACE("Enter\n");
+    LOG_TRACE("Enter\n");
 
-  LOG_TRACE("Exit\n");
-  return;
+    LOG_TRACE("Exit\n");
+    return;
 }

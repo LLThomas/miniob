@@ -41,209 +41,209 @@ See the Mulan PSL v2 for more details. */
 using namespace common;
 
 bool *&_get_init() {
-  static bool util_init = false;
-  static bool *util_init_p = &util_init;
-  return util_init_p;
+    static bool util_init = false;
+    static bool *util_init_p = &util_init;
+    return util_init_p;
 }
 
 bool get_init() { return *_get_init(); }
 
 void set_init(bool value) {
-  *_get_init() = value;
-  return;
+    *_get_init() = value;
+    return;
 }
 
 void sig_handler(int sig) {
-  // Signal handler will be add in the next step.
-  //  Add action to shutdown
+    // Signal handler will be add in the next step.
+    //  Add action to shutdown
 
-  LOG_INFO("Receive one signal of %d.", sig);
+    LOG_INFO("Receive one signal of %d.", sig);
 
-  return;
+    return;
 }
 
 int init_log(ProcessParam *process_cfg, Ini &properties) {
-  const std::string &proc_name = process_cfg->get_process_name();
-  try {
-    // we had better alloc one lock to do so, but simplify the logic
-    if (g_log) {
-      return 0;
-    }
+    const std::string &proc_name = process_cfg->get_process_name();
+    try {
+        // we had better alloc one lock to do so, but simplify the logic
+        if (g_log) {
+            return 0;
+        }
 
-    const std::string log_section_name = "LOG";
-    std::map<std::string, std::string> log_section =
-        properties.get(log_section_name);
+        const std::string log_section_name = "LOG";
+        std::map <std::string, std::string> log_section =
+                properties.get(log_section_name);
 
-    std::string log_file_name;
+        std::string log_file_name;
 
-    // get log file name
-    std::string key = "LOG_FILE_NAME";
-    std::map<std::string, std::string>::iterator it = log_section.find(key);
-    if (it == log_section.end()) {
-      log_file_name = proc_name + ".log";
-      std::cout << "Not set log file name, use default " << log_file_name
-                << std::endl;
-    } else {
-      log_file_name = it->second;
-    }
+        // get log file name
+        std::string key = "LOG_FILE_NAME";
+        std::map<std::string, std::string>::iterator it = log_section.find(key);
+        if (it == log_section.end()) {
+            log_file_name = proc_name + ".log";
+            std::cout << "Not set log file name, use default " << log_file_name
+                      << std::endl;
+        } else {
+            log_file_name = it->second;
+        }
 
-    log_file_name = getAboslutPath(log_file_name.c_str());
+        log_file_name = getAboslutPath(log_file_name.c_str());
 
-    LOG_LEVEL log_level = LOG_LEVEL_INFO;
-    key = ("LOG_FILE_LEVEL");
-    it = log_section.find(key);
-    if (it != log_section.end()) {
-      int log = (int)log_level;
-      str_to_val(it->second, log);
-      log_level = (LOG_LEVEL)log;
-    }
+        LOG_LEVEL log_level = LOG_LEVEL_INFO;
+        key = ("LOG_FILE_LEVEL");
+        it = log_section.find(key);
+        if (it != log_section.end()) {
+            int log = (int) log_level;
+            str_to_val(it->second, log);
+            log_level = (LOG_LEVEL) log;
+        }
 
-    LOG_LEVEL console_level = LOG_LEVEL_INFO;
-    key = ("LOG_CONSOLE_LEVEL");
-    it = log_section.find(key);
-    if (it != log_section.end()) {
-      int log = (int)console_level;
-      str_to_val(it->second, log);
-      console_level = (LOG_LEVEL)log;
-    }
+        LOG_LEVEL console_level = LOG_LEVEL_INFO;
+        key = ("LOG_CONSOLE_LEVEL");
+        it = log_section.find(key);
+        if (it != log_section.end()) {
+            int log = (int) console_level;
+            str_to_val(it->second, log);
+            console_level = (LOG_LEVEL) log;
+        }
 
-    LoggerFactory::init_default(log_file_name, log_level, console_level);
+        LoggerFactory::init_default(log_file_name, log_level, console_level);
 
-    key = ("DefaultLogModules");
-    it = log_section.find(key);
-    if (it != log_section.end()) {
-      g_log->set_default_module(it->second);
-    }
+        key = ("DefaultLogModules");
+        it = log_section.find(key);
+        if (it != log_section.end()) {
+            g_log->set_default_module(it->second);
+        }
 
-    if (process_cfg->is_demon()) {
-      sys_log_redirect(log_file_name.c_str(), log_file_name.c_str());
+        if (process_cfg->is_demon()) {
+            sys_log_redirect(log_file_name.c_str(), log_file_name.c_str());
+        }
+
+        return 0;
+    } catch (std::exception &e) {
+        std::cerr << "Failed to init log for " << proc_name << SYS_OUTPUT_FILE_POS
+                  << SYS_OUTPUT_ERROR << std::endl;
+        return errno;
     }
 
     return 0;
-  } catch (std::exception &e) {
-    std::cerr << "Failed to init log for " << proc_name << SYS_OUTPUT_FILE_POS
-              << SYS_OUTPUT_ERROR << std::endl;
-    return errno;
-  }
-
-  return 0;
 }
 
 void cleanup_log() {
 
-  if (g_log) {
-    delete g_log;
-    g_log = nullptr;
-  }
-  return;
+    if (g_log) {
+        delete g_log;
+        g_log = nullptr;
+    }
+    return;
 }
 
 int prepare_init_seda() {
-  static StageFactory session_stage_factory("SessionStage",
-                                          &SessionStage::make_stage);
-  static StageFactory resolve_stage_factory("ResolveStage",
-                                          &ResolveStage::make_stage);
-  static StageFactory query_cache_stage_factory("QueryCacheStage",
-                                             &QueryCacheStage::make_stage);
-  static StageFactory parse_stage_factory("ParseStage", &ParseStage::make_stage);
-  static StageFactory plan_cache_factory("PlanCacheStage",
-                                       &PlanCacheStage::make_stage);
-  static StageFactory optimize_factory("OptimizeStage",
-                                      &OptimizeStage::make_stage);
-  static StageFactory execute_factory("ExecuteStage", &ExecuteStage::make_stage);
-  static StageFactory default_storage_factory("DefaultStorageStage",
-                                            &DefaultStorageStage::make_stage);
-  static StageFactory mem_storage_factory("MemStorageStage",
-                                        &MemStorageStage::make_stage);
-  return 0;
+    static StageFactory session_stage_factory("SessionStage",
+                                              &SessionStage::make_stage);
+    static StageFactory resolve_stage_factory("ResolveStage",
+                                              &ResolveStage::make_stage);
+    static StageFactory query_cache_stage_factory("QueryCacheStage",
+                                                  &QueryCacheStage::make_stage);
+    static StageFactory parse_stage_factory("ParseStage", &ParseStage::make_stage);
+    static StageFactory plan_cache_factory("PlanCacheStage",
+                                           &PlanCacheStage::make_stage);
+    static StageFactory optimize_factory("OptimizeStage",
+                                         &OptimizeStage::make_stage);
+    static StageFactory execute_factory("ExecuteStage", &ExecuteStage::make_stage);
+    static StageFactory default_storage_factory("DefaultStorageStage",
+                                                &DefaultStorageStage::make_stage);
+    static StageFactory mem_storage_factory("MemStorageStage",
+                                            &MemStorageStage::make_stage);
+    return 0;
 }
 
 int init(ProcessParam *process_param) {
 
-  if (get_init()) {
+    if (get_init()) {
 
-    return 0;
-  }
-
-  set_init(true);
-
-  // Run as daemon if daemonization requested
-  int rc = STATUS_SUCCESS;
-  if (process_param->is_demon()) {
-    rc = daemonize_service(process_param->get_std_out().c_str(),
-                          process_param->get_std_err().c_str());
-    if (rc != 0) {
-      std::cerr << "Shutdown due to failed to daemon current process!"
-                << std::endl;
-      return rc;
+        return 0;
     }
-  }
 
-  writePidFile(process_param->get_process_name().c_str());
+    set_init(true);
 
-  // Initialize global variables before enter multi-thread mode
-  // to avoid race condition
-  theSwVersion();
+    // Run as daemon if daemonization requested
+    int rc = STATUS_SUCCESS;
+    if (process_param->is_demon()) {
+        rc = daemonize_service(process_param->get_std_out().c_str(),
+                               process_param->get_std_err().c_str());
+        if (rc != 0) {
+            std::cerr << "Shutdown due to failed to daemon current process!"
+                      << std::endl;
+            return rc;
+        }
+    }
 
-  // Read Configuration files
-  rc = get_properties()->load(process_param->get_conf());
-  if (rc) {
-    std::cerr << "Failed to load configuration files" << std::endl;
-    return rc;
-  }
+    writePidFile(process_param->get_process_name().c_str());
 
-  // Init tracer
-  rc = init_log(process_param, *get_properties());
-  if (rc) {
-    std::cerr << "Failed to init Log" << std::endl;
-    return rc;
-  }
+    // Initialize global variables before enter multi-thread mode
+    // to avoid race condition
+    theSwVersion();
 
-  std::string conf_data;
-  get_properties()->to_string(conf_data);
-  LOG_INFO("Output configuration \n%s", conf_data.c_str());
+    // Read Configuration files
+    rc = get_properties()->load(process_param->get_conf());
+    if (rc) {
+        std::cerr << "Failed to load configuration files" << std::endl;
+        return rc;
+    }
 
-  // seda is used for backend async event handler
-  // the latency of seda is slow, it isn't used for critical latency
-  // environment.
-  prepare_init_seda();
-  rc = init_seda(process_param);
-  if (rc) {
-    LOG_ERROR("Failed to init seda configuration!");
-    return rc;
-  }
+    // Init tracer
+    rc = init_log(process_param, *get_properties());
+    if (rc) {
+        std::cerr << "Failed to init Log" << std::endl;
+        return rc;
+    }
 
-  LogReporter *log_reporter = get_log_reporter();
-  MetricsRegistry &metrics_registry = get_metrics_registry();
+    std::string conf_data;
+    get_properties()->to_string(conf_data);
+    LOG_INFO("Output configuration \n%s", conf_data.c_str());
 
-  metrics_registry.add_reporter(log_reporter);
+    // seda is used for backend async event handler
+    // the latency of seda is slow, it isn't used for critical latency
+    // environment.
+    prepare_init_seda();
+    rc = init_seda(process_param);
+    if (rc) {
+        LOG_ERROR("Failed to init seda configuration!");
+        return rc;
+    }
 
-  // Block interrupt signals before creating child threads.
-  // setSignalHandler(sig_handler);
-  // sigset_t newSigset, oset;
-  // blockDefaultSignals(&newSigset, &oset);
-  //  wait interrupt signals
-  // startWaitForSignals(&newSigset);
+    LogReporter *log_reporter = get_log_reporter();
+    MetricsRegistry &metrics_registry = get_metrics_registry();
 
-  LOG_INFO("Successfully init utility");
+    metrics_registry.add_reporter(log_reporter);
 
-  return STATUS_SUCCESS;
+    // Block interrupt signals before creating child threads.
+    // setSignalHandler(sig_handler);
+    // sigset_t newSigset, oset;
+    // blockDefaultSignals(&newSigset, &oset);
+    //  wait interrupt signals
+    // startWaitForSignals(&newSigset);
+
+    LOG_INFO("Successfully init utility");
+
+    return STATUS_SUCCESS;
 }
 
 void cleanup_util() {
 
-  if (nullptr != get_properties()) {
-    delete get_properties();
-    get_properties() = nullptr;
-  }
+    if (nullptr != get_properties()) {
+        delete get_properties();
+        get_properties() = nullptr;
+    }
 
-  LOG_INFO("Shutdown Cleanly!");
+    LOG_INFO("Shutdown Cleanly!");
 
-  // Finalize tracer
-  cleanup_log();
+    // Finalize tracer
+    cleanup_log();
 
-  set_init(false);
-  return;
+    set_init(false);
+    return;
 }
 
 void cleanup() {}

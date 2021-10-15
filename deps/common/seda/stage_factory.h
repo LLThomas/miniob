@@ -17,12 +17,13 @@ See the Mulan PSL v2 for more details. */
 
 #include "common/seda/class_factory.h"
 #include "common/seda/stage.h"
+
 namespace common {
 
 
-class Stage;
+    class Stage;
 
-typedef ClassFactory<Stage> StageFactory;
+    typedef ClassFactory <Stage> StageFactory;
 
 } //namespace common
 #endif // __COMMON_SEDA_STAGE_FACTORY_H__

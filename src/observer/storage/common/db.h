@@ -26,27 +26,29 @@ class Table;
 
 class Db {
 public:
-  Db() = default;
-  ~Db();
+    Db() = default;
 
-  RC init(const char *name, const char *dbpath);
+    ~Db();
 
-  RC create_table(const char *table_name, int attribute_count, const AttrInfo *attributes);
+    RC init(const char *name, const char *dbpath);
 
-  Table *find_table(const char *table_name) const;
+    RC create_table(const char *table_name, int attribute_count, const AttrInfo *attributes);
 
-  const char *name() const;
+    Table *find_table(const char *table_name) const;
 
-  void all_tables(std::vector<std::string> &table_names) const;
+    const char *name() const;
 
-  RC sync();
+    void all_tables(std::vector <std::string> &table_names) const;
+
+    RC sync();
+
 private:
-  RC open_all_tables();
+    RC open_all_tables();
 
 private:
-  std::string   name_;
-  std::string   path_;
-  std::unordered_map<std::string, Table *>  opened_tables_;
+    std::string name_;
+    std::string path_;
+    std::unordered_map<std::string, Table *> opened_tables_;
 };
 
 #endif // __OBSERVER_STORAGE_COMMON_DB_H__

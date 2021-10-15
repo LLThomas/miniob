@@ -30,70 +30,74 @@ namespace common {
 
 #define MUTEX_LOG LOG_DEBUG
 
-class LockTrace {
- public:
-  static void check(pthread_mutex_t *mutex, const long long threadId,
-                    const char *file, const int line);
-  static void lock(pthread_mutex_t *mutex, const long long threadId,
-                   const char *file, const int line);
-  static void tryLock(pthread_mutex_t *mutex, const long long threadId,
-                      const char *file, const int line);
-  static void unlock(pthread_mutex_t *mutex, const long long threadId,
-                     const char *file, const int line);
+    class LockTrace {
+    public:
+        static void check(pthread_mutex_t *mutex, const long long threadId,
+                          const char *file, const int line);
 
-  static void toString(std::string &result);
-
-  class LockID {
-   public:
-    LockID(const long long threadId, const char *file, const int line)
-      : mFile(file), mThreadId(threadId), mLine(line) {}
-    LockID() : mFile(), mThreadId(0), mLine(0) {}
-
-    std::string toString() {
-      std::ostringstream oss;
-
-      oss << "threaId:" << mThreadId << ",file name:" << mFile
-          << ",line:" << mLine;
-
-      return oss.str();
-    }
-
-   public:
-    std::string mFile;
-    const long long mThreadId;
-    int mLine;
-  };
-
-  static void foundDeadLock(LockID &current, LockID &other,
-                            pthread_mutex_t *otherWaitMutex);
-
-  static bool deadlockCheck(LockID &current,
-                            std::set<pthread_mutex_t *> &ownMutexs,
-                            LockID &other, int recusiveNum);
-
-  static bool deadlockCheck(pthread_mutex_t *mutex, const long long threadId,
-                            const char *file, const int line);
-
-  static bool checkLockTimes(pthread_mutex_t *mutex, const char *file,
-                             const int line);
-
-  static void insertLock(pthread_mutex_t *mutex, const long long threadId,
+        static void lock(pthread_mutex_t *mutex, const long long threadId,
                          const char *file, const int line);
 
-  static void setMaxBlockThreads(int blockNum) { mMaxBlockTids = blockNum; }
+        static void tryLock(pthread_mutex_t *mutex, const long long threadId,
+                            const char *file, const int line);
 
- public:
-  static std::set<pthread_mutex_t *> mEnableRecurisives;
+        static void unlock(pthread_mutex_t *mutex, const long long threadId,
+                           const char *file, const int line);
 
- protected:
-  static std::map<pthread_mutex_t *, LockID> mLocks;
-  static std::map<pthread_mutex_t *, int> mWaitTimes;
-  static std::map<long long, pthread_mutex_t *> mWaitLocks;
-  static std::map<long long, std::set<pthread_mutex_t *>> mOwnLocks;
+        static void toString(std::string &result);
 
-  static pthread_rwlock_t mMapMutex;
-  static int mMaxBlockTids;
-};
+        class LockID {
+        public:
+            LockID(const long long threadId, const char *file, const int line)
+                    : mFile(file), mThreadId(threadId), mLine(line) {}
+
+            LockID() : mFile(), mThreadId(0), mLine(0) {}
+
+            std::string toString() {
+                std::ostringstream oss;
+
+                oss << "threaId:" << mThreadId << ",file name:" << mFile
+                    << ",line:" << mLine;
+
+                return oss.str();
+            }
+
+        public:
+            std::string mFile;
+            const long long mThreadId;
+            int mLine;
+        };
+
+        static void foundDeadLock(LockID &current, LockID &other,
+                                  pthread_mutex_t *otherWaitMutex);
+
+        static bool deadlockCheck(LockID &current,
+                                  std::set<pthread_mutex_t *> &ownMutexs,
+                                  LockID &other, int recusiveNum);
+
+        static bool deadlockCheck(pthread_mutex_t *mutex, const long long threadId,
+                                  const char *file, const int line);
+
+        static bool checkLockTimes(pthread_mutex_t *mutex, const char *file,
+                                   const int line);
+
+        static void insertLock(pthread_mutex_t *mutex, const long long threadId,
+                               const char *file, const int line);
+
+        static void setMaxBlockThreads(int blockNum) { mMaxBlockTids = blockNum; }
+
+    public:
+        static std::set<pthread_mutex_t *> mEnableRecurisives;
+
+    protected:
+        static std::map<pthread_mutex_t *, LockID> mLocks;
+        static std::map<pthread_mutex_t *, int> mWaitTimes;
+        static std::map<long long, pthread_mutex_t *> mWaitLocks;
+        static std::map<long long, std::set<pthread_mutex_t *>> mOwnLocks;
+
+        static pthread_rwlock_t mMapMutex;
+        static int mMaxBlockTids;
+    };
 
 // Open this macro in Makefile
 #ifndef DEBUG_LOCK

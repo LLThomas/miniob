@@ -20,23 +20,28 @@ See the Mulan PSL v2 for more details. */
 
 class MemStorageStage : public common::Stage {
 public:
-  ~MemStorageStage();
-  static Stage *make_stage(const std::string &tag);
+    ~MemStorageStage();
+
+    static Stage *make_stage(const std::string &tag);
 
 protected:
-  // common function
-  MemStorageStage(const char *tag);
-  bool set_properties();
+    // common function
+    MemStorageStage(const char *tag);
 
-  bool initialize();
-  void cleanup();
-  void handle_event(common::StageEvent *event);
-  void callback_event(common::StageEvent *event,
-                     common::CallbackContext *context);
+    bool set_properties();
+
+    bool initialize();
+
+    void cleanup();
+
+    void handle_event(common::StageEvent *event);
+
+    void callback_event(common::StageEvent *event,
+                        common::CallbackContext *context);
 
 protected:
-  common::SimpleTimer *queryMetric = nullptr;
-  static const std::string QUERY_METRIC_TAG;
+    common::SimpleTimer *queryMetric = nullptr;
+    static const std::string QUERY_METRIC_TAG;
 private:
 };
 

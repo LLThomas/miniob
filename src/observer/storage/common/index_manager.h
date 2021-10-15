@@ -18,51 +18,51 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/record_manager.h"
 
 typedef struct {
-  int attrLength;
-  int keyLength;
-  AttrType attrType;
-  PageNum rootPage;
-  PageNum first_leaf;
-  int order;
+    int attrLength;
+    int keyLength;
+    AttrType attrType;
+    PageNum rootPage;
+    PageNum first_leaf;
+    int order;
 } IndexFileHeader;
 
 typedef struct {
-  bool open;
-  BPFileHandle fileHandle;
-  IndexFileHeader fileHeader;
+    bool open;
+    BPFileHandle fileHandle;
+    IndexFileHeader fileHeader;
 } IndexHandle;
 
 typedef struct {
-  int is_leaf;
-  int keynum;
-  PageNum parent;
-  PageNum brother;
-  char *keys;
-  RID *rids;
+    int is_leaf;
+    int keynum;
+    PageNum parent;
+    PageNum brother;
+    char *keys;
+    RID *rids;
 } IndexNode;
 
 typedef struct {
-  bool open;
-  IndexHandle *pIXIndexHandle;
-  CompOp compOp;
-  char *value;
-  BPPageHandle pfPageHandles[BP_BUFFER_SIZE];
-  PageNum pnNext;
+    bool open;
+    IndexHandle *pIXIndexHandle;
+    CompOp compOp;
+    char *value;
+    BPPageHandle pfPageHandles[BP_BUFFER_SIZE];
+    PageNum pnNext;
 } IndexScan;
 
 typedef struct TreeNode {
-  int keyNum;
-  char **keys;
-  TreeNode *parent;
-  TreeNode *sibling;
-  TreeNode *firstChild;
+    int keyNum;
+    char **keys;
+    TreeNode *parent;
+    TreeNode *sibling;
+    TreeNode *firstChild;
 } TreeNode;
 
 typedef struct {
-  AttrType attrType;
-  int attrLength;
-  int order;
-  TreeNode *root;
+    AttrType attrType;
+    int attrLength;
+    int order;
+    TreeNode *root;
 } Tree;
 
 /**

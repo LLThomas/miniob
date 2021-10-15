@@ -20,11 +20,11 @@ See the Mulan PSL v2 for more details. */
 namespace common {
 
 
-class LogReporter : public Reporter {
-public:
-  void report(const std::string &tag, Metric *metric);
-};
+    class LogReporter : public Reporter {
+    public:
+        void report(const std::string &tag, Metric *metric);
+    };
 
-LogReporter* get_log_reporter();
+    LogReporter *get_log_reporter();
 } //namespace common
 #endif //__COMMON_METRICS_LOG_REPORTER_H__

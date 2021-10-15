@@ -25,9 +25,11 @@ See the Mulan PSL v2 for more details. */
 
 class IndexDataOperator {
 public:
-  virtual ~IndexDataOperator() = default;
-  virtual int compare(const void *data1, const void *data2) const = 0;
-  virtual size_t hash(const void *data) const = 0;
+    virtual ~IndexDataOperator() = default;
+
+    virtual int compare(const void *data1, const void *data2) const = 0;
+
+    virtual size_t hash(const void *data) const = 0;
 };
 
 class IndexScanner;
@@ -35,35 +37,39 @@ class IndexScanner;
 class Index {
 
 public:
-  Index() = default;
-  virtual ~Index() = default;
+    Index() = default;
 
-  const IndexMeta &index_meta() const {
-    return index_meta_;
-  }
+    virtual ~Index() = default;
 
-  virtual RC insert_entry(const char *record, const RID *rid) = 0;
-  virtual RC delete_entry(const char *record, const RID *rid) = 0;
+    const IndexMeta &index_meta() const {
+        return index_meta_;
+    }
 
-  virtual IndexScanner *create_scanner(CompOp comp_op, const char *value) = 0;
+    virtual RC insert_entry(const char *record, const RID *rid) = 0;
 
-  virtual RC sync() = 0;
+    virtual RC delete_entry(const char *record, const RID *rid) = 0;
+
+    virtual IndexScanner *create_scanner(CompOp comp_op, const char *value) = 0;
+
+    virtual RC sync() = 0;
 
 protected:
-  RC init(const IndexMeta &index_meta, const FieldMeta &field_meta);
+    RC init(const IndexMeta &index_meta, const FieldMeta &field_meta);
 
 protected:
-  IndexMeta   index_meta_;
-  FieldMeta   field_meta_;    /// 当前实现仅考虑一个字段的索引
+    IndexMeta index_meta_;
+    FieldMeta field_meta_;    /// 当前实现仅考虑一个字段的索引
 };
 
 class IndexScanner {
 public:
-  IndexScanner() = default;
-  virtual ~IndexScanner() = default;
+    IndexScanner() = default;
 
-  virtual RC next_entry(RID *rid) = 0;
-  virtual RC destroy() = 0;
+    virtual ~IndexScanner() = default;
+
+    virtual RC next_entry(RID *rid) = 0;
+
+    virtual RC destroy() = 0;
 };
 
 #endif  // __OBSERVER_STORAGE_COMMON_INDEX_H_

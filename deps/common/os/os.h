@@ -16,7 +16,7 @@ See the Mulan PSL v2 for more details. */
 #define __COMMON_OS_OS_H__
 namespace common {
 
-u32_t getCpuNum();
+    u32_t getCpuNum();
 
 } //namespace common
 #endif /* __COMMON_OS_OS_H__ */

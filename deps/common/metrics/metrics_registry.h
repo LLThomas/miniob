@@ -24,30 +24,32 @@ See the Mulan PSL v2 for more details. */
 
 namespace common {
 
-class MetricsRegistry {
-public:
-  MetricsRegistry() {};
-  virtual ~MetricsRegistry(){};
+    class MetricsRegistry {
+    public:
+        MetricsRegistry() {};
 
-  void register_metric(const std::string &tag, Metric *metric);
-  void unregister(const std::string &tag);
+        virtual ~MetricsRegistry() {};
 
-  void snapshot();
+        void register_metric(const std::string &tag, Metric *metric);
 
-  void report();
+        void unregister(const std::string &tag);
 
-  void add_reporter(Reporter *reporter) {
-    reporters.push_back(reporter);
-  }
+        void snapshot();
 
+        void report();
 
-protected:
-  std::map<std::string, Metric *> metrics;
-  std::list<Reporter *> reporters;
+        void add_reporter(Reporter *reporter) {
+            reporters.push_back(reporter);
+        }
 
 
-};
+    protected:
+        std::map<std::string, Metric *> metrics;
+        std::list<Reporter *> reporters;
 
-MetricsRegistry& get_metrics_registry();
+
+    };
+
+    MetricsRegistry &get_metrics_registry();
 }//namespace common
 #endif //__COMMON_METRICS_METRICS_REGISTRY_H__
