@@ -1,0 +1,9 @@
+build
+
+###### IntelliJ Files ######
+.idea
+cmake-build-*
+*.iml
+
+###### VSCode Files ######
+.vscode
