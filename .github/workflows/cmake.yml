@@ -1,9 +1,9 @@
-name: Greeting from Mona
+name: MiniOB流水线
 on: push
 
 jobs:
   print:
-    name: My Job
+    name: Runner Environment
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -29,7 +29,7 @@ jobs:
     - name: Build ENV
       run: |
         git version
-        echo "git submodule update --init --recursive"
+        git submodule update --init --recursive
         mkdir build && cd build
         cmake ..
         make
