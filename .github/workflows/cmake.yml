@@ -15,21 +15,20 @@ jobs:
       run: |
         echo $MY_VAR $FIRST_NAME $MIDDLE_NAME $LAST_NAME.
     - name: Print Directory
-      run: |
-        ls
-        pwd
-        uname -a
-        cat CMakeLists.txt
+      run:
+      - ls
+      - pwd
+      - uname -a
 
   build:
     name: Build miniOB
     runs-on: ubuntu-latest
     steps:
     - name: Build ENV
-      run: |
-        git version
-        git submodule update --init --recursive
-        mkdir build && cd build
-        cmake ..
-        make
+      run: 
+      - git version
+      # - git submodule update --init --recursive
+      - mkdir build && cd build
+      - cmake ..
+      - make
         
