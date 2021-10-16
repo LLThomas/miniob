@@ -19,6 +19,8 @@ jobs:
         ls
         pwd
         uname -a
+        cat CMakeLists.txt
+
   build:
     name: Build miniOB
     runs-on: ubuntu-latest
