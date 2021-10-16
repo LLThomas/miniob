@@ -16,7 +16,9 @@ jobs:
         echo $MY_VAR $FIRST_NAME $MIDDLE_NAME $LAST_NAME.
     - name: Print Directory
       run: |
-        echo ls
+        ls
+        pwd
+        uname -a
   build:
     name: Build miniOB
     runs-on: ubuntu-latest
