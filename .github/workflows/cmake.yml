@@ -6,6 +6,7 @@ jobs:
     name: My Job
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v2
     - name: Print a greeting
       env:
         MY_VAR: Hi there! My name is
@@ -25,6 +26,7 @@ jobs:
     name: Build miniOB
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v2
     - name: Build ENV
       run: |
         git version
