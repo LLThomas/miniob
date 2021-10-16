@@ -1,0 +1,30 @@
+name: Greeting from Mona
+on: push
+
+jobs:
+  print:
+    name: My Job
+    runs-on: ubuntu-latest
+    steps:
+    - name: Print a greeting
+      env:
+        MY_VAR: Hi there! My name is
+        FIRST_NAME: Mona
+        MIDDLE_NAME: The
+        LAST_NAME: Octocat
+      run: |
+        echo $MY_VAR $FIRST_NAME $MIDDLE_NAME $LAST_NAME.
+    - name: Print Directory
+      run: |
+        ls
+  build:
+    name: Build miniOB
+    runs-on: ubuntu-latest
+    steps:
+    - name: Build ENV
+      run: |
+        git submodule update --init --recursive
+        mkdir build && cd build
+        cmake ..
+        make
+        
