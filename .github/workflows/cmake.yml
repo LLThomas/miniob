@@ -46,8 +46,8 @@ jobs:
       - name: Generate Test Report
         run: |
           git clone https://github.com/NeilZhy/gtest-report-prettify.git
-          ls
-          python -m ./gtest-report-prettify/gtest_parser bp_manager_test.xml
+          cd gtest-report-prettify
+          python -m gtest_parser ../bp_manager_test.xml
       - name: Upload Test Artifact
         uses: actions/upload-artifact@v2
         with:
