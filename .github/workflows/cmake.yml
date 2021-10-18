@@ -38,7 +38,5 @@ jobs:
           nohup ./build/bin/observer -f ./etc/observer.ini &
       - name: Test help
         run: |
-          ./build/bin/obclient
-          help;
-          exit;
+          ./build/bin/obclient <./test/sql-test/help.sql
           cat $(find . -name 'observer.log.*')
