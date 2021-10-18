@@ -1,4 +1,5 @@
 build
+observer.log.*
 
 ###### IntelliJ Files ######
 .idea
