@@ -7,19 +7,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Print a greeting
-        env:
-          MY_VAR: Hi there! My name is
-          FIRST_NAME: Mona
-          MIDDLE_NAME: The
-          LAST_NAME: Octocat
-        run: |
-          echo $MY_VAR $FIRST_NAME $MIDDLE_NAME $LAST_NAME.
+      # - name: Print a greeting
+      #   env:
+      #     MY_VAR: Hi there! My name is
+      #     FIRST_NAME: Mona
+      #     MIDDLE_NAME: The
+      #     LAST_NAME: Octocat
+      #   run: |
+      #     echo $MY_VAR $FIRST_NAME $MIDDLE_NAME $LAST_NAME.
       - name: Print Directory
         run: |
           ls
           pwd
           uname -a
+          gcc -v
 
   build:
     name: Build miniOB
@@ -28,12 +29,13 @@ jobs:
       - uses: actions/checkout@v2
       - name: Build ENV
         run: |
-          git version
           git submodule update --init --recursive
           mkdir build && cd build
           cmake ..
           make -j4
-          pwd
       - name: Start Observer
         run: |
-          pwd
+          cd build/bin
+          observer -f observer.ini
+          obclient
+          help;
