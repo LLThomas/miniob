@@ -33,8 +33,12 @@ jobs:
           mkdir build && cd build
           cmake ..
           make -j4
-      - name: Start Observer
+      - name: Start MiniOB
         run: |
-          ./build/bin/observer -f ./etc/observer.ini
+          nohup ./build/bin/observer -f ./etc/observer.ini &
+      - name: Test help
+        run: |
           ./build/bin/obclient
           help;
+          exit;
+          cat $(find . -name 'observer.log.*')
