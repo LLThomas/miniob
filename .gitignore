@@ -1,5 +1,6 @@
 build
 observer.log.*
+nohup.out
 
 ###### IntelliJ Files ######
 .idea
