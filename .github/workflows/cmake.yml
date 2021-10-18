@@ -39,17 +39,20 @@ jobs:
       - name: Test SQL
         run: |
           ./build/bin/obclient <./test/sql-test/help.sql
+          echo ' '
           cat $(find . -name 'observer.log.*')
-      - name: GoogleTest BufferPool Manager
+      - name: GoogleTest
         run: |
+          ./build/bin/bitmap_test  --gtest_output=xml:bitmap_test.xml || true
           ./build/bin/bp_manager_test  --gtest_output=xml:bp_manager_test.xml || true
       - name: Generate Test Report
         run: |
-          git clone https://github.com/NeilZhy/gtest-report-prettify.git
+          git clone https://github.com/IcyLeaves/gtest-report-prettify.git
           cd gtest-report-prettify
-          python -m gtest_parser ../bp_manager_test.xml
+          python -m gtest_parser ../bitmap_test.xml bitmap_test.html
+          python -m gtest_parser ../bp_manager_test.xml bp_manager_test.html
       - name: Upload Test Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: bp_manager
-          path: gtest-report-prettify/gtest_output.html
+          name: gtest_reports
+          path: gtest-report-prettify
