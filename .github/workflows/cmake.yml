@@ -32,7 +32,7 @@ jobs:
           git submodule update --init --recursive
           mkdir build && cd build
           cmake ..
-          make -j4
+          make -j
       - name: Start MiniOB
         run: |
           nohup ./build/bin/observer -f ./etc/observer.ini &
