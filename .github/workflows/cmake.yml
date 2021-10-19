@@ -39,6 +39,8 @@ jobs:
       - name: Test SQL
         run: |
           ./build/bin/obclient <./test/sql-test/help.sql
+          ./build/bin/obclient <./test/sql-test/drop-table.sql
+          ./build/bin/obclient <./test/sql-test/update.sql
           echo ' '
           cat $(find . -name 'observer.log.*')
       - name: GoogleTest
