@@ -32,13 +32,15 @@ jobs:
           git submodule update --init --recursive
           mkdir build && cd build
           cmake ..
-          make -j4
+          make -j
       - name: Start MiniOB
         run: |
           nohup ./build/bin/observer -f ./etc/observer.ini &
       - name: Test SQL
         run: |
           ./build/bin/obclient <./test/sql-test/help.sql
+          ./build/bin/obclient <./test/sql-test/drop-table.sql
+          ./build/bin/obclient <./test/sql-test/update.sql
           echo ' '
           cat $(find . -name 'observer.log.*')
       - name: GoogleTest
