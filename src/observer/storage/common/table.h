@@ -43,14 +43,19 @@ class Table {
 
   /**
    * 创建一个表
-   * @param path 元数据保存的文件(完整路径)
    * @param name 表名
    * @param base_dir 表数据存放的路径
    * @param attribute_count 字段个数
    * @param attributes 字段
    */
-  RC create(const char *path, const char *name, const char *base_dir,
+  RC create(const char *name, const char *base_dir,
             int attribute_count, const AttrInfo attributes[]);
+
+  /**
+   * 删除一个表
+   * @param name 表名
+   */
+  RC drop(const char *name);
 
   /**
    * 打开一个表

@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "common/lang/string.h"
 #include "common/log/log.h"
+#include "common/os/path.h"
 #include "storage/common/bplus_tree_index.h"
 #include "storage/common/condition_filter.h"
 #include "storage/common/index.h"
@@ -44,8 +45,8 @@ Table::~Table() {
   LOG_INFO("Table has been closed: %s", name());
 }
 
-RC Table::create(const char *path, const char *name, const char *base_dir,
-                 int attribute_count, const AttrInfo attributes[]) {
+RC Table::create(const char *name, const char *base_dir, int attribute_count,
+                 const AttrInfo attributes[]) {
   if (nullptr == name || common::is_blank(name)) {
     LOG_WARN("Name cannot be empty");
     return RC::INVALID_ARGUMENT;
@@ -63,17 +64,18 @@ RC Table::create(const char *path, const char *name, const char *base_dir,
 
   // 使用 table_name.table记录一个表的元数据
   // 判断表文件是否已经存在
-
-  int fd = ::open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+  std::string meta_file = table_meta_file(base_dir, name);
+  int fd =
+      ::open(meta_file.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
   if (-1 == fd) {
     if (EEXIST == errno) {
       LOG_ERROR(
           "Failed to create table file, it has been created. %s, EEXIST, %s",
-          path, strerror(errno));
+          meta_file.c_str(), strerror(errno));
       return RC::SCHEMA_TABLE_EXIST;
     }
-    LOG_ERROR("Create table file failed. filename=%s, errmsg=%d:%s", path,
-              errno, strerror(errno));
+    LOG_ERROR("Create table file failed. filename=%s, errmsg=%d:%s",
+              meta_file.c_str(), errno, strerror(errno));
     return RC::IOERR;
   }
 
@@ -87,10 +89,10 @@ RC Table::create(const char *path, const char *name, const char *base_dir,
   }
 
   std::fstream fs;
-  fs.open(path, std::ios_base::out | std::ios_base::binary);
+  fs.open(meta_file.c_str(), std::ios_base::out | std::ios_base::binary);
   if (!fs.is_open()) {
-    LOG_ERROR("Failed to open file for write. file name=%s, errmsg=%s", path,
-              strerror(errno));
+    LOG_ERROR("Failed to open file for write. file name=%s, errmsg=%s",
+              meta_file.c_str(), strerror(errno));
     return RC::IOERR;
   }
 
@@ -98,8 +100,7 @@ RC Table::create(const char *path, const char *name, const char *base_dir,
   table_meta_.serialize(fs);
   fs.close();
 
-  std::string data_file =
-      std::string(base_dir) + "/" + name + TABLE_DATA_SUFFIX;
+  std::string data_file = table_data_file(base_dir, name);
   data_buffer_pool_ = theGlobalDiskBufferPool();
   rc = data_buffer_pool_->create_file(data_file.c_str());
   if (rc != RC::SUCCESS) {
@@ -113,6 +114,25 @@ RC Table::create(const char *path, const char *name, const char *base_dir,
   base_dir_ = base_dir;
   LOG_INFO("Successfully create table %s:%s", base_dir, name);
   return rc;
+}
+
+RC Table::drop(const char *name) {
+  LOG_INFO("Begin to drop table %s:%s", base_dir_.c_str(), name);
+
+  std::string meta_file = table_meta_file(base_dir_.c_str(), name);
+  std::string data_file = table_data_file(base_dir_.c_str(), name);
+  remove(meta_file.c_str());
+  remove(data_file.c_str());
+
+  // Delete all index files
+  std::string index_file_pattern = index_data_file_pattern(name);
+  std::vector<std::string> index_files;
+  common::list_file(base_dir_.c_str(), index_file_pattern.c_str(), index_files);
+  for (auto &f : index_files) {
+    remove((std::string(base_dir_) + "/" + f).c_str());
+  }
+  LOG_INFO("Successfully drop table %s:%s", base_dir_.c_str(), name);
+  return RC::SUCCESS;
 }
 
 RC Table::open(const char *meta_file, const char *base_dir) {
@@ -301,8 +321,7 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out) {
 }
 
 RC Table::init_record_handler(const char *base_dir) {
-  std::string data_file =
-      std::string(base_dir) + "/" + table_meta_.name() + TABLE_DATA_SUFFIX;
+  std::string data_file = table_data_file(base_dir, table_meta_.name());
   if (nullptr == data_buffer_pool_) {
     data_buffer_pool_ = theGlobalDiskBufferPool();
   }
