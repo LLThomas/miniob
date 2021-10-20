@@ -1,10 +1,9 @@
-/* Copyright (c) 2021 Xie Meiyi(xiemeiyi@hust.edu.cn) and OceanBase and/or its affiliates. All rights reserved.
-miniob is licensed under Mulan PSL v2.
-You can use this software according to the terms and conditions of the Mulan PSL v2.
-You may obtain a copy of Mulan PSL v2 at:
-         http://license.coscl.org.cn/MulanPSL2
-THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+/* Copyright (c) 2021 Xie Meiyi(xiemeiyi@hust.edu.cn) and OceanBase and/or its
+affiliates. All rights reserved. miniob is licensed under Mulan PSL v2. You can
+use this software according to the terms and conditions of the Mulan PSL v2. You
+may obtain a copy of Mulan PSL v2 at: http://license.coscl.org.cn/MulanPSL2 THIS
+SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
 
@@ -14,15 +13,17 @@ See the Mulan PSL v2 for more details. */
 
 #ifndef __COMMON_OS_PROCESS_H__
 #define __COMMON_OS_PROCESS_H__
-namespace common {
 
+#include <string>
+
+namespace common {
 
 //! Get process Name
 /**
  * @param[in]   prog_full_name  process full name with full path
  * @return      process_name_   process name without directory path
  */
-    std::string get_process_name(const char *prog_full_name);
+std::string get_process_name(const char *prog_full_name);
 //! Runs the service as a daemon
 /**
  * Backgrounds the calling service as a system daemon by detaching it from
@@ -39,9 +40,9 @@ namespace common {
  * @param[in]   std_err_file  file to redirect stderr to (could be /dev/null)
  * @return  0 if success, error code otherwise
  */
-    int daemonize_service(const char *std_out_file, const char *std_err_file);
+int daemonize_service(const char *std_out_file, const char *std_err_file);
 
-    void sys_log_redirect(const char *std_out_file, const char *std_err_file);
+void sys_log_redirect(const char *std_out_file, const char *std_err_file);
 
-} //namespace common
-#endif //__COMMON_OS_PROCESS_H__
+}  // namespace common
+#endif  //__COMMON_OS_PROCESS_H__

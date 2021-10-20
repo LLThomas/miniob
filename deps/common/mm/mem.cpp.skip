@@ -13,9 +13,10 @@
 
 #ifdef MEM_DEBUG
 
-#include <cstddef>
 #include <stdlib.h>
 #include <string.h>
+
+#include <cstddef>
 
 #include "lang/mutex.h"
 #include "mm/lmem.h"
@@ -30,7 +31,6 @@ bool CLMemTrace::mVerbose = false;
 
 void *CLMemTrace::malloc(size_t size, const char *file, const int line,
                          bool retry) throw(std::bad_alloc) {
-
   size_t allocSize = size + sizeof(MemID);
   void *usedPointer = NULL;
 
@@ -212,7 +212,6 @@ void *CLMemTrace::realloc(void *pointer, size_t size, const char *file,
   }
 
   if (pNewMemID) {
-
     if (mVerbose) {
       LOG_INFO("Alloc %p, file:%s, line:%u, size:%llu",
                (char *)pNewMemID + sizeof(MemID), pNewMemID->mFile,
@@ -258,7 +257,6 @@ void CLMemTrace::free(void *pointer) {
   MUTEX_UNLOCK(&mMutex);
 
   if (pMemID) {
-
     if (mVerbose) {
       LOG_INFO("Delete %p, file:%s, line:%u, size:%llu", pointer, pMemID->mFile,
                pMemID->mLine, pMemID->mSize);

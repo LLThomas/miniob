@@ -1,10 +1,9 @@
-/* Copyright (c) 2021 Xie Meiyi(xiemeiyi@hust.edu.cn) and OceanBase and/or its affiliates. All rights reserved.
-miniob is licensed under Mulan PSL v2.
-You can use this software according to the terms and conditions of the Mulan PSL v2.
-You may obtain a copy of Mulan PSL v2 at:
-         http://license.coscl.org.cn/MulanPSL2
-THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+/* Copyright (c) 2021 Xie Meiyi(xiemeiyi@hust.edu.cn) and OceanBase and/or its
+affiliates. All rights reserved. miniob is licensed under Mulan PSL v2. You can
+use this software according to the terms and conditions of the Mulan PSL v2. You
+may obtain a copy of Mulan PSL v2 at: http://license.coscl.org.cn/MulanPSL2 THIS
+SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
 
@@ -18,51 +17,51 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/record_manager.h"
 
 typedef struct {
-    int attrLength;
-    int keyLength;
-    AttrType attrType;
-    PageNum rootPage;
-    PageNum first_leaf;
-    int order;
+  int attrLength;
+  int keyLength;
+  AttrType attrType;
+  PageNum rootPage;
+  PageNum first_leaf;
+  int order;
 } IndexFileHeader;
 
 typedef struct {
-    bool open;
-    BPFileHandle fileHandle;
-    IndexFileHeader fileHeader;
+  bool open;
+  BPFileHandle fileHandle;
+  IndexFileHeader fileHeader;
 } IndexHandle;
 
 typedef struct {
-    int is_leaf;
-    int keynum;
-    PageNum parent;
-    PageNum brother;
-    char *keys;
-    RID *rids;
+  int is_leaf;
+  int keynum;
+  PageNum parent;
+  PageNum brother;
+  char *keys;
+  RID *rids;
 } IndexNode;
 
 typedef struct {
-    bool open;
-    IndexHandle *pIXIndexHandle;
-    CompOp compOp;
-    char *value;
-    BPPageHandle pfPageHandles[BP_BUFFER_SIZE];
-    PageNum pnNext;
+  bool open;
+  IndexHandle *pIXIndexHandle;
+  CompOp compOp;
+  char *value;
+  BPPageHandle pfPageHandles[BP_BUFFER_SIZE];
+  PageNum pnNext;
 } IndexScan;
 
 typedef struct TreeNode {
-    int keyNum;
-    char **keys;
-    TreeNode *parent;
-    TreeNode *sibling;
-    TreeNode *firstChild;
+  int keyNum;
+  char **keys;
+  TreeNode *parent;
+  TreeNode *sibling;
+  TreeNode *firstChild;
 } TreeNode;
 
 typedef struct {
-    AttrType attrType;
-    int attrLength;
-    int order;
-    TreeNode *root;
+  AttrType attrType;
+  int attrLength;
+  int order;
+  TreeNode *root;
 } Tree;
 
 /**
@@ -121,8 +120,8 @@ RC deleteEntry(IndexHandle *indexHandle, void *data, const RID *rid);
  * @param value
  * @return
  */
-RC openIndexScan(IndexScan *indexScan, IndexHandle *indexHandle,
-                 CompOp compOp, char *value);
+RC openIndexScan(IndexScan *indexScan, IndexHandle *indexHandle, CompOp compOp,
+                 char *value);
 
 /**
  * 用于继续IndexScan句柄对应的索引扫描，获得下一个满足条件的索引项，
@@ -149,4 +148,4 @@ RC closeIndexScan(IndexScan *indexScan);
  */
 RC getIndexTree(char *fileName, Tree *index);
 
-#endif //__OBSERVER_STORAGE_COMMON_INDEX_MANAGER_H_
+#endif  //__OBSERVER_STORAGE_COMMON_INDEX_MANAGER_H_
