@@ -19,6 +19,8 @@ See the Mulan PSL v2 for more details. */
 #include <ostream>
 #include <string>
 
+#include "rc.h"
+
 class TupleValue {
  public:
   TupleValue() = default;
@@ -45,6 +47,29 @@ class IntValue : public TupleValue {
 
  private:
   int value_;
+};
+
+RC deserialize_date(char *out, size_t len_out, uint16_t in);
+
+RC serialize_date(uint16_t *out, const char *in);
+
+class DateValue : public TupleValue {
+ public:
+  explicit DateValue(uint16_t value) : value_(value) {}
+
+  void to_string(std::ostream &os) const override {
+    char buf[11];
+    deserialize_date(buf, sizeof(buf), value_);
+    os << buf;
+  }
+
+  int compare(const TupleValue &other) const override {
+    const DateValue &date_other = (const DateValue &)other;
+    return value_ - date_other.value_;
+  }
+
+ private:
+  uint16_t value_;
 };
 
 class FloatValue : public TupleValue {

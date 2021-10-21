@@ -52,6 +52,8 @@ void Tuple::add(const std::shared_ptr<TupleValue> &other) {
 
 void Tuple::add(int value) { add(new IntValue(value)); }
 
+void Tuple::add(uint16_t value) { add(new DateValue(value)); }
+
 void Tuple::add(float value) { add(new FloatValue(value)); }
 
 void Tuple::add(const char *s, int len) { add(new StringValue(s, len)); }
@@ -214,6 +216,10 @@ void TupleRecordConverter::add_record(const char *record) {
     switch (field_meta->type()) {
       case INTS: {
         int value = *(int *)(record + field_meta->offset());
+        tuple.add(value);
+      } break;
+      case DATES: {
+        uint16_t value = *(uint16_t *)(record + field_meta->offset());
         tuple.add(value);
       } break;
       case FLOATS: {

@@ -44,6 +44,8 @@ class Tuple {
 
   void add(int value);
 
+  void add(uint16_t value);
+
   void add(float value);
 
   void add(const char *s, int len);
