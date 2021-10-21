@@ -66,6 +66,7 @@ QUOTE            [\'\"]
 [Cc][Oo][Mm][Mm][Ii][Tt]                 RETURN_TOKEN(TRX_COMMIT);
 [Rr][Oo][Ll][Ll][Bb][Aa][Cc][Kk]         RETURN_TOKEN(TRX_ROLLBACK);
 [Ii][Nn][Tt]					                   RETURN_TOKEN(INT_T);
+[Dd][Aa][Tt][Ee]                                  RETURN_TOKEN(DATE_T);
 [Cc][Hh][Aa][Rr]				                 RETURN_TOKEN(STRING_T);
 [Ff][Ll][Oo][Aa][Tt]			               RETURN_TOKEN(FLOAT_T);
 [Ll][Oo][Aa][Dd]			                   RETURN_TOKEN(LOAD);
