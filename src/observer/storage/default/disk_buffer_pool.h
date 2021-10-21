@@ -20,8 +20,6 @@ See the Mulan PSL v2 for more details. */
 #include <sys/types.h>
 #include <time.h>
 #include <list>
-#include <iostream>
-
 #include <vector>
 
 #include "rc.h"
@@ -107,8 +105,8 @@ class BPManager {
       std::list<int>::iterator itr = LRUList.end();
       itr--;
       freeIndex = itr.operator*();
-      frame[freeIndex].file_desc = 0;
-      frame[freeIndex].page.page_num = 0;
+      frame[freeIndex].file_desc = -1;
+      frame[freeIndex].page.page_num = -1;
       LRUList.erase(itr);
     }
     LRUList.emplace_front(freeIndex);
@@ -139,9 +137,7 @@ class BPManager {
   int size;
   Frame *frame = nullptr;
   bool *allocated = nullptr;
-
   std::list<int> LRUList;
-
 };
 
 class DiskBufferPool {
