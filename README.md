@@ -26,7 +26,7 @@ please refer to docs/how_to_build.md
 ## 选做题
 
 | 状态 | 名称               | 分值 | 描述                                                         | 测试用例示例                                                 |
-| -------- | ------------------ | ---- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ------ | --- | ---- | ------------- | ------------- |
 | <ul><li>[ ] 未认领</li></ul> | 多表join操作       | 20   | INNER JOIN。需要支持join多张表。需要考虑大表问题，不要直接使用笛卡尔积再过滤 | select * from t1 inner join t2 on t1.id=t2.id;<br/>select * from t1 inner join t2 on t1.id=t2.id inner join t3 on t1.id=t3.id;<br/>selec * from t1 inner join t2 on t1.id=t2.id and t2.age>10 where t1.name >='a'; |
 | <ul><li>[ ] 未认领</li></ul> | 一次插入多条数据   | 10   | 一次插入的数据要同时成功或失败。                             | insert into t1 values(1,1),(2,2),(3,3);                      |
 | <ul><li>[ ] 未认领</li></ul> | 唯一索引           | 10   | 唯一索引：create unique index                                | create unique index i_id on t1(id);<br/>insert into t1 values(1,1);<br/>insert into t1 values(1,2); -- failed |
