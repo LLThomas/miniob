@@ -19,6 +19,8 @@ See the Mulan PSL v2 for more details. */
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <list>
+#include <iostream>
 
 #include <vector>
 
@@ -93,11 +95,40 @@ class BPManager {
   }
 
   Frame *alloc() {
-    return nullptr;  // TODO for test
+    // TODO for test
+    int freeIndex;
+    for (freeIndex = 0; freeIndex < size; freeIndex++) {
+      if (!allocated[freeIndex]) {
+        break;
+      }
+    }
+    // LRU works
+    if (freeIndex == size) {
+      std::list<int>::iterator itr = LRUList.end();
+      itr--;
+      freeIndex = itr.operator*();
+      frame[freeIndex].file_desc = 0;
+      frame[freeIndex].page.page_num = 0;
+      LRUList.erase(itr);
+    }
+    LRUList.emplace_front(freeIndex);
+    allocated[freeIndex] = true;
+    return &frame[freeIndex];
   }
 
   Frame *get(int file_desc, PageNum page_num) {
-    return nullptr;  // TODO for test
+    // TODO for test
+    for (std::list<int>::iterator itr = LRUList.begin(); itr != LRUList.end(); itr++) {
+      if (frame[itr.operator*()].file_desc == file_desc && frame[itr.operator*()].page.page_num == page_num) {
+        if (itr != LRUList.begin()) {
+          int recentRead = itr.operator*();
+          LRUList.erase(itr);
+          LRUList.emplace_front(recentRead);
+        }
+        return &frame[itr.operator*()];
+      }
+    }
+    return nullptr;
   }
 
   Frame *getFrame() { return frame; }
@@ -108,6 +139,9 @@ class BPManager {
   int size;
   Frame *frame = nullptr;
   bool *allocated = nullptr;
+
+  std::list<int> LRUList;
+
 };
 
 class DiskBufferPool {
