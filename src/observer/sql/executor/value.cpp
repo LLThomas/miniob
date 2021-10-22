@@ -9,8 +9,6 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/executor/value.h"
 
-#include "common/log/log.h"
-
 RC deserialize_date(char* out, size_t len_out, uint16_t in) {
   const time_t ONE_DAY = 24 * 60 * 60;
   tm timeinfo{};
@@ -55,11 +53,14 @@ RC serialize_date(uint16_t* out, const char* in) {
   }
 
   tm input_date{};
-  input_date.tm_year = year - 1900;
-  input_date.tm_mon = month - 1;
+  year -= 1900;
+  input_date.tm_year = year;
+  month -= 1;
+  input_date.tm_mon = month;
   input_date.tm_mday = day;
   time_t input_time = mktime(&input_date);
-  if (input_time == -1) {
+  if (input_time == -1 || input_date.tm_year != year ||
+      input_date.tm_mon != month || input_date.tm_mday != day) {
     return RC::INVALID_ARGUMENT;
   }
 
