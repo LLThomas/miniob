@@ -14,7 +14,7 @@ please refer to docs/how_to_build.md
 | 状态 | 名称 | 描述 | 测试用例示例 |
 | ------ | ---- | ---- | -------------|
 | <ul><li>[ ] 以后再做 </li></ul> | 优化buffer pool | 必做。实现LRU淘汰算法或其它淘汰算法 | |
-| <ul><li>[ ] Assign to LLThomas </li></ul> | 查询元数据校验 | 必做。查询语句中存在不存在的列名、表名等，需要返回失败。需要检查代码，判断是否需要返回错误的地方都返回错误了。 |create table t(id int, age int);<br/>select * from t where name='a'; <br/>select address from t where id=1;<br/>select * from t_1000;|
+| <ul><li>[x] 完成 </li></ul> | 查询元数据校验 | 必做。查询语句中存在不存在的列名、表名等，需要返回失败。需要检查代码，判断是否需要返回错误的地方都返回错误了。 |create table t(id int, age int);<br/>select * from t where name='a'; <br/>select address from t where id=1;<br/>select * from t_1000;|
 | <ul><li>[x] 完成 </li></ul> | drop table | 必做。删除表。清除表相关的资源。 |create table t(id int, age int);<br/>create table t(id int, name char);<br/>drop table t;<br/>create table t(id int, name char);|
 | <ul><li>[ ] Assign to LLThomas </li></ul> | 实现update功能 | 必做。update单个字段即可。 |update t set age =100 where id=2;<br/>update set age=20 where id>100;|
 | <ul><li>[x] 完成 </li></ul> | 增加date字段 | 必做。date测试不会超过2038年2月。注意处理非法的date输入，需要返回FAILURE。 |create table t(id int, birthday date);<br/>insert into t values(1, '2020-09-10');<br/>insert into t values(2, '2021-1-2');<br/>select * from t;|
