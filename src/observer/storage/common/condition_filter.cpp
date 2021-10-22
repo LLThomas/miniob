@@ -37,11 +37,12 @@ DefaultConditionFilter::DefaultConditionFilter() {
 }
 
 DefaultConditionFilter::~DefaultConditionFilter() {
+  // 目前只会为 Date 类型单独开辟空间
   if (left_value_delete) {
-    delete left_.value;
+    delete (uint16_t *)left_.value;
   }
   if (right_value_delete) {
-    delete right_.value;
+    delete (uint16_t *)right_.value;
   }
 }
 
