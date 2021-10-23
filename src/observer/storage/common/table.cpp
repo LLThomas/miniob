@@ -589,11 +589,43 @@ RC Table::create_index(Trx *trx, const char *index_name,
   return rc;
 }
 
+//class RecordUpdater {
+// public:
+//  RecordUpdater(Table &table, Trx *trx) : table_(table), trx_(trx) {}
+//
+//  RC update_record(Record *record) {
+//    RC rc = RC::SUCCESS;
+//    rc = table_.update_record(trx_, record);
+//    if (rc == RC::SUCCESS) {
+//      updated_count_++;
+//    }
+//    return rc;
+//  }
+//
+//  int updated_count() const { return updated_count_; }
+//
+// private:
+//  Table &table_;
+//  Trx *trx_;
+//  int updated_count_ = 0;
+//};
+
 RC Table::update_record(Trx *trx, const char *attribute_name,
                         const Value *value, int condition_num,
                         const Condition conditions[], int *updated_count) {
-  return RC::GENERIC_ERROR;
+
+  // get record position
+  CompositeConditionFilter condition_filter;
+  RC rc = condition_filter.init(*this, conditions, condition_num);
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+//  rc = scan_record(trx, condition_filter, -1, &)
 }
+
+//RC Table::update_record(Trx *trx, Record *record) {
+//
+//}
 
 class RecordDeleter {
  public:

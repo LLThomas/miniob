@@ -300,9 +300,46 @@ static RC schema_add_field(Table *table, const char *field_name,
 RC create_selection_executor(Trx *trx, const Selects &selects, const char *db,
                              const char *table_name,
                              SelectExeNode &select_node) {
+  Table *table;
+
+  // attribute tables check
+  for (int i = 0; i < selects.attr_num; i++) {
+    if (selects.attributes[i].relation_name == nullptr) {
+      continue;
+    }
+    table = DefaultHandler::get_default().find_table(db, selects.attributes[i].relation_name);
+    if (nullptr == table) {
+      LOG_WARN("No such table [%s] in db [%s]", selects.attributes[i].relation_name, db);
+      return RC::SCHEMA_TABLE_NOT_EXIST;
+    }
+  }
+
+  // condition tables check
+  for (int i = 0; i < selects.condition_num; i++) {
+    if (selects.conditions[i].left_is_attr == 1) {
+      if (selects.conditions[i].left_attr.relation_name == nullptr) {
+        continue;
+      }
+      table = DefaultHandler::get_default().find_table(db, selects.conditions[i].left_attr.relation_name);
+      if (nullptr == table) {
+        LOG_WARN("No such table [%s] in db [%s]", selects.conditions[i].left_attr.relation_name, db);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+      }
+    } else {
+      if (selects.conditions[i].right_attr.relation_name == nullptr) {
+        continue;
+      }
+      table = DefaultHandler::get_default().find_table(db, selects.conditions[i].right_attr.relation_name);
+      if (nullptr == table) {
+        LOG_WARN("No such table [%s] in db [%s]", selects.conditions[i].right_attr.relation_name, db);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+      }
+    }
+  }
+
   // 列出跟这张表关联的Attr
   TupleSchema schema;
-  Table *table = DefaultHandler::get_default().find_table(db, table_name);
+  table = DefaultHandler::get_default().find_table(db, table_name);
   if (nullptr == table) {
     LOG_WARN("No such table [%s] in db [%s]", table_name, db);
     return RC::SCHEMA_TABLE_NOT_EXIST;
