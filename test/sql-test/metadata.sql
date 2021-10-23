@@ -1,0 +1,10 @@
+drop table met;
+create table met(id int, age int);
+insert into met values (1,1);
+select * from met where met2.id=1;
+select * from met2;
+select * from met where icy=1;
+select * from met where met.icy=1;
+select met2.id from met;
+select met.icy from met;
+select icy from met;

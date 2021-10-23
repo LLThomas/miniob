@@ -125,7 +125,8 @@ void ExecuteStage::handle_request(common::StageEvent *event) {
 
   switch (sql->flag) {
     case SCF_SELECT: {  // select
-      RC rc = do_select(current_db, sql, exe_event->sql_event()->session_event());
+      RC rc =
+          do_select(current_db, sql, exe_event->sql_event()->session_event());
       if (rc != RC::SUCCESS) {
         session_event->set_response("FAILURE\n");
       }
@@ -211,6 +212,39 @@ void end_trx_if_need(Session *session, Trx *trx, bool all_right) {
   }
 }
 
+//需要满足多表联查条件
+bool match_join_condition(const Tuple *res_tuple,
+                          const std::vector<std::vector<int>> condition_idxs) {
+  for (size_t i = 0; i < condition_idxs.size(); ++i) {
+    std::shared_ptr<TupleValue> left_val =
+        res_tuple->get_pointer(condition_idxs[i][0]);
+    int op = condition_idxs[i][1];
+    std::shared_ptr<TupleValue> right_val =
+        res_tuple->get_pointer(condition_idxs[i][2]);
+    switch (op) {
+      case CompOp::EQUAL_TO:
+        if (left_val.get()->compare(*right_val.get()) != 0) {
+          return false;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  return true;
+}
+//将多段小元组合成一个大元组
+Tuple merge_tuples(
+    const std::vector<std::vector<Tuple>::const_iterator> temp_tuples) {
+  Tuple res_tuple;
+  for (size_t t = 0; t < temp_tuples.size(); t++) {
+    // 能不能做成append一堆
+    for (int idx = 0; idx < (*temp_tuples[t]).size(); idx++) {
+      res_tuple.add((*temp_tuples[t]).get_pointer(idx));
+    }
+  }
+  return res_tuple;
+}
 // 这里没有对输入的某些信息做合法性校验，比如查询的列名、where条件中的列名等，没有做必要的合法性校验
 // 需要补充上这一部分.
 // 校验部分也可以放在resolve，不过跟execution放一起也没有关系
@@ -236,7 +270,6 @@ RC ExecuteStage::do_select(const char *db, Query *sql,
     }
     select_nodes.push_back(select_node);
   }
-
   if (select_nodes.empty()) {
     LOG_ERROR("No table given");
     end_trx_if_need(session, trx, false);
@@ -261,6 +294,87 @@ RC ExecuteStage::do_select(const char *db, Query *sql,
   std::stringstream ss;
   if (tuple_sets.size() > 1) {
     // 本次查询了多张表，需要做join操作
+    TupleSet join_tuples;
+    // 【每个输出元组的列名需要扩展为[tableName].[colName]的形式】
+    TupleSchema join_schema;
+    for (std::vector<TupleSet>::const_reverse_iterator
+             rit = tuple_sets.rbegin(),
+             rend = tuple_sets.rend();
+         rit != rend; ++rit) {
+      // 倒着遍历才能按照select顺序
+      join_schema.append((*rit).get_schema());
+    }
+    join_tuples.set_schema(join_schema);
+    // 【联查的conditions需要找到对应的表】
+    // C x 3数组
+    // 每一条的3个元素代表（左值的属性在新schema的下标，CompOp运算符，右值的属性在新schema的下标）
+    std::vector<std::vector<int>> condition_idxs;
+    for (size_t i = 0; i < selects.condition_num; i++) {
+      const Condition &condition = selects.conditions[i];
+      if (condition.left_is_attr == 1 &&
+          condition.right_is_attr == 1)  // 左右都是属性名，并且表名都符合
+      {
+        std::vector<int> temp_con;
+        const char *l_table_name = condition.left_attr.relation_name;
+        const char *l_field_name = condition.left_attr.attribute_name;
+        const CompOp comp = condition.comp;
+        const char *r_table_name = condition.right_attr.relation_name;
+        const char *r_field_name = condition.right_attr.attribute_name;
+        temp_con.push_back(join_tuples.get_schema().index_of_field(
+            l_table_name, l_field_name));
+        temp_con.push_back(comp);
+        temp_con.push_back(join_tuples.get_schema().index_of_field(
+            r_table_name, r_field_name));
+        condition_idxs.push_back(temp_con);
+      }
+    }
+    // 【元组的拼接需要实现笛卡尔积】
+    // 给每个表分配一个pos指针，另外还需要一个输出用的temp_tuple
+    std::vector<std::vector<Tuple>::const_iterator> tuple_poses;
+    std::vector<std::vector<Tuple>::const_iterator> tuple_poses_begin;
+    std::vector<std::vector<Tuple>::const_iterator> tuple_poses_end;
+
+    std::vector<std::vector<Tuple>::const_iterator> temp_tuples;
+    for (std::vector<TupleSet>::const_reverse_iterator
+             rit = tuple_sets.rbegin(),
+             rend = tuple_sets.rend();
+         rit != rend; ++rit) {
+      tuple_poses.push_back((*rit).tuples().begin());
+      tuple_poses_begin.push_back((*rit).tuples().begin());
+      tuple_poses_end.push_back((*rit).tuples().end());
+      temp_tuples.push_back((*rit).tuples().begin());
+    }
+    const size_t N = tuple_sets.size();
+    //每个表都有数据才会有结果集，一旦有空表就是空结果
+    if (temp_tuples.size() == N) {
+      //补满后就输出
+      Tuple res_tuple = merge_tuples(temp_tuples);
+      if (match_join_condition(&res_tuple, condition_idxs))
+        join_tuples.add(std::move(res_tuple));
+      while (tuple_poses[0] != tuple_poses_end[0]) {
+        //弹出最末的Tuple
+        temp_tuples.pop_back();
+        //前进一步指针，如果越界，就回到表头(除了结束)，并继续弹出Tuple
+        tuple_poses[temp_tuples.size()]++;
+        if (tuple_poses[temp_tuples.size()] ==
+            tuple_poses_end[temp_tuples.size()]) {
+          if (temp_tuples.size() > 0)
+            tuple_poses[temp_tuples.size()] =
+                tuple_poses_begin[temp_tuples.size()];
+          continue;
+        }
+        //将元组补满
+        while (temp_tuples.size() < N) {
+          temp_tuples.push_back(tuple_poses[temp_tuples.size()]);
+        }
+        //补满后就输出
+        Tuple res_tuple = merge_tuples(temp_tuples);
+        if (match_join_condition(&res_tuple, condition_idxs))
+          join_tuples.add(std::move(res_tuple));
+      }
+    }
+
+    join_tuples.print(ss);
   } else {
     // 当前只查询一张表，直接返回结果即可
     tuple_sets.front().print(ss);
