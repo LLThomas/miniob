@@ -33,16 +33,10 @@ jobs:
           mkdir build && cd build
           cmake ..
           make -j
-      - name: Start MiniOB
-        run: |
-          nohup ./build/bin/observer -f ./etc/observer.ini &
       - name: Test SQL
         run: |
-          ./build/bin/obclient <./test/sql-test/help.sql
-          ./build/bin/obclient <./test/sql-test/drop-table.sql
-          ./build/bin/obclient <./test/sql-test/update.sql
-          echo ' '
-          cat $(find . -name 'observer.log.*')
+          cd build/unitest
+          ctest
       - name: GoogleTest
         run: |
           ./build/bin/bitmap_test  --gtest_output=xml:bitmap_test.xml || true

@@ -589,26 +589,34 @@ RC Table::create_index(Trx *trx, const char *index_name,
   return rc;
 }
 
-//class RecordUpdater {
-// public:
-//  RecordUpdater(Table &table, Trx *trx) : table_(table), trx_(trx) {}
-//
-//  RC update_record(Record *record) {
-//    RC rc = RC::SUCCESS;
-//    rc = table_.update_record(trx_, record);
-//    if (rc == RC::SUCCESS) {
-//      updated_count_++;
-//    }
-//    return rc;
-//  }
-//
-//  int updated_count() const { return updated_count_; }
-//
-// private:
-//  Table &table_;
-//  Trx *trx_;
-//  int updated_count_ = 0;
-//};
+/**
+ * update by thomas
+ */
+class RecordUpdater {
+ public:
+  RecordUpdater(Table &table, Trx *trx) : table_(table), trx_(trx) {}
+
+  RC update_record(Record *record) {
+    RC rc = RC::SUCCESS;
+    rc = table_.update_record(trx_, record);
+    if (rc == RC::SUCCESS) {
+      updated_count_++;
+    }
+    return rc;
+  }
+
+  int updated_count() const { return updated_count_; }
+
+ private:
+  Table &table_;
+  Trx *trx_;
+  int updated_count_ = 0;
+};
+
+static RC record_reader_update_adapter(Record *record, void *context) {
+  RecordUpdater &record_updater = *(RecordUpdater *)context;
+  return record_updater.update_record(record);
+}
 
 RC Table::update_record(Trx *trx, const char *attribute_name,
                         const Value *value, int condition_num,
@@ -620,12 +628,23 @@ RC Table::update_record(Trx *trx, const char *attribute_name,
   if (rc != RC::SUCCESS) {
     return rc;
   }
-//  rc = scan_record(trx, condition_filter, -1, &)
+  RecordUpdater updater(*this, trx);
+  rc = scan_record(trx, &condition_filter, -1, &updater, record_reader_update_adapter);
+  if (updated_count != nullptr) {
+    *updated_count = updater.updated_count();
+  }
+  return rc;
 }
 
-//RC Table::update_record(Trx *trx, Record *record) {
-//
-//}
+RC Table::update_record(Trx *trx, Record *record) {
+  RC rc = RC::SUCCESS;
+  if (trx != nullptr) {
+    rc = trx->update_record(this, record);
+  } else {
+
+  }
+  return RC::SUCCESS;
+}
 
 class RecordDeleter {
  public:
