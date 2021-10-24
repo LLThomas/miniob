@@ -130,7 +130,7 @@ T *ClassFactory<T>::make_instance(const std::string &tag) {
     instance = (*fptr)(tag);
   }
 
-  ASSERT((instance != NULL), "%s%s", tag.c_str(), "instance not created");
+  ASSERT((instance != NULL), "%s%s", tag.c_str(), " instance not created");
   return instance;
 }
 
