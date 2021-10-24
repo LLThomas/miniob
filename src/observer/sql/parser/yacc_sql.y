@@ -19,7 +19,8 @@ typedef struct ParserContext {
   Value values[MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
-	char id[MAX_NUM];
+  char id[MAX_NUM];
+  FuncName func; 
 } ParserContext;
 
 //获取子串
@@ -103,6 +104,11 @@ ParserContext *get_context(yyscan_t scanner)
         LE
         GE
         NE
+		AGGMAX
+		AGGMIN
+		AGGCOUNT
+		AGGAVG
+		
 
 %union {
   struct _Attr *attr;
@@ -279,7 +285,6 @@ ID_get:
 		snprintf(CONTEXT->id, sizeof(CONTEXT->id), "%s", temp);
 	}
 	;
-
 	
 insert:				/*insert   语句的语法解析树*/
     INSERT INTO ID VALUES LBRACE value value_list RBRACE SEMICOLON 
@@ -372,7 +377,25 @@ select_attr:
 			relation_attr_init(&attr, $1, $3);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
+	| func LBRACE expression RBRACE {// count(expression)
+	}
     ;
+expression:
+	STAR {// *
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, "*");
+			selects_append_aggregation_attr(&CONTEXT->ssql->sstr.selection, CONTEXT->func,&attr);
+	}
+	| ID{// age
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, $1);
+			selects_append_aggregation_attr(&CONTEXT->ssql->sstr.selection, CONTEXT->func,&attr);
+	}
+	| value{ // 1
+			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			selects_append_aggregation_value(&CONTEXT->ssql->sstr.selection, CONTEXT->func,right_value);
+	}
+
 attr_list:
     /* empty */
     | COMMA ID attr_list {
@@ -563,6 +586,12 @@ comOp:
     | LE { CONTEXT->comp = LESS_EQUAL; }
     | GE { CONTEXT->comp = GREAT_EQUAL; }
     | NE { CONTEXT->comp = NOT_EQUAL; }
+    ;
+func:
+  	  AGGMAX { CONTEXT->func = AGG_MAX; }
+    | AGGMIN { CONTEXT->func = AGG_MIN; }
+    | AGGCOUNT { CONTEXT->func = AGG_COUNT; }
+    | AGGAVG { CONTEXT->func = AGG_AVG; }
     ;
 
 load_data:

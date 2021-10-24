@@ -1,0 +1,11 @@
+drop table t;
+create table t(id int);
+insert into t values (1);
+insert into t values (2);
+insert into t values (4);
+select count(*) from t;
+select count(1) from t;
+select count(id) from t;
+select min(id) from t;
+select max(id) from t;
+select avg(id) from t;
