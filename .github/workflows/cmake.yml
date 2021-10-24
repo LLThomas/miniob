@@ -35,7 +35,7 @@ jobs:
           make -j
       - name: Test SQL
         run: |
-          cd build
+          cd build/unittest
           ctest
       - name: GoogleTest
         run: |
