@@ -24,6 +24,7 @@ ENDIF ()
 
 SET(GOOGLETEST_PATH ${CMAKE_SOURCE_DIR}/deps/googletest)
 IF (EXISTS ${GOOGLETEST_PATH}/CMakeLists.txt)
+    SET(gtest_disable_pthreads ON CACHE BOOL "Disable Threads for Google Test")
     ADD_SUBDIRECTORY(${GOOGLETEST_PATH} ${CMAKE_BINARY_DIR}/googletest)
 ELSE ()
     FIND_PACKAGE(GTest CONFIG REQUIRED)

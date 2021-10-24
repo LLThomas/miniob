@@ -87,8 +87,6 @@ class FakeSessionStage : public common::Stage {
   }
 
  public:
-  std::string get_last_response() { return last_response; }
-
   static Stage *make_stage(const std::string &tag) {
     auto stage = new (std::nothrow) FakeSessionStage(tag.c_str());
     if (stage == nullptr) {
@@ -99,9 +97,10 @@ class FakeSessionStage : public common::Stage {
     return stage;
   }
 
-  void wait_response() {
+  std::string wait_response() {
     std::unique_lock<std::mutex> lock(mutex);
     cv.wait(lock);
+    return last_response;
   }
 
  private:

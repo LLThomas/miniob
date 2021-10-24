@@ -25,12 +25,10 @@ class SQLTest : public testing::Test {
  protected:
   static void TearDownTestSuite() {
     cleanup();
-    mutex.unlock();
+    std::filesystem::remove_all("miniob");
   }
 
   static void SetUpTestSuite() {
-    mutex.lock();
-    std::filesystem::remove_all("miniob");
     extern const char *__progname;
     std::string process_name = __progname;
     common::ProcessParam *process_param = common::the_process_param();
@@ -51,16 +49,13 @@ class SQLTest : public testing::Test {
     auto sev = new SessionEvent(&ctx);
 
     session_stage->add_event(sev);
-    session_stage->wait_response();
-    return session_stage->get_last_response();
+    return session_stage->wait_response();
   }
 
  private:
-  static std::mutex mutex;
   static FakeSessionStage *session_stage;
 };
 
-std::mutex SQLTest::mutex;
 FakeSessionStage *SQLTest::session_stage;
 
 #endif  // SQL_TEST_INIT_H
