@@ -15,7 +15,7 @@ LINK_DIRECTORIES(/usr/local/lib /usr/local/lib64 ${PROJECT_BINARY_DIR}/../lib)
 IF (DEFINED ENV{LD_LIBRARY_PATH})
     SET(LD_LIBRARY_PATH_STR $ENV{LD_LIBRARY_PATH})
     #separate_arguments(LD_LIBRARY_PATH_STR)  #只能处理空行
-    string(REPLACE ":" ";" LD_LIBRARY_PATH_LIST ${LD_LIBRARY_PATH_STR})
+    STRING(REPLACE ":" ";" LD_LIBRARY_PATH_LIST ${LD_LIBRARY_PATH_STR})
     MESSAGE(" Add LD_LIBRARY_PATH to -L flags " ${LD_LIBRARY_PATH_LIST})
     LINK_DIRECTORIES(${LD_LIBRARY_PATH_LIST})
 ELSE ()
@@ -24,7 +24,6 @@ ENDIF ()
 
 SET(GOOGLETEST_PATH ${CMAKE_SOURCE_DIR}/deps/googletest)
 IF (EXISTS ${GOOGLETEST_PATH}/CMakeLists.txt)
-    SET(gtest_disable_pthreads ON CACHE BOOL "Disable Threads for Google Test")
     ADD_SUBDIRECTORY(${GOOGLETEST_PATH} ${CMAKE_BINARY_DIR}/googletest)
 ELSE ()
     FIND_PACKAGE(GTest CONFIG REQUIRED)
@@ -32,16 +31,13 @@ ENDIF ()
 
 ENABLE_TESTING()
 INCLUDE(GoogleTest)
-#get_filename_component(<VAR> FileName
-#        PATH|ABSOLUTE|NAME|EXT|NAME_WE|REALPATH
-#        [CACHE])
 FILE(GLOB_RECURSE ALL_SRC *.cpp)
 # AUX_SOURCE_DIRECTORY 类似功能
 FOREACH (F ${ALL_SRC})
-    get_filename_component(prjName ${F} NAME_WE)
+    GET_FILENAME_COMPONENT(prjName ${F} NAME_WE)
     MESSAGE("Build ${prjName} according to ${F}")
     ADD_EXECUTABLE(${prjName} ${F})
     # 不是所有的单测都需要链接observer_static
     TARGET_LINK_LIBRARIES(${prjName} common pthread dl gtest gtest_main gmock gmock_main observer_static)
-    gtest_discover_tests(${prjName})
+    GTEST_DISCOVER_TESTS(${prjName})
 ENDFOREACH (F)

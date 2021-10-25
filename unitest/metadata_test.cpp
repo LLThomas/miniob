@@ -5,13 +5,11 @@
 #include <include/sql_test.h>
 
 class MetaDataTest : public SQLTest {
-  void SetUp() {
+  void BeforeCase() override {
     ExecuteSql("create table t (id int, age int);");
   }
 
-  void TearDown() {
-    ExecuteSql("drop table t;");
-  }
+  void AfterCase() override { ExecuteSql("drop table t;"); }
 };
 
 TEST_F(MetaDataTest, select_empty) {
