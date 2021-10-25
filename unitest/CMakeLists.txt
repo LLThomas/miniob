@@ -38,6 +38,6 @@ FOREACH (F ${ALL_SRC})
     MESSAGE("Build ${prjName} according to ${F}")
     ADD_EXECUTABLE(${prjName} ${F})
     # 不是所有的单测都需要链接observer_static
-    TARGET_LINK_LIBRARIES(${prjName} common pthread dl gtest gtest_main gmock gmock_main observer_static)
+    TARGET_LINK_LIBRARIES(${prjName} stdc++fs common pthread dl gtest gtest_main gmock gmock_main observer_static)
     GTEST_DISCOVER_TESTS(${prjName})
 ENDFOREACH (F)
