@@ -31,7 +31,11 @@ void relation_attr_init(RelAttr *relation_attr, const char *relation_name,
   } else {
     relation_attr->relation_name = nullptr;
   }
-  relation_attr->attribute_name = strdup(attribute_name);
+  if (attribute_name != nullptr) {
+    relation_attr->attribute_name = strdup(attribute_name);
+  } else {
+    relation_attr->attribute_name = nullptr;
+  }
 }
 
 void relation_attr_destroy(RelAttr *relation_attr) {
@@ -126,6 +130,25 @@ void selects_append_conditions(Selects *selects, Condition conditions[],
     selects->conditions[i] = conditions[i];
   }
   selects->condition_num = condition_num;
+}
+
+void selects_append_aggregation_attr(Selects *selects, FuncName func_name,
+                                     RelAttr *rel_attr) {
+  Aggregation aggr;
+  aggr.attribute = *rel_attr;
+  aggr.func_name = func_name;
+  aggr.is_value = 0;
+  aggr.value = nullptr;
+  selects->aggregations[selects->aggregation_num++] = aggr;
+}
+
+void selects_append_aggregation_value(Selects *selects, FuncName func_name,
+                                      Value *value) {
+  Aggregation aggr;
+  aggr.func_name = func_name;
+  aggr.is_value = 1;
+  aggr.value = value;
+  selects->aggregations[selects->aggregation_num++] = aggr;
 }
 
 void selects_destroy(Selects *selects) {

@@ -1,9 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.5.1.  */
+/* A Bison parser, made by GNU Bison 3.0.4.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
-   Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -31,14 +30,11 @@
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
-/* Undocumented macros, especially those whose name start with YY_,
-   are private implementation details.  Do not rely on them.  */
-
 #ifndef YY_YY_YACC_SQL_TAB_H_INCLUDED
-#define YY_YY_YACC_SQL_TAB_H_INCLUDED
+# define YY_YY_YACC_SQL_TAB_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
-#define YYDEBUG 0
+# define YYDEBUG 0
 #endif
 #if YYDEBUG
 extern int yydebug;
@@ -46,64 +42,71 @@ extern int yydebug;
 
 /* Token type.  */
 #ifndef YYTOKENTYPE
-#define YYTOKENTYPE
-enum yytokentype {
-  SEMICOLON = 258,
-  CREATE = 259,
-  DROP = 260,
-  TABLE = 261,
-  TABLES = 262,
-  INDEX = 263,
-  SELECT = 264,
-  DESC = 265,
-  SHOW = 266,
-  SYNC = 267,
-  INSERT = 268,
-  DELETE = 269,
-  UPDATE = 270,
-  LBRACE = 271,
-  RBRACE = 272,
-  COMMA = 273,
-  TRX_BEGIN = 274,
-  TRX_COMMIT = 275,
-  TRX_ROLLBACK = 276,
-  INT_T = 277,
-  DATE_T = 278,
-  STRING_T = 279,
-  FLOAT_T = 280,
-  HELP = 281,
-  EXIT = 282,
-  DOT = 283,
-  INTO = 284,
-  VALUES = 285,
-  FROM = 286,
-  WHERE = 287,
-  AND = 288,
-  SET = 289,
-  ON = 290,
-  LOAD = 291,
-  DATA = 292,
-  INFILE = 293,
-  EQ = 294,
-  LT = 295,
-  GT = 296,
-  LE = 297,
-  GE = 298,
-  NE = 299,
-  NUMBER = 300,
-  FLOAT = 301,
-  ID = 302,
-  PATH = 303,
-  SSS = 304,
-  STAR = 305,
-  STRING_V = 306
-};
+# define YYTOKENTYPE
+  enum yytokentype
+  {
+    SEMICOLON = 258,
+    CREATE = 259,
+    DROP = 260,
+    TABLE = 261,
+    TABLES = 262,
+    INDEX = 263,
+    SELECT = 264,
+    DESC = 265,
+    SHOW = 266,
+    SYNC = 267,
+    INSERT = 268,
+    DELETE = 269,
+    UPDATE = 270,
+    LBRACE = 271,
+    RBRACE = 272,
+    COMMA = 273,
+    TRX_BEGIN = 274,
+    TRX_COMMIT = 275,
+    TRX_ROLLBACK = 276,
+    INT_T = 277,
+    DATE_T = 278,
+    STRING_T = 279,
+    FLOAT_T = 280,
+    HELP = 281,
+    EXIT = 282,
+    DOT = 283,
+    INTO = 284,
+    VALUES = 285,
+    FROM = 286,
+    WHERE = 287,
+    AND = 288,
+    SET = 289,
+    ON = 290,
+    LOAD = 291,
+    DATA = 292,
+    INFILE = 293,
+    EQ = 294,
+    LT = 295,
+    GT = 296,
+    LE = 297,
+    GE = 298,
+    NE = 299,
+    AGGMAX = 300,
+    AGGMIN = 301,
+    AGGCOUNT = 302,
+    AGGAVG = 303,
+    NUMBER = 304,
+    FLOAT = 305,
+    ID = 306,
+    PATH = 307,
+    SSS = 308,
+    STAR = 309,
+    STRING_V = 310
+  };
 #endif
 
 /* Value type.  */
-#if !defined YYSTYPE && !defined YYSTYPE_IS_DECLARED
-union YYSTYPE {
-#line 107 "yacc_sql.y"
+#if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
+
+union YYSTYPE
+{
+#line 113 "yacc_sql.y" /* yacc.c:1909  */
 
   struct _Attr *attr;
   struct _Condition *condition1;
@@ -111,15 +114,18 @@ union YYSTYPE {
   char *string;
   int number;
   float floats;
-  char *position;
+	char *position;
 
-#line 119 "yacc_sql.tab.h"
+#line 120 "yacc_sql.tab.h" /* yacc.c:1909  */
 };
+
 typedef union YYSTYPE YYSTYPE;
-#define YYSTYPE_IS_TRIVIAL 1
-#define YYSTYPE_IS_DECLARED 1
+# define YYSTYPE_IS_TRIVIAL 1
+# define YYSTYPE_IS_DECLARED 1
 #endif
 
-int yyparse(void *scanner);
+
+
+int yyparse (void *scanner);
 
 #endif /* !YY_YY_YACC_SQL_TAB_H_INCLUDED  */

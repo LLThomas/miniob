@@ -14,11 +14,9 @@
 #include <event/sql_event.h>
 #include <ini_setting.h>
 #include <init.h>
+#include <semaphore.h>
 #include <session/fake_session_stage.h>
 #include <session/session_stage.h>
-
-#include <condition_variable>
-#include <mutex>
 
 // For test purpose only
 class FakeSessionStage : public common::Stage {
@@ -31,7 +29,6 @@ class FakeSessionStage : public common::Stage {
       return;
     }
 
-    std::lock_guard<std::mutex> lock(mutex);
     const char *response = sev->get_response();
     int len = sev->get_response_len();
     if (len <= 0 || response == nullptr) {
@@ -39,7 +36,7 @@ class FakeSessionStage : public common::Stage {
     }
     last_response = response;
     sev->done();
-    cv.notify_one();
+    sem_post(&sem);
   }
 
   bool initialize() override {
@@ -86,6 +83,8 @@ class FakeSessionStage : public common::Stage {
     resolve_stage_->handle_event(sql_event);
   }
 
+  ~FakeSessionStage() { sem_destroy(&sem); }
+
  public:
   static Stage *make_stage(const std::string &tag) {
     auto stage = new (std::nothrow) FakeSessionStage(tag.c_str());
@@ -98,22 +97,22 @@ class FakeSessionStage : public common::Stage {
   }
 
   std::string wait_response() {
-    std::unique_lock<std::mutex> lock(mutex);
-    cv.wait(lock);
+    sem_wait(&sem);
     return last_response;
   }
 
  private:
   explicit FakeSessionStage(const char *tag)
-      : Stage(tag), resolve_stage_(nullptr), sql_metric_(nullptr) {}
+      : Stage(tag), resolve_stage_(nullptr), sql_metric_(nullptr) {
+    sem_init(&sem, 0, 0);
+  }
 
   const std::string SQL_METRIC_TAG = "FakeSessionStage.sql";
   std::string last_response;
   common::Stage *resolve_stage_;
   common::SimpleTimer *sql_metric_;
 
-  std::mutex mutex;
-  std::condition_variable cv;
+  sem_t sem;
 };
 
 #endif  // MINIDB_FAKE_SESSION_STAGE_H

@@ -25,7 +25,7 @@ class SQLTest : public testing::Test {
  protected:
   static void TearDownTestSuite() {
     cleanup();
-    std::filesystem::remove_all("miniob");
+    std::filesystem::remove_all(db_path);
   }
 
   static void SetUpTestSuite() {
@@ -34,13 +34,29 @@ class SQLTest : public testing::Test {
     common::ProcessParam *process_param = common::the_process_param();
     process_param->init_default(process_name);
     process_param->set_conf("../etc/observer_test.ini");
+    db_path = std::string("./miniob_") + __progname;
+    common::get_properties()->put("BaseDir", db_path, "DefaultStorageStage");
     init(process_param);
 
     session_stage = (FakeSessionStage *)common::get_seda_config()->get_stage(
         "FakeSessionStage");
   }
 
-  std::string ExecuteSql(const std::string &sql) {
+  void TearDown() final {
+    AfterCase();
+    mutex.unlock();
+  }
+
+  void SetUp() final {
+    mutex.lock();
+    BeforeCase();
+  }
+
+  virtual void BeforeCase() = 0;
+
+  virtual void AfterCase() = 0;
+
+  static std::string ExecuteSql(const std::string &sql) {
     ConnectionContext ctx;
     memset(&ctx, 0, sizeof(ConnectionContext));
     ctx.session = new Session(Session::default_session());
@@ -53,9 +69,12 @@ class SQLTest : public testing::Test {
   }
 
  private:
+  std::mutex mutex;
+  static std::string db_path;
   static FakeSessionStage *session_stage;
 };
 
+std::string SQLTest::db_path;
 FakeSessionStage *SQLTest::session_stage;
 
 #endif  // SQL_TEST_INIT_H

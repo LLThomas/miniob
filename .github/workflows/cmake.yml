@@ -1,54 +1,31 @@
-name: MiniOB流水线
+name: MiniOB Pipeline
 on: push
 
 jobs:
-  print:
-    name: Runner Environment
+  miniob:
+    name: MiniOB Job
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      # - name: Print a greeting
-      #   env:
-      #     MY_VAR: Hi there! My name is
-      #     FIRST_NAME: Mona
-      #     MIDDLE_NAME: The
-      #     LAST_NAME: Octocat
-      #   run: |
-      #     echo $MY_VAR $FIRST_NAME $MIDDLE_NAME $LAST_NAME.
-      - name: Print Directory
+      - name: Install GCC
         run: |
-          ls
-          pwd
-          uname -a
-          gcc -v
-
-  build:
-    name: Build miniOB
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Build ENV
+          sudo apt install gcc-8 g++-8
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Build
+        env:
+          CC: gcc-8
+          CXX: g++-8
         run: |
-          git submodule update --init --recursive
-          mkdir build && cd build
-          cmake ..
-          make -j
-      - name: Test SQL
+          cmake -S . -B build
+          cmake --build build -j
+      - name: Run Tests
         run: |
-          cd build/unitest
-          ctest
-      - name: GoogleTest
-        run: |
-          ./build/bin/bitmap_test  --gtest_output=xml:bitmap_test.xml || true
-          ./build/bin/bp_manager_test  --gtest_output=xml:bp_manager_test.xml || true
-      - name: Generate Test Report
-        run: |
-          git clone https://github.com/IcyLeaves/gtest-report-prettify.git
-          cd gtest-report-prettify
-          python -m gtest_parser ../bitmap_test.xml bitmap_test.html
-          python -m gtest_parser ../bp_manager_test.xml bp_manager_test.html
+          ctest --test-dir build/unitest
       - name: Upload Test Artifact
+        if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: gtest_reports
-          path: gtest-report-prettify
+          name: test_log
+          path: build/unitest/Testing/Temporary/LastTest.log
