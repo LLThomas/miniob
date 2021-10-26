@@ -77,6 +77,12 @@ RC Trx::delete_record(Table *table, Record *record) {
 RC Trx::update_record(Table *table, Record *record) {
   RC rc = RC::SUCCESS;
   start_if_not_started();
+  Operation *old_oper = find_operation(table, record->rid);
+  if (old_oper != nullptr) {
+    return RC::GENERIC_ERROR;
+  }
+  set_record_trx_id(table, *record, trx_id_, true);
+  insert_operation(table, Operation::Type::UPDATE, record->rid);
   return rc;
 }
 
@@ -156,6 +162,9 @@ RC Trx::commit() {
             LOG_ERROR("Failed to commit delete operation. rid=%d.%d, rc=%d:%s",
                       rid.page_num, rid.slot_num, rc, strrc(rc));
           }
+        } break;
+        case Operation::Type::UPDATE: {
+          rc = table->commit_update(this, rid);
         } break;
         default: {
           LOG_PANIC("Unknown operation. type=%d", (int)operation.type());
