@@ -262,7 +262,7 @@ std::string agg_to_string(Aggregation agg) {
   return res;
 }
 //聚合函数
-void aggregation_exec(const Selects &selects, TupleSet *&res_tuples) {
+void aggregation_exec(const Selects &selects, TupleSet *res_tuples) {
   if (selects.aggregation_num > 0) {
     //先设置schema
     TupleSchema agg_schema;
@@ -419,10 +419,9 @@ RC ExecuteStage::do_select(const char *db, Query *sql,
   }
 
   std::stringstream ss;
-  TupleSet *print_tuples;
+  TupleSet print_tuples;
   if (tuple_sets.size() > 1) {
     // 本次查询了多张表，需要做join操作
-    TupleSet join_tuples;
     // 【每个输出元组的列名需要扩展为[tableName].[colName]的形式】
     TupleSchema join_schema;
     for (std::vector<TupleSet>::const_reverse_iterator
@@ -432,7 +431,7 @@ RC ExecuteStage::do_select(const char *db, Query *sql,
       // 倒着遍历才能按照select顺序
       join_schema.append(rit->get_schema());
     }
-    join_tuples.set_schema(join_schema);
+    print_tuples.set_schema(join_schema);
     // 【联查的conditions需要找到对应的表】
     // C x 3数组
     // 每一条的3个元素代表（左值的属性在新schema的下标，CompOp运算符，右值的属性在新schema的下标）
@@ -448,10 +447,10 @@ RC ExecuteStage::do_select(const char *db, Query *sql,
         const CompOp comp = condition.comp;
         const char *r_table_name = condition.right_attr.relation_name;
         const char *r_field_name = condition.right_attr.attribute_name;
-        temp_con.push_back(join_tuples.get_schema().index_of_field(
+        temp_con.push_back(print_tuples.get_schema().index_of_field(
             l_table_name, l_field_name));
         temp_con.push_back(comp);
-        temp_con.push_back(join_tuples.get_schema().index_of_field(
+        temp_con.push_back(print_tuples.get_schema().index_of_field(
             r_table_name, r_field_name));
         condition_idxs.push_back(temp_con);
       }
@@ -478,7 +477,7 @@ RC ExecuteStage::do_select(const char *db, Query *sql,
       //补满后就输出
       Tuple res_tuple = merge_tuples(temp_tuples);
       if (match_join_condition(&res_tuple, condition_idxs))
-        join_tuples.add(std::move(res_tuple));
+        print_tuples.add(std::move(res_tuple));
       while (tuple_poses[0] != tuple_poses_end[0]) {
         //弹出最末的Tuple
         temp_tuples.pop_back();
@@ -498,18 +497,18 @@ RC ExecuteStage::do_select(const char *db, Query *sql,
         //补满后就输出
         Tuple res_tuple = merge_tuples(temp_tuples);
         if (match_join_condition(&res_tuple, condition_idxs))
-          join_tuples.add(std::move(res_tuple));
+          print_tuples.add(std::move(res_tuple));
       }
+      //聚合算子
+      aggregation_exec(selects, &print_tuples);
+      print_tuples.print(ss);
     }
-
-    print_tuples = &join_tuples;
   } else {
     // 当前只查询一张表，直接返回结果即可
-    print_tuples = &(tuple_sets.front());
+    //聚合算子
+    aggregation_exec(selects, &(tuple_sets.front()));
+    tuple_sets.front().print(ss);
   }
-  //聚合算子
-  aggregation_exec(selects, print_tuples);
-  print_tuples->print(ss);
   for (SelectExeNode *&tmp_node : select_nodes) {
     delete tmp_node;
   }
