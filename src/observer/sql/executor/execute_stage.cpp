@@ -211,6 +211,56 @@ void end_trx_if_need(Session *session, Trx *trx, bool all_right) {
     }
   }
 }
+std::string agg_to_string(Aggregation agg) {
+  std::string res = "";
+  // funcname
+  switch (agg.func_name) {
+    case FuncName::AGG_MAX:
+      res += "max";
+      break;
+    case FuncName::AGG_MIN:
+      res += "min";
+      break;
+    case FuncName::AGG_COUNT:
+      res += "count";
+      break;
+    case FuncName::AGG_AVG:
+      res += "avg";
+      break;
+  }
+  res += "(";
+  // expression
+  if (1 == agg.is_value) {
+    AttrType type = agg.value->type;
+    void *val = agg.value->data;
+    std::string str;
+    switch (type) {
+      case AttrType::INTS:
+        str = std::to_string(*((int *)val));
+        break;
+      case AttrType::FLOATS:
+        str = std::to_string(*((float *)val));
+        break;
+      case AttrType::DATES:
+        str = std::to_string(*((uint16_t *)val));
+        break;
+      default:
+        // TODO: 报错，非数值类型
+        break;
+    }
+    res += str;
+  } else {
+    //如果有relation_name就要补上
+    if (agg.attribute.relation_name != nullptr) {
+      res += agg.attribute.relation_name;
+      res += ".";
+    }
+    // field_name
+    res += agg.attribute.attribute_name;
+  }
+  res += ")";
+  return res;
+}
 //聚合函数
 void aggregation_exec(const Selects &selects, TupleSet *&res_tuples) {
   if (selects.aggregation_num > 0) {
@@ -220,58 +270,12 @@ void aggregation_exec(const Selects &selects, TupleSet *&res_tuples) {
       const Aggregation &agg = selects.aggregations[i];
       const TupleField &tf =
           res_tuples->get_schema().field(0);  //获取func(age)的age
-      switch (agg.func_name) {
-        case FuncName::AGG_MAX:
-          // type与原字段相同
-          agg_schema.add(tf.type(), tf.table_name(),
-                         (std::string("max(") + tf.field_name() + ")").c_str());
-          break;
-        case FuncName::AGG_MIN:
-          // type与原字段相同
-          agg_schema.add(tf.type(), tf.table_name(),
-                         (std::string("min(") + tf.field_name() + ")").c_str());
-          break;
-        case FuncName::AGG_COUNT:
-          if (0 == agg.is_value) {
-            // type为int
-            agg_schema.add(
-                AttrType::INTS, tf.table_name(),
-                (std::string("count(") + tf.field_name() + ")").c_str());
-          } else {
-            AttrType type = agg.value->type;
-            void *val = agg.value->data;
-            std::string str;
-            switch (type) {
-              case AttrType::INTS:
-                str = std::to_string(*((int *)val));
-                break;
-              case AttrType::FLOATS:
-                str = std::to_string(*((float *)val));
-                break;
-              case AttrType::DATES:
-                str = std::to_string(*((uint16_t *)val));
-                break;
-              default:
-                // TODO: 报错，非数值类型
-                break;
-            }
-            agg_schema.add(AttrType::INTS, tf.table_name(),
-                           (std::string("count(") + str + ")").c_str());
-          }
-
-          break;
-        case FuncName::AGG_AVG:
-          // type与原字段相同
-          agg_schema.add(tf.type(), tf.table_name(),
-                         (std::string("avg(") + tf.field_name() + ")").c_str());
-          break;
-      }
+      agg_schema.add(tf.type(), tf.table_name(), agg_to_string(agg).c_str());
     }
     //再依次添加字段值
     Tuple out;
     for (size_t i = 0; i < selects.aggregation_num; i++) {
       const Aggregation &agg = selects.aggregations[i];
-      const TupleField &tf = res_tuples->get_schema().field(0);  //获取func(age)
       const std::vector<Tuple> &tuples = res_tuples->tuples();
       switch (agg.func_name) {
         case FuncName::AGG_MAX:
@@ -543,7 +547,7 @@ RC create_selection_executor(Trx *trx, const Selects &selects, const char *db,
   Table *table;
 
   // attribute tables check
-  for (int i = 0; i < selects.attr_num; i++) {
+  for (size_t i = 0; i < selects.attr_num; i++) {
     if (selects.attributes[i].relation_name == nullptr) {
       continue;
     }
@@ -557,7 +561,7 @@ RC create_selection_executor(Trx *trx, const Selects &selects, const char *db,
   }
 
   // condition tables check
-  for (int i = 0; i < selects.condition_num; i++) {
+  for (size_t i = 0; i < selects.condition_num; i++) {
     if (selects.conditions[i].left_is_attr == 1) {
       if (selects.conditions[i].left_attr.relation_name == nullptr) {
         continue;
