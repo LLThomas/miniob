@@ -91,6 +91,8 @@ class Table {
 
   RC commit_delete(Trx *trx, const RID &rid);
 
+  RC commit_update(Trx *trx, const RID &rid);
+
   RC rollback_insert(Trx *trx, const RID &rid);
 
   RC rollback_delete(Trx *trx, const RID &rid);
