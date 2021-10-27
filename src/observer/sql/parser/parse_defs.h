@@ -87,11 +87,17 @@ typedef struct {
   Aggregation aggregations[MAX_NUM];
 } Selects;
 
+
+typedef struct {
+  size_t value_num;       // Length of values
+  Value values[MAX_NUM];  // Values to insert
+} InsertTuple;
+
 // struct of insert
 typedef struct {
   char *relation_name;    // Relation to insert into
-  size_t value_num;       // Length of values
-  Value values[MAX_NUM];  // values to insert
+  size_t tuple_num;       // Length of tuples
+  InsertTuple tuples[MAX_NUM];  // Tuples to insert
 } Inserts;
 
 // struct of delete
@@ -235,8 +241,8 @@ void selects_append_aggregation_value(Selects *selects, FuncName func_name,
 
 void selects_destroy(Selects *selects);
 
-void inserts_init(Inserts *inserts, const char *relation_name, Value values[],
-                  size_t value_num);
+void inserts_init(Inserts *inserts, const char *relation_name, InsertTuple tuples[],
+                  size_t tuple_num);
 
 void inserts_destroy(Inserts *inserts);
 

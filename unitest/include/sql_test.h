@@ -29,6 +29,7 @@ class SQLTest : public testing::Test {
   }
 
   static void SetUpTestSuite() {
+    std::filesystem::remove_all(db_path);
     extern const char *__progname;
     std::string process_name = __progname;
     common::ProcessParam *process_param = common::the_process_param();
