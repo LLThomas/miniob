@@ -26,10 +26,10 @@ jobs:
           cmake --build build -j
       - name: Run Tests
         run: |
-          ctest -T memcheck --test-dir build/unitest --repeat until-fail:10
+          ctest -T memcheck --test-dir build/unitest --repeat until-fail:3
       - name: Upload Test Artifact
         if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: test_log
+          name: test_log.${{ matrix.build_type }}
           path: build/unitest/Testing/Temporary/*
