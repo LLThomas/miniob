@@ -231,8 +231,8 @@ std::string agg_to_string(Aggregation agg) {
   res += "(";
   // expression
   if (1 == agg.is_value) {
-    AttrType type = agg.value->type;
-    void *val = agg.value->data;
+    AttrType type = agg.value.type;
+    void *val = agg.value.data;
     std::string str;
     switch (type) {
       case AttrType::INTS:
@@ -374,7 +374,6 @@ Tuple merge_tuples(
     std::vector<int> orders) {
   std::vector<std::shared_ptr<TupleValue>> temp_res;
   Tuple res_tuple;
-  size_t order = 0;
   for (size_t t = 0; t < temp_tuples.size(); t++) {
     for (int idx = 0; idx < (*temp_tuples[t]).size(); idx++) {
       //先把每个字段都放到各应的位置上
@@ -390,7 +389,7 @@ Tuple merge_tuples(
 // 这里没有对输入的某些信息做合法性校验，比如查询的列名、where条件中的列名等，没有做必要的合法性校验
 // 需要补充上这一部分.
 // 校验部分也可以放在resolve，不过跟execution放一起也没有关系
-RC ExecuteStage::do_select(const char *db, Query *sql,
+RC ExecuteStage::do_select(const char *db, const Query *sql,
                            SessionEvent *session_event) {
   RC rc = RC::SUCCESS;
   Session *session = session_event->get_client()->session;

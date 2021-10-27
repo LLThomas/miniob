@@ -17,6 +17,8 @@ typedef struct ParserContext {
   size_t from_length;
   size_t value_length;
   Value values[MAX_NUM];
+  size_t tuple_length;
+  InsertTuple tuples[MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
   char id[MAX_NUM];
@@ -45,7 +47,8 @@ void yyerror(yyscan_t scanner, const char *str)
   context->from_length = 0;
   context->select_length = 0;
   context->value_length = 0;
-  context->ssql->sstr.insertion.value_num = 0;
+  context->tuple_length = 0;
+  memset(context->tuples, 0, sizeof(context->tuples));
   printf("parse sql failed. error=%s", str);
 }
 
@@ -288,7 +291,7 @@ ID_get:
 	;
 	
 insert:				/*insert   语句的语法解析树*/
-    INSERT INTO ID VALUES LBRACE value value_list RBRACE SEMICOLON 
+    INSERT INTO ID VALUES tuple tuple_list SEMICOLON
 		{
 			// CONTEXT->values[CONTEXT->value_length++] = *$6;
 
@@ -298,11 +301,27 @@ insert:				/*insert   语句的语法解析树*/
 			// for(i = 0; i < CONTEXT->value_length; i++){
 			// 	CONTEXT->ssql->sstr.insertion.values[i] = CONTEXT->values[i];
       // }
-			inserts_init(&CONTEXT->ssql->sstr.insertion, $3, CONTEXT->values, CONTEXT->value_length);
+			inserts_init(&CONTEXT->ssql->sstr.insertion, $3, CONTEXT->tuples, CONTEXT->tuple_length);
 
       //临时变量清零
       CONTEXT->value_length=0;
+      CONTEXT->tuple_length=0;
+      memset(CONTEXT->tuples, 0, sizeof(CONTEXT->tuples));
     }
+
+tuple_list:
+    | COMMA tuple tuple_list {
+    }
+    ;
+
+tuple:
+    | LBRACE value value_list RBRACE {
+    	memcpy(CONTEXT->tuples[CONTEXT->tuple_length].values, CONTEXT->values, sizeof(Value)*CONTEXT->value_length);
+    	CONTEXT->tuples[CONTEXT->tuple_length].value_num = CONTEXT->value_length;
+    	CONTEXT->value_length = 0;
+        CONTEXT->tuple_length++;
+    }
+    ;
 
 value_list:
     /* empty */
@@ -311,14 +330,14 @@ value_list:
 	  }
     ;
 value:
-    NUMBER{	
+    NUMBER{
   		value_init_integer(&CONTEXT->values[CONTEXT->value_length++], $1);
 		}
     |FLOAT{
   		value_init_float(&CONTEXT->values[CONTEXT->value_length++], $1);
 		}
     |SSS {
-			$1 = substr($1,1,strlen($1)-2);
+		$1 = substr($1,1,strlen($1)-2);
   		value_init_string(&CONTEXT->values[CONTEXT->value_length++], $1);
 		}
     ;
@@ -391,16 +410,27 @@ expression:
 	STAR {// *
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, "*");
-			selects_append_aggregation_attr(&CONTEXT->ssql->sstr.selection, CONTEXT->func[CONTEXT->func_length-1],&attr);
+			Aggregation aggr;
+			aggr.attribute = attr;
+			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.is_value = 0;
+			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
 	| ID{// age
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $1);
-			selects_append_aggregation_attr(&CONTEXT->ssql->sstr.selection, CONTEXT->func[CONTEXT->func_length-1],&attr);
+			Aggregation aggr;
+			aggr.attribute = attr;
+			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.is_value = 0;
+			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
 	| value{ // 1
-			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			selects_append_aggregation_value(&CONTEXT->ssql->sstr.selection, CONTEXT->func[CONTEXT->func_length-1],right_value);
+			Aggregation aggr;
+			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.is_value = 1;
+			aggr.value = CONTEXT->values[CONTEXT->value_length - 1];
+			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
 
 attr_list:
