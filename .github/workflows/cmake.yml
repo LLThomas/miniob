@@ -1,10 +1,14 @@
-name: MiniOB Pipeline
+name: CI
 on: push
 
 jobs:
-  miniob:
-    name: MiniOB Job
+  build_and_test:
+    name: CI-${{ matrix.build_type }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [ DEBUG, RELEASE ]
     steps:
       - name: Install GCC
         run: |
@@ -18,14 +22,14 @@ jobs:
           CC: gcc-8
           CXX: g++-8
         run: |
-          cmake -S . -B build
+          cmake -D${{ matrix.build_type }}=1 -S . -B build
           cmake --build build -j
       - name: Run Tests
         run: |
-          ctest --test-dir build/unitest --repeat until-fail:10
+          ctest -T memcheck --test-dir build/unitest --repeat until-fail:10
       - name: Upload Test Artifact
         if: always()
         uses: actions/upload-artifact@v2
         with:
           name: test_log
-          path: build/unitest/Testing/Temporary/LastTest.log
+          path: build/unitest/Testing/Temporary/*
