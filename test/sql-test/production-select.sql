@@ -6,11 +6,9 @@ create table pr2(id int, price float);
 create table pr3(id int, price float);
 insert into pr1 values (1, 7.123);
 insert into pr1 values (2, 8.234);
-
 insert into pr2 values (2, 7.345);
 insert into pr2 values (2, 5.456);
 insert into pr2 values (3, 7.567);
-
 insert into pr3 values (3, 1.678);
 insert into pr3 values (4, 2.789);
 select * from pr1,pr2;
