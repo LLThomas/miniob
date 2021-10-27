@@ -266,24 +266,36 @@ RC Table::insert_record(Trx *trx, Record *record) {
   return rc;
 }
 
-RC Table::insert_record(Trx *trx, int value_num, const Value *values) {
-  if (value_num <= 0 || nullptr == values) {
-    LOG_ERROR("Invalid argument. value num=%d, values=%p", value_num, values);
+RC Table::insert_record(Trx *trx, int tuple_num, const InsertTuple *tuples) {
+  if (tuple_num <= 0 || nullptr == tuples) {
+    LOG_ERROR("Invalid argument. tuple num=%d, tuples=%p", tuple_num, tuples);
     return RC::INVALID_ARGUMENT;
   }
 
-  char *record_data;
-  RC rc = make_record(value_num, values, record_data);
-  if (rc != RC::SUCCESS) {
-    LOG_ERROR("Failed to create a record. rc=%d:%s", rc, strrc(rc));
-    return rc;
+  std::vector<char *> record_data;
+  for (int i = 0; i < tuple_num; i++) {
+    char *record_datum;
+    RC rc = make_record(tuples[i].value_num, tuples[i].values, record_datum);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to create a record. rc=%d:%s", rc, strrc(rc));
+      return rc;
+    }
+    record_data.push_back(record_datum);
   }
 
+  RC rc;
   Record record;
-  record.data = record_data;
-  // record.valid = true;
-  rc = insert_record(trx, &record);
-  delete[] record_data;
+  for (char* record_datum: record_data) {
+    record.data = record_datum;
+    rc = insert_record(trx, &record);
+    if (rc != RC::SUCCESS) {
+      break;
+    }
+  }
+
+  for (char* record_datum: record_data) {
+    delete[] record_datum;
+  }
   return rc;
 }
 
@@ -321,7 +333,7 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out) {
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
     }
   }
-  
+
   record_out = record;
   return RC::SUCCESS;
 }
@@ -420,7 +432,8 @@ RC Table::scan_record(Trx *trx, ConditionFilter *filter, int limit,
   for (; RC::SUCCESS == rc && record_count < limit;
        rc = scanner.get_next_record(&record)) {
     if (trx == nullptr || trx->is_visible(this, &record)) {
-//      std::cout<<"scan: page_num: "<<record.rid.page_num<<" slot_num: "<<record.rid.slot_num<<" data: "<<record.data<<std::endl;
+      //      std::cout<<"scan: page_num: "<<record.rid.page_num<<" slot_num:
+      //      "<<record.rid.slot_num<<" data: "<<record.data<<std::endl;
       rc = record_reader(&record, context);
       if (rc != RC::SUCCESS) {
         break;
@@ -625,7 +638,8 @@ class RecordUpdater {
       if (value->type != table_.table_meta_.field(num)->type()) {
         return INVALID_ARGUMENT;
       }
-      memcpy(record->data+table_.table_meta_.field(num)->offset(), value->data, table_.table_meta_.field(num)->len());
+      memcpy(record->data + table_.table_meta_.field(num)->offset(),
+             value->data, table_.table_meta_.field(num)->len());
     } else {
       if (value->type != CHARS) {
         return INVALID_ARGUMENT;
@@ -635,7 +649,7 @@ class RecordUpdater {
       if (rc != SUCCESS) {
         return rc;
       }
-      memcpy(record->data+table_.table_meta_.field(num)->offset(), &t, 2);
+      memcpy(record->data + table_.table_meta_.field(num)->offset(), &t, 2);
     }
 
     return rc;
@@ -665,7 +679,6 @@ static RC record_reader_update_adapter(Record *record, void *context) {
 RC Table::update_record(Trx *trx, const char *attribute_name,
                         const Value *value, int condition_num,
                         const Condition conditions[], int *updated_count) {
-
   // get record position
   CompositeConditionFilter condition_filter;
   RC rc = condition_filter.init(*this, conditions, condition_num);
@@ -674,7 +687,8 @@ RC Table::update_record(Trx *trx, const char *attribute_name,
   }
   RecordUpdater updater(*this, trx);
   updater.set_data(attribute_name, value);
-  rc = scan_record(trx, &condition_filter, -1, &updater, record_reader_update_adapter);
+  rc = scan_record(trx, &condition_filter, -1, &updater,
+                   record_reader_update_adapter);
   if (updated_count != nullptr) {
     *updated_count = updater.updated_count();
   }
@@ -688,7 +702,6 @@ RC Table::update_record(Trx *trx, Record *record) {
     trx->init_trx_info(this, *record);
   }
   rc = record_handler_->update_record(record);
-
 
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Update record failed. table name=%s, rc=%d:%s",
