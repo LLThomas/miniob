@@ -285,13 +285,17 @@ void aggregation_exec(const Selects &selects, TupleSet *res_tuples) {
           //遍历所有元组，获取最大值
           int target_idx = 0;
           for (size_t t = 1; t < tuples.size(); t++) {
-            if (type * tuples[t].get(selects.aggregation_num-1-i).compare(tuples[target_idx].get(selects.aggregation_num-1-i)) >
+            if (type * tuples[t]
+                           .get(selects.aggregation_num - 1 - i)
+                           .compare(tuples[target_idx].get(
+                               selects.aggregation_num - 1 - i)) >
                 0) {
               target_idx = t;
             }
           }
           //增加这条记录
-          out.add(tuples[target_idx].get_pointer(selects.aggregation_num-1-i));
+          out.add(
+              tuples[target_idx].get_pointer(selects.aggregation_num - 1 - i));
           break;
         }
         case FuncName::AGG_COUNT: {
@@ -304,16 +308,23 @@ void aggregation_exec(const Selects &selects, TupleSet *res_tuples) {
           //遍历所有元组，获取和
           float sum = 0;
           for (size_t t = 0; t < tuples.size(); t++) {
-            AttrType type = tuples[t].get(selects.aggregation_num-1-i).get_type();
+            AttrType type =
+                tuples[t].get(selects.aggregation_num - 1 - i).get_type();
             switch (type) {
               case AttrType::INTS:
-                sum += ((IntValue &)tuples[t].get(selects.aggregation_num-1-i)).get_value();
+                sum +=
+                    ((IntValue &)tuples[t].get(selects.aggregation_num - 1 - i))
+                        .get_value();
                 break;
               case AttrType::FLOATS:
-                sum += ((FloatValue &)tuples[t].get(selects.aggregation_num-1-i)).get_value();
+                sum += ((FloatValue &)tuples[t].get(selects.aggregation_num -
+                                                    1 - i))
+                           .get_value();
                 break;
               case AttrType::DATES:
-                sum += ((DateValue &)tuples[t].get(selects.aggregation_num-1-i)).get_value();
+                sum += ((DateValue &)tuples[t].get(selects.aggregation_num - 1 -
+                                                   i))
+                           .get_value();
                 break;
               default:
                 // TODO: 报错，非数值类型
@@ -358,13 +369,20 @@ bool match_join_condition(const Tuple *res_tuple,
 }
 //将多段小元组合成一个大元组
 Tuple merge_tuples(
-    const std::vector<std::vector<Tuple>::const_iterator> temp_tuples) {
+    const std::vector<std::vector<Tuple>::const_iterator> temp_tuples,
+    std::vector<int> orders) {
+  std::vector<std::shared_ptr<TupleValue>> temp_res;
   Tuple res_tuple;
+  size_t order = 0;
   for (size_t t = 0; t < temp_tuples.size(); t++) {
-    // 能不能做成append一堆
     for (int idx = 0; idx < (*temp_tuples[t]).size(); idx++) {
-      res_tuple.add((*temp_tuples[t]).get_pointer(idx));
+      //先把每个字段都放到各应的位置上
+      temp_res.push_back((*temp_tuples[t]).get_pointer(idx));
     }
+  }
+  for (size_t i = 0; i < temp_res.size(); i++) {
+    //再依次添加到大元组里即可
+    res_tuple.add(temp_res[orders[i]]);
   }
   return res_tuple;
 }
@@ -421,14 +439,56 @@ RC ExecuteStage::do_select(const char *db, Query *sql,
   if (tuple_sets.size() > 1) {
     // 本次查询了多张表，需要做join操作
     // 【每个输出元组的列名需要扩展为[tableName].[colName]的形式】
+    // 测试环境会保证多表查询的每个attr都是*或table.id的格式，不会出现单单的id
+    // 需要按照selects.attribute的顺序添加，如果是t1.*就添加整张表
     TupleSchema join_schema;
+    //仅仅是把每个表的每个字段无序拼接起来，用于下面的对应和查找
+    TupleSchema old_schema;
     for (std::vector<TupleSet>::const_reverse_iterator
              rit = tuple_sets.rbegin(),
              rend = tuple_sets.rend();
          rit != rend; ++rit) {
-      // 倒着遍历才能按照select顺序
-      join_schema.append(rit->get_schema());
+      //这里是某张表投影完的所有字段，如果是select * from t1,t2;
+      // old_schema=[t1.a, t1.b, t2.a, t2.b]
+      old_schema.append(rit->get_schema());
     }
+
+    //对照着列名的输出顺序。之后输出一行tuple的时候，tuple.col[i]就输出到select_order[i]的位置
+    std::vector<int> select_order;
+    for (int i = selects.attr_num - 1; i >= 0; i--) {
+      const RelAttr &rel_attr = selects.attributes[i];
+      if (0 == strcmp("*", rel_attr.attribute_name)) {
+        if (rel_attr.relation_name == nullptr) {
+          //如果是select * ，添加所有字段
+          for (size_t f = 0; f < old_schema.fields().size(); f++) {
+            join_schema.add(old_schema.fields()[f]);
+            select_order.push_back(f);
+          }
+        } else {
+          //如果是select t1.*，表名匹配的加入字段
+          for (size_t f = 0; f < old_schema.fields().size(); f++) {
+            if (0 == strcmp(old_schema.fields()[f].table_name(),
+                            rel_attr.relation_name)) {
+              join_schema.add(old_schema.fields()[f]);
+              select_order.push_back(f);
+            }
+          }
+        }
+      } else {
+        //如果是select t1.age，表名+字段名匹配的加入字段
+        for (size_t f = 0; f < old_schema.fields().size(); f++) {
+          if ((0 == strcmp(old_schema.fields()[f].table_name(),
+                           rel_attr.relation_name)) &&
+              (0 == strcmp(old_schema.fields()[f].field_name(),
+                           rel_attr.attribute_name))) {
+            join_schema.add(old_schema.fields()[f]);
+            select_order.push_back(f);
+            break;
+          }
+        }
+      }
+    }
+
     print_tuples.set_schema(join_schema);
     // 【联查的conditions需要找到对应的表】
     // C x 3数组
@@ -473,7 +533,7 @@ RC ExecuteStage::do_select(const char *db, Query *sql,
     //每个表都有数据才会有结果集，一旦有空表就是空结果
     if (temp_tuples.size() == N) {
       //补满后就输出
-      Tuple res_tuple = merge_tuples(temp_tuples);
+      Tuple res_tuple = merge_tuples(temp_tuples, select_order);
       if (match_join_condition(&res_tuple, condition_idxs))
         print_tuples.add(std::move(res_tuple));
       while (tuple_poses[0] != tuple_poses_end[0]) {
@@ -493,7 +553,7 @@ RC ExecuteStage::do_select(const char *db, Query *sql,
           temp_tuples.push_back(tuple_poses[temp_tuples.size()]);
         }
         //补满后就输出
-        Tuple res_tuple = merge_tuples(temp_tuples);
+        Tuple res_tuple = merge_tuples(temp_tuples, select_order);
         if (match_join_condition(&res_tuple, condition_idxs))
           print_tuples.add(std::move(res_tuple));
       }

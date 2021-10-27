@@ -82,6 +82,9 @@ void TupleSchema::add(AttrType type, const char *table_name,
   fields_.emplace_back(type, table_name, field_name);
 }
 
+void TupleSchema::add(const TupleField &otherfield) {
+  add(otherfield.type(), otherfield.table_name(), otherfield.field_name());
+}
 void TupleSchema::add_if_not_exists(AttrType type, const char *table_name,
                                     const char *field_name) {
   for (const auto &field : fields_) {
