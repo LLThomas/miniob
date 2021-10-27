@@ -23,6 +23,8 @@ class DateTest : public SQLTest {
 TEST_F(DateTest, date_compare) {
   ASSERT_EQ(ExecuteSql("select * from t where a > '2000-01-03';"),
             "a\n2000-01-04\n");
+  ASSERT_EQ(ExecuteSql("select * from t;"),
+            "a\n2000-01-01\n2000-01-02\n2000-01-03\n2000-01-04\n");
   ASSERT_EQ(ExecuteSql("select * from t where '2000-01-03' = '2000-01-03';"),
             "a\n2000-01-01\n2000-01-02\n2000-01-03\n2000-01-04\n");
   ASSERT_EQ(ExecuteSql("select * from t where '2000-01-03' < a;"),

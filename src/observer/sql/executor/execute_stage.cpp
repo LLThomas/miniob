@@ -572,7 +572,8 @@ RC create_selection_executor(Trx *trx, const Selects &selects, const char *db,
                  selects.conditions[i].left_attr.relation_name, db);
         return RC::SCHEMA_TABLE_NOT_EXIST;
       }
-    } else {
+    }
+    if (selects.conditions[i].left_is_attr == 1) {
       if (selects.conditions[i].right_attr.relation_name == nullptr) {
         continue;
       }
