@@ -10,9 +10,9 @@ jobs:
       matrix:
         build_type: [ DEBUG, RELEASE ]
     steps:
-      - name: Install GCC
+      - name: Install Tools
         run: |
-          sudo apt install gcc-8 g++-8
+          sudo apt install gcc-8 g++-8 valgrind
       - name: Checkout
         uses: actions/checkout@v2
         with:
