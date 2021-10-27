@@ -1,4 +1,8 @@
-# Introduction
+# MiniOB
+
+[![MiniOB Pipeline](https://github.com/LLThomas/miniob/actions/workflows/cmake.yml/badge.svg)](https://github.com/LLThomas/miniob/actions/workflows/cmake.yml)
+
+## Introduction
 
 miniob设计的目标是让不熟悉数据库设计和实现的同学能够快速的了解与深入学习数据库内核，期望通过miniob相关训练之后，能够对各个数据库内核模块的功能与它们之间的关联有所了解，并能够在
 使用时，设计出高效的SQL。面向的对象主要是在校学生，并且诸多模块做了简化，比如不考虑并发操作。 注意：此代码仅供学习使用，不考虑任何安全特性。
@@ -7,9 +11,14 @@ miniob设计的目标是让不熟悉数据库设计和实现的同学能够快�
 
 please refer to docs/how_to_build.md
 
-# Assignments
+## 测试常见问题
 
-## 必做题
+[Link](https://github.com/OceanBase-Partner/lectures-on-dbms-implementation/blob/main/miniob-topics.md#%E6%B5%8B%E8%AF%95%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)
+
+
+## Assignments
+
+### 必做题
 
 | 状态 | 名称 | 描述 | 测试用例示例 |
 | ------ | ---- | ---- | -------------|
@@ -23,7 +32,7 @@ please refer to docs/how_to_build.md
 
 
 
-## 选做题
+### 选做题
 
 | 状态 | 名称               | 分值 | 描述                                                         | 测试用例示例                                                 |
 | ------ | --- | ---- | ------------- | ------------- |
@@ -38,7 +47,3 @@ please refer to docs/how_to_build.md
 | <ul><li>[ ] 未认领</li></ul> | 复杂子查询         | 20   | 子查询在WHERE条件中，子查询语句支持多张表与AND条件表达式，查询条件支持max/min等 | select * from t1 where age in (select id from t2 where t2.name in (select name from t3)) |
 | <ul><li>[ ] 未认领</li></ul> | 排序               | 10   | 支持oder by功能。不指定排序顺序默认为升序(asc)。<br/>不需要支持oder by字段为数字的情况，比如select * from t order by 1; | select * from t,t1 where t.id=t1.id order by t.id asc,t1.score desc; |
 | <ul><li>[ ] 未认领</li></ul> | 分组               | 20   | 支持group by功能。group by中的聚合函数也不要求支持表达式     | select t.id, t.name, avg(t.score),avg(t2.age) from t,t2 where t.id=t2.id group by t.id; |
-
-# 测试常见问题
-
-[Link](https://github.com/OceanBase-Partner/lectures-on-dbms-implementation/blob/main/miniob-topics.md)
