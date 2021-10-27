@@ -296,6 +296,7 @@ void aggregation_exec(const Selects &selects, TupleSet *res_tuples) {
           //增加这条记录
           out.add(
               tuples[target_idx].get_pointer(selects.aggregation_num - 1 - i));
+
           break;
         }
         case FuncName::AGG_COUNT: {
