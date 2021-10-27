@@ -22,7 +22,7 @@ jobs:
           cmake --build build -j
       - name: Run Tests
         run: |
-          ctest --test-dir build/unitest
+          ctest --test-dir build/unitest --repeat until-fail:10
       - name: Upload Test Artifact
         if: always()
         uses: actions/upload-artifact@v2
