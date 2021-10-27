@@ -410,16 +410,27 @@ expression:
 	STAR {// *
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, "*");
-			selects_append_aggregation_attr(&CONTEXT->ssql->sstr.selection, CONTEXT->func[CONTEXT->func_length-1],&attr);
+			Aggregation aggr;
+			aggr.attribute = attr;
+			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.is_value = 0;
+			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
 	| ID{// age
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $1);
-			selects_append_aggregation_attr(&CONTEXT->ssql->sstr.selection, CONTEXT->func[CONTEXT->func_length-1],&attr);
+			Aggregation aggr;
+			aggr.attribute = attr;
+			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.is_value = 0;
+			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
 	| value{ // 1
-			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			selects_append_aggregation_value(&CONTEXT->ssql->sstr.selection, CONTEXT->func[CONTEXT->func_length-1],right_value);
+			Aggregation aggr;
+			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.is_value = 1;
+			aggr.value = CONTEXT->values[CONTEXT->value_length - 1];
+			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
 
 attr_list:

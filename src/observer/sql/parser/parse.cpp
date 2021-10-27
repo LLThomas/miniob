@@ -99,6 +99,13 @@ void condition_destroy(Condition *condition) {
     value_destroy(&condition->right_value);
   }
 }
+void aggregation_destroy(Aggregation *aggregation) {
+  if (aggregation->is_value) {
+    value_destroy(&aggregation->value);
+  } else {
+    relation_attr_destroy(&aggregation->attribute);
+  }
+}
 
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type,
                     size_t length) {
@@ -131,24 +138,8 @@ void selects_append_conditions(Selects *selects, Condition conditions[],
   }
   selects->condition_num = condition_num;
 }
-
-void selects_append_aggregation_attr(Selects *selects, FuncName func_name,
-                                     RelAttr *rel_attr) {
-  Aggregation aggr;
-  aggr.attribute = *rel_attr;
-  aggr.func_name = func_name;
-  aggr.is_value = 0;
-  aggr.value = nullptr;
-  selects->aggregations[selects->aggregation_num++] = aggr;
-}
-
-void selects_append_aggregation_value(Selects *selects, FuncName func_name,
-                                      Value *value) {
-  Aggregation aggr;
-  aggr.func_name = func_name;
-  aggr.is_value = 1;
-  aggr.value = value;
-  selects->aggregations[selects->aggregation_num++] = aggr;
+void selects_append_aggregation(Selects *selects, Aggregation *aggregation) {
+  selects->aggregations[selects->aggregation_num++] = *aggregation;
 }
 
 void selects_destroy(Selects *selects) {
@@ -167,10 +158,14 @@ void selects_destroy(Selects *selects) {
     condition_destroy(&selects->conditions[i]);
   }
   selects->condition_num = 0;
+  for (size_t i = 0; i < selects->aggregation_num; i++) {
+    aggregation_destroy(&selects->aggregations[i]);
+  }
+  selects->aggregation_num = 0;
 }
 
-void inserts_init(Inserts *inserts, const char *relation_name, InsertTuple tuples[],
-                  size_t tuple_num) {
+void inserts_init(Inserts *inserts, const char *relation_name,
+                  InsertTuple tuples[], size_t tuple_num) {
   assert(tuple_num <= sizeof(inserts->tuples) / sizeof(inserts->tuples[0]));
 
   inserts->relation_name = strdup(relation_name);

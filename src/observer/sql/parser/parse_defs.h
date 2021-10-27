@@ -72,7 +72,7 @@ typedef struct {
   RelAttr attribute;   //聚合的属性
   // std::string expression_str;  //TODO: 括号内表达式的字符串
   int is_value;  //表达式是确定的值吗 0=不是 1=是
-  Value *value;  //表达式的值
+  Value value;   //表达式的值
 } Aggregation;   //聚合函数
 
 // struct of select
@@ -87,7 +87,6 @@ typedef struct {
   Aggregation aggregations[MAX_NUM];
 } Selects;
 
-
 typedef struct {
   size_t value_num;       // Length of values
   Value values[MAX_NUM];  // Values to insert
@@ -95,8 +94,8 @@ typedef struct {
 
 // struct of insert
 typedef struct {
-  char *relation_name;    // Relation to insert into
-  size_t tuple_num;       // Length of tuples
+  char *relation_name;          // Relation to insert into
+  size_t tuple_num;             // Length of tuples
   InsertTuple tuples[MAX_NUM];  // Tuples to insert
 } Inserts;
 
@@ -219,6 +218,8 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr,
 
 void condition_destroy(Condition *condition);
 
+void aggregation_destroy(Aggregation *aggregation);
+
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type,
                     size_t length);
 
@@ -233,16 +234,12 @@ void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[],
                                size_t condition_num);
 
-void selects_append_aggregation_attr(Selects *selects, FuncName func_name,
-                                     RelAttr *rel_attr);
-
-void selects_append_aggregation_value(Selects *selects, FuncName func_name,
-                                      Value *value);
+void selects_append_aggregation(Selects *selects, Aggregation *aggregation);
 
 void selects_destroy(Selects *selects);
 
-void inserts_init(Inserts *inserts, const char *relation_name, InsertTuple tuples[],
-                  size_t tuple_num);
+void inserts_init(Inserts *inserts, const char *relation_name,
+                  InsertTuple tuples[], size_t tuple_num);
 
 void inserts_destroy(Inserts *inserts);
 

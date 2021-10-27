@@ -231,8 +231,8 @@ std::string agg_to_string(Aggregation agg) {
   res += "(";
   // expression
   if (1 == agg.is_value) {
-    AttrType type = agg.value->type;
-    void *val = agg.value->data;
+    AttrType type = agg.value.type;
+    void *val = agg.value.data;
     std::string str;
     switch (type) {
       case AttrType::INTS:
@@ -374,7 +374,6 @@ Tuple merge_tuples(
     std::vector<int> orders) {
   std::vector<std::shared_ptr<TupleValue>> temp_res;
   Tuple res_tuple;
-  size_t order = 0;
   for (size_t t = 0; t < temp_tuples.size(); t++) {
     for (int idx = 0; idx < (*temp_tuples[t]).size(); idx++) {
       //先把每个字段都放到各应的位置上
