@@ -230,20 +230,29 @@ std::string agg_to_string(Aggregation agg) {
   }
   res += "(";
   // expression
-  if (1 == agg.is_value) {
+  if (agg.is_value) {
     AttrType type = agg.value.type;
     void *val = agg.value.data;
     std::string str;
     switch (type) {
-      case AttrType::INTS:
+      case AttrType::INTS: {
         str = std::to_string(*((int *)val));
         break;
-      case AttrType::FLOATS:
-        str = std::to_string(*((float *)val));
+      }
+      case AttrType::FLOATS: {
+        FloatValue fv(*((float *)val));
+        std::stringstream ss;
+        fv.to_string(ss);
+        ss >> str;
         break;
-      case AttrType::DATES:
-        str = std::to_string(*((uint16_t *)val));
+      }
+      case AttrType::DATES: {
+        DateValue dv(*((uint16_t *)val));
+        std::stringstream ss;
+        dv.to_string(ss);
+        ss >> str;
         break;
+      }
       default:
         // TODO: 报错，非数值类型
         break;
@@ -264,13 +273,40 @@ std::string agg_to_string(Aggregation agg) {
 //聚合函数
 void aggregation_exec(const Selects &selects, TupleSet *res_tuples) {
   if (selects.aggregation_num > 0) {
+    //目前agg只涉及单表情况
+    const char *table_name = selects.relations[0];
     //先设置schema
     TupleSchema agg_schema;
     for (size_t i = 0; i < selects.aggregation_num; i++) {
       const Aggregation &agg = selects.aggregations[i];
-      const TupleField &tf =
-          res_tuples->get_schema().field(i);  //获取func(age)的age
-      agg_schema.add(tf.type(), tf.table_name(), agg_to_string(agg).c_str());
+      //设置type
+      AttrType attr;
+      switch (agg.func_name) {
+        case FuncName::AGG_MAX:
+        case FuncName::AGG_MIN: {
+          if (agg.is_value) {
+            attr = agg.value.type;
+          } else {
+            //获取对应的field
+            const TupleSchema &ts = res_tuples->get_schema();
+            const TupleField &tf = ts.field(ts.index_of_field(
+                table_name,
+                agg.attribute.attribute_name));  //获取func(age)的age
+            attr = tf.type();
+          }
+
+          break;
+        }
+
+        case FuncName::AGG_COUNT:
+          attr = AttrType::INTS;
+          break;
+        case FuncName::AGG_AVG:
+          attr = AttrType::FLOATS;
+          break;
+      }
+
+      agg_schema.add(attr, table_name, agg_to_string(agg).c_str());
     }
     //再依次添加字段值
     Tuple out;
@@ -286,16 +322,19 @@ void aggregation_exec(const Selects &selects, TupleSet *res_tuples) {
           int target_idx = 0;
           for (size_t t = 1; t < tuples.size(); t++) {
             if (type * tuples[t]
-                           .get(selects.aggregation_num - 1 - i)
+                           .get(res_tuples->get_schema().index_of_field(
+                               table_name, agg.attribute.attribute_name))
                            .compare(tuples[target_idx].get(
-                               selects.aggregation_num - 1 - i)) >
+                               res_tuples->get_schema().index_of_field(
+                                   table_name, agg.attribute.attribute_name))) >
                 0) {
               target_idx = t;
             }
           }
           //增加这条记录
-          out.add(
-              tuples[target_idx].get_pointer(selects.aggregation_num - 1 - i));
+          out.add(tuples[target_idx].get_pointer(
+              res_tuples->get_schema().index_of_field(
+                  table_name, agg.attribute.attribute_name)));
 
           break;
         }
@@ -309,22 +348,27 @@ void aggregation_exec(const Selects &selects, TupleSet *res_tuples) {
           //遍历所有元组，获取和
           float sum = 0;
           for (size_t t = 0; t < tuples.size(); t++) {
-            AttrType type =
-                tuples[t].get(selects.aggregation_num - 1 - i).get_type();
+            AttrType type = tuples[t]
+                                .get(res_tuples->get_schema().index_of_field(
+                                    table_name, agg.attribute.attribute_name))
+                                .get_type();
             switch (type) {
               case AttrType::INTS:
-                sum +=
-                    ((IntValue &)tuples[t].get(selects.aggregation_num - 1 - i))
-                        .get_value();
+                sum += ((IntValue &)tuples[t].get(
+                            res_tuples->get_schema().index_of_field(
+                                table_name, agg.attribute.attribute_name)))
+                           .get_value();
                 break;
               case AttrType::FLOATS:
-                sum += ((FloatValue &)tuples[t].get(selects.aggregation_num -
-                                                    1 - i))
+                sum += ((FloatValue &)tuples[t].get(
+                            res_tuples->get_schema().index_of_field(
+                                table_name, agg.attribute.attribute_name)))
                            .get_value();
                 break;
               case AttrType::DATES:
-                sum += ((DateValue &)tuples[t].get(selects.aggregation_num - 1 -
-                                                   i))
+                sum += ((DateValue &)tuples[t].get(
+                            res_tuples->get_schema().index_of_field(
+                                table_name, agg.attribute.attribute_name)))
                            .get_value();
                 break;
               default:
@@ -476,16 +520,10 @@ RC ExecuteStage::do_select(const char *db, const Query *sql,
         }
       } else {
         //如果是select t1.age，表名+字段名匹配的加入字段
-        for (size_t f = 0; f < old_schema.fields().size(); f++) {
-          if ((0 == strcmp(old_schema.fields()[f].table_name(),
-                           rel_attr.relation_name)) &&
-              (0 == strcmp(old_schema.fields()[f].field_name(),
-                           rel_attr.attribute_name))) {
-            join_schema.add(old_schema.fields()[f]);
-            select_order.push_back(f);
-            break;
-          }
-        }
+        int f = old_schema.index_of_field(rel_attr.relation_name,
+                                          rel_attr.attribute_name);
+        join_schema.add(old_schema.fields()[f]);
+        select_order.push_back(f);
       }
     }
 
