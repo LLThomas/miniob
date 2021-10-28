@@ -559,13 +559,13 @@ RC ExecuteStage::do_select(const char *db, const Query *sql,
       }
       //聚合算子
       aggregation_exec(selects, &print_tuples);
-      print_tuples.print(ss);
+      print_tuples.print(ss, true);
     }
   } else {
     // 当前只查询一张表，直接返回结果即可
     //聚合算子
     aggregation_exec(selects, &(tuple_sets.front()));
-    tuple_sets.front().print(ss);
+    tuple_sets.front().print(ss, selects.relation_num > 1);
   }
   for (SelectExeNode *&tmp_node : select_nodes) {
     delete tmp_node;

@@ -108,7 +108,7 @@ class TupleSchema {
 
   void clear() { fields_.clear(); }
 
-  void print(std::ostream &os) const;
+  void print(std::ostream &os, bool multi_table) const;
 
  public:
   static void from_table(const Table *table, TupleSchema &schema);
@@ -145,7 +145,7 @@ class TupleSet {
 
   const std::vector<Tuple> &tuples() const;
 
-  void print(std::ostream &os) const;
+  void print(std::ostream &os, bool multi_table) const;
 
  public:
   const TupleSchema &schema() const { return schema_; }

@@ -38,6 +38,14 @@ TEST_F(ProductionSQLTest, production) {
             "2 | 8.23 | 2 | 7.34\n"
             "2 | 8.23 | 2 | 5.46\n"
             "2 | 8.23 | 3 | 7.57\n");
+  ASSERT_EQ(ExecuteSql("select pr1.id from pr1,pr2;"),
+            "pr1.id\n"
+            "1\n"
+            "1\n"
+            "1\n"
+            "2\n"
+            "2\n"
+            "2\n");
   ASSERT_EQ(ExecuteSql("select * from pr1,pr2 where pr1.id=pr2.id;"),
             "pr1.id | pr1.price | pr2.id | pr2.price\n"
             "2 | 8.23 | 2 | 7.34\n"
