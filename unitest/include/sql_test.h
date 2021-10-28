@@ -19,6 +19,7 @@
 #include <session/session_stage.h>
 
 #include <filesystem>
+#include <memory>
 #include <mutex>
 
 class SQLTest : public testing::Test {
@@ -60,7 +61,8 @@ class SQLTest : public testing::Test {
   static std::string ExecuteSql(const std::string &sql) {
     ConnectionContext ctx;
     memset(&ctx, 0, sizeof(ConnectionContext));
-    ctx.session = new Session(Session::default_session());
+    auto session = std::make_shared<Session>(Session::default_session());
+    ctx.session = session.get();
     pthread_mutex_init(&ctx.mutex, nullptr);
     strncpy(ctx.buf, sql.c_str(), SOCKET_BUFFER_SIZE - 1);
     auto sev = new SessionEvent(&ctx);

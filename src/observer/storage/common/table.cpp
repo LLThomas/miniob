@@ -278,6 +278,7 @@ RC Table::insert_record(Trx *trx, int tuple_num, const InsertTuple *tuples) {
     RC rc = make_record(tuples[i].value_num, tuples[i].values, record_datum);
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Failed to create a record. rc=%d:%s", rc, strrc(rc));
+      for (char *r : record_data) delete[] r;
       return rc;
     }
     record_data.push_back(record_datum);
@@ -285,7 +286,7 @@ RC Table::insert_record(Trx *trx, int tuple_num, const InsertTuple *tuples) {
 
   RC rc;
   Record record;
-  for (char* record_datum: record_data) {
+  for (char *record_datum : record_data) {
     record.data = record_datum;
     rc = insert_record(trx, &record);
     if (rc != RC::SUCCESS) {
@@ -293,7 +294,7 @@ RC Table::insert_record(Trx *trx, int tuple_num, const InsertTuple *tuples) {
     }
   }
 
-  for (char* record_datum: record_data) {
+  for (char *record_datum : record_data) {
     delete[] record_datum;
   }
   return rc;
