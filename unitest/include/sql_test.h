@@ -53,9 +53,9 @@ class SQLTest : public testing::Test {
     BeforeCase();
   }
 
-  virtual void BeforeCase() = 0;
+  virtual void BeforeCase() {}
 
-  virtual void AfterCase() = 0;
+  virtual void AfterCase() {}
 
   static std::string ExecuteSql(const std::string &sql) {
     ConnectionContext ctx;
