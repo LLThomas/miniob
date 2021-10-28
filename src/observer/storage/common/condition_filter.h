@@ -60,6 +60,28 @@ class DefaultConditionFilter : public ConditionFilter {
 
   CompOp comp_op() const { return comp_op_; }
 
+  // 转化为 attr $compOp value 形式的 $compOp
+  CompOp unified_comp_op() const {
+    CompOp op = comp_op_;
+    if (!left_.is_attr && right_.is_attr) {
+      switch (op) {
+        case LESS_EQUAL:
+          op = GREAT_EQUAL;
+          break;
+        case LESS_THAN:
+          op = GREAT_THAN;
+          break;
+        case GREAT_EQUAL:
+          op = LESS_EQUAL;
+          break;
+        case GREAT_THAN:
+          op = LESS_THAN;
+          break;
+      }
+    }
+    return op;
+  }
+
  private:
   ConDesc left_;
   ConDesc right_;

@@ -432,8 +432,6 @@ RC Table::scan_record(Trx *trx, ConditionFilter *filter, int limit,
   for (; RC::SUCCESS == rc && record_count < limit;
        rc = scanner.get_next_record(&record)) {
     if (trx == nullptr || trx->is_visible(this, &record)) {
-      //      std::cout<<"scan: page_num: "<<record.rid.page_num<<" slot_num:
-      //      "<<record.rid.slot_num<<" data: "<<record.data<<std::endl;
       rc = record_reader(&record, context);
       if (rc != RC::SUCCESS) {
         break;
@@ -916,7 +914,7 @@ IndexScanner *Table::find_index_for_scan(const DefaultConditionFilter &filter) {
     return nullptr;
   }
 
-  return index->create_scanner(filter.comp_op(),
+  return index->create_scanner(filter.unified_comp_op(),
                                (const char *)value_cond_desc->value);
 }
 

@@ -20,7 +20,7 @@ class DateTest : public SQLTest {
 };
 
 // 不对 TEST_F 的执行顺序提供保证
-TEST_F(DateTest, date_compare) {
+TEST_F(DateTest, date_compare_noindex) {
   ASSERT_EQ(ExecuteSql("select * from t where a > '2000-01-03';"),
             "a\n2000-01-04\n");
   ASSERT_EQ(ExecuteSql("select * from t;"),
@@ -48,6 +48,35 @@ TEST_F(DateTest, date_compare) {
       ExecuteSql(
           "select * from t where a < '2000-01-03' and a >= '2000-01-03';"),
       "a\n");
-  //  ASSERT_EQ(ExecuteSql("select * from t where a < '2000-01-02' or a >
-  //  '2000-01-03';"), "a\n2000-01-02\n");
+}
+
+TEST_F(DateTest, date_compare_index) {
+  ASSERT_EQ(ExecuteSql("create index a_id on t(a);"), "SUCCESS\n");
+  ASSERT_EQ(ExecuteSql("select * from t where a > '2000-01-03';"),
+            "a\n2000-01-04\n");
+  ASSERT_EQ(ExecuteSql("select * from t;"),
+            "a\n2000-01-01\n2000-01-02\n2000-01-03\n2000-01-04\n");
+  ASSERT_EQ(ExecuteSql("select * from t where '2000-01-03' = '2000-01-03';"),
+            "a\n2000-01-01\n2000-01-02\n2000-01-03\n2000-01-04\n");
+  ASSERT_EQ(ExecuteSql("select * from t where '2000-01-03' < a;"),
+            "a\n2000-01-04\n");
+  ASSERT_EQ(ExecuteSql("select * from t where a >= '2000-01-03';"),
+            "a\n2000-01-03\n2000-01-04\n");
+  ASSERT_EQ(ExecuteSql("select * from t where a = '2000-01-03';"),
+            "a\n2000-01-03\n");
+  ASSERT_EQ(ExecuteSql("select * from t where a <= '2000-01-02';"),
+            "a\n2000-01-01\n2000-01-02\n");
+  ASSERT_EQ(ExecuteSql("select * from t where a < '2000-01-02';"),
+            "a\n2000-01-01\n");
+  ASSERT_EQ(ExecuteSql("select * from t where a < '1999-10-31';"), "a\n");
+  ASSERT_EQ(ExecuteSql("select * from t where a <> '2000-01-03';"),
+            "a\n2000-01-01\n2000-01-02\n2000-01-04\n");
+  ASSERT_EQ(
+      ExecuteSql(
+          "select * from t where a < '2000-01-03' and a >= '2000-01-02';"),
+      "a\n2000-01-02\n");
+  ASSERT_EQ(
+      ExecuteSql(
+          "select * from t where a < '2000-01-03' and a >= '2000-01-03';"),
+      "a\n");
 }

@@ -175,6 +175,13 @@ int CompareKey(const char *pdata, const char *pkey, AttrType attr_type,
       if (i1 < i2) return -1;
       if (i1 == i2) return 0;
     } break;
+    case DATES: {
+      i1 = *(uint16_t *)pdata;
+      i2 = *(uint16_t *)pkey;
+      if (i1 > i2) return 1;
+      if (i1 < i2) return -1;
+      if (i1 == i2) return 0;
+    } break;
     case FLOATS: {
       f1 = *(float *)pdata;
       f2 = *(float *)pkey;
@@ -1772,20 +1779,17 @@ RC BplusTreeScanner::next_entry(RID *rid) {
   if (!opened_) {
     return RC::RECORD_CLOSED;
   }
-  rc = get_next_idx_in_memory(
-      rid);  //和RM中一样，有可能有错误，一次只查当前页和当前页的下一页，有待确定
-  if (rc == RC::RECORD_NO_MORE_IDX_IN_MEM) {
-    rc = find_idx_pages();
-    if (rc != SUCCESS) {
-      return rc;
-    }
-    return get_next_idx_in_memory(rid);
-  } else {
-    if (rc != SUCCESS) {
+
+  while (true) {
+    // 和RM中一样，有可能有错误，一次只查当前页和当前页的下一页，有待确定
+    rc = get_next_idx_in_memory(rid);
+    if (rc == RECORD_NO_MORE_IDX_IN_MEM) {
+      rc = find_idx_pages();
+      if (rc != SUCCESS) return rc;
+    } else {
       return rc;
     }
   }
-  return SUCCESS;
 }
 
 RC BplusTreeScanner::find_idx_pages() {
@@ -1877,6 +1881,10 @@ bool BplusTreeScanner::satisfy_condition(const char *pkey) {
       i1 = *(int *)pkey;
       i2 = *(int *)value_;
       break;
+    case DATES:
+      i1 = *(uint16_t *)pkey;
+      i2 = *(uint16_t *)value_;
+      break;
     case FLOATS:
       f1 = *(float *)pkey;
       f2 = *(float *)value_;
@@ -1896,6 +1904,7 @@ bool BplusTreeScanner::satisfy_condition(const char *pkey) {
     case EQUAL_TO:
       switch (attr_type) {
         case INTS:
+        case DATES:
           flag = (i1 == i2);
           break;
         case FLOATS:
@@ -1911,6 +1920,7 @@ bool BplusTreeScanner::satisfy_condition(const char *pkey) {
     case LESS_THAN:
       switch (attr_type) {
         case INTS:
+        case DATES:
           flag = (i1 < i2);
           break;
         case FLOATS:
@@ -1926,6 +1936,7 @@ bool BplusTreeScanner::satisfy_condition(const char *pkey) {
     case GREAT_THAN:
       switch (attr_type) {
         case INTS:
+        case DATES:
           flag = (i1 > i2);
           break;
         case FLOATS:
@@ -1941,6 +1952,7 @@ bool BplusTreeScanner::satisfy_condition(const char *pkey) {
     case LESS_EQUAL:
       switch (attr_type) {
         case INTS:
+        case DATES:
           flag = (i1 <= i2);
           break;
         case FLOATS:
@@ -1956,6 +1968,7 @@ bool BplusTreeScanner::satisfy_condition(const char *pkey) {
     case GREAT_EQUAL:
       switch (attr_type) {
         case INTS:
+        case DATES:
           flag = (i1 >= i2);
           break;
         case FLOATS:
@@ -1971,6 +1984,7 @@ bool BplusTreeScanner::satisfy_condition(const char *pkey) {
     case NOT_EQUAL:
       switch (attr_type) {
         case INTS:
+        case DATES:
           flag = (i1 != i2);
           break;
         case FLOATS:
