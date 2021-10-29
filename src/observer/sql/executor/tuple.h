@@ -19,7 +19,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/executor/value.h"
 #include "sql/parser/parse.h"
-
+#include "storage/common/record_manager.h"
 class Table;
 
 class Tuple {
@@ -50,6 +50,8 @@ class Tuple {
 
   void add(const char *s, int len);
 
+  void print(std::ostream &os);
+
   const std::vector<std::shared_ptr<TupleValue>> &values() const {
     return values_;
   }
@@ -57,7 +59,7 @@ class Tuple {
   int size() const { return values_.size(); }
 
   const TupleValue &get(int index) const { return *values_[index]; }
-
+  void clear() { values_.clear(); }
   const std::shared_ptr<TupleValue> &get_pointer(int index) const {
     return values_[index];
   }
@@ -158,8 +160,8 @@ class TupleSet {
 class TupleRecordConverter {
  public:
   TupleRecordConverter(Table *table, TupleSet &tuple_set);
-
   void add_record(const char *record);
+  void record_to_tuple(Tuple *tuple, Record *record);
 
  private:
   Table *table_;

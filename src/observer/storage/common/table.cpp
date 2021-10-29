@@ -285,7 +285,7 @@ RC Table::insert_record(Trx *trx, int tuple_num, const InsertTuple *tuples) {
 
   RC rc;
   Record record;
-  for (char* record_datum: record_data) {
+  for (char *record_datum : record_data) {
     record.data = record_datum;
     rc = insert_record(trx, &record);
     if (rc != RC::SUCCESS) {
@@ -293,7 +293,7 @@ RC Table::insert_record(Trx *trx, int tuple_num, const InsertTuple *tuples) {
     }
   }
 
-  for (char* record_datum: record_data) {
+  for (char *record_datum : record_data) {
     delete[] record_datum;
   }
   return rc;
@@ -493,6 +493,26 @@ RC Table::scan_record_by_index(Trx *trx, IndexScanner *scanner,
   return rc;
 }
 
+RC Table::scan_one_tuple(Record *record) {
+  RC rc = RC::SUCCESS;
+
+  // rc = record_handler_->get_record(rid, record);
+  // if (rc != RC::SUCCESS) {
+  //   LOG_ERROR("Failed to fetch record of rid=%d:%d, rc=%d:%s", rid->page_num,
+  //             rid->slot_num, rc, strrc(rc));
+  //   return rc;
+  // }
+  RecordFileScanner scanner;
+  rc = scanner.open_scan(*data_buffer_pool_, file_id_, nullptr);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("failed to open scanner. file id=%d. rc=%d:%s", file_id_, rc,
+              strrc(rc));
+    return rc;
+  }
+
+  rc = scanner.get_next_record(record);
+  return rc;
+}
 class IndexInserter {
  public:
   explicit IndexInserter(Index *index) : index_(index) {}
@@ -713,13 +733,13 @@ RC Table::update_record(Trx *trx, Record *record) {
       LOG_ERROR("Failed to log operation(update) to trx");
 
       // TODO: reset to original data
-//      RC rc2 = record_handler_->delete_record(&record->rid);
-//      if (rc2 != RC::SUCCESS) {
-//        LOG_PANIC(
-//            "Failed to rollback record data when insert index entries failed. "
-//            "table name=%s, rc=%d:%s",
-//            name(), rc2, strrc(rc2));
-//      }
+      //      RC rc2 = record_handler_->delete_record(&record->rid);
+      //      if (rc2 != RC::SUCCESS) {
+      //        LOG_PANIC(
+      //            "Failed to rollback record data when insert index entries
+      //            failed. " "table name=%s, rc=%d:%s", name(), rc2,
+      //            strrc(rc2));
+      //      }
       return rc;
     }
   }

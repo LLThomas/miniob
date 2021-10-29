@@ -44,6 +44,10 @@ class ExecuteStage : public common::Stage {
   void handle_request(common::StageEvent *event);
 
   RC do_select(const char *db, const Query *sql, SessionEvent *session_event);
+  RC icy_do_select(const char *db, const Query *sql,
+                   SessionEvent *session_event);
+  RC volcano_do_select(const char *db, const Query *sql,
+                       SessionEvent *session_event);
 
  protected:
  private:

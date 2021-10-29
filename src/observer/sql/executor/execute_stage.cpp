@@ -26,12 +26,15 @@ See the Mulan PSL v2 for more details. */
 #include "event/storage_event.h"
 #include "session/session.h"
 #include "sql/executor/execution_node.h"
+#include "sql/executor/executor_context.h"
+#include "sql/executor/executors/abstract_executor.h"
+#include "sql/executor/executors/seq_scan_executor.h"
+#include "sql/executor/plans/abstract_plan.h"
 #include "sql/executor/tuple.h"
 #include "storage/common/condition_filter.h"
 #include "storage/common/table.h"
 #include "storage/default/default_handler.h"
 #include "storage/trx/trx.h"
-
 using namespace common;
 
 RC create_selection_executor(Trx *trx, const Selects &selects, const char *db,
@@ -125,8 +128,8 @@ void ExecuteStage::handle_request(common::StageEvent *event) {
 
   switch (sql->flag) {
     case SCF_SELECT: {  // select
-      RC rc =
-          do_select(current_db, sql, exe_event->sql_event()->session_event());
+      RC rc = volcano_do_select(current_db, sql,
+                                exe_event->sql_event()->session_event());
       if (rc != RC::SUCCESS) {
         session_event->set_response("FAILURE\n");
       }
@@ -280,7 +283,7 @@ void aggregation_exec(const Selects &selects, TupleSet *res_tuples) {
     for (size_t i = 0; i < selects.aggregation_num; i++) {
       const Aggregation &agg = selects.aggregations[i];
       //设置type
-      AttrType attr;
+      AttrType attr = AttrType::UNDEFINED;
       switch (agg.func_name) {
         case FuncName::AGG_MAX:
         case FuncName::AGG_MIN: {
@@ -640,7 +643,6 @@ RC create_selection_executor(Trx *trx, const Selects &selects, const char *db,
                              const char *table_name,
                              SelectExeNode &select_node) {
   Table *table;
-
   // attribute tables check
   for (size_t i = 0; i < selects.attr_num; i++) {
     if (selects.attributes[i].relation_name == nullptr) {
@@ -767,4 +769,533 @@ RC create_selection_executor(Trx *trx, const Selects &selects, const char *db,
 
   return select_node.init(trx, table, std::move(schema),
                           std::move(condition_filters));
+}
+//-----------都让开，我要重构了-----------
+void select_nodes_destroy(std::vector<SelectExeNode *> &select_nodes) {
+  for (SelectExeNode *&tmp_node : select_nodes) {
+    delete tmp_node;
+  }
+}
+RC check_select_node_meta(const Selects &selects, const char *db,
+                          const char *table_name, Table *table) {
+  // attribute tables check
+  for (size_t i = 0; i < selects.attr_num; i++) {
+    if (selects.attributes[i].relation_name == nullptr) {
+      continue;
+    }
+    table = DefaultHandler::get_default().find_table(
+        db, selects.attributes[i].relation_name);
+    if (nullptr == table) {
+      LOG_WARN("No such table [%s] in db [%s]",
+               selects.attributes[i].relation_name, db);
+      return RC::SCHEMA_TABLE_NOT_EXIST;
+    }
+  }
+
+  // condition tables check
+  for (size_t i = 0; i < selects.condition_num; i++) {
+    if (selects.conditions[i].left_is_attr == 1) {
+      if (selects.conditions[i].left_attr.relation_name == nullptr) {
+        continue;
+      }
+      table = DefaultHandler::get_default().find_table(
+          db, selects.conditions[i].left_attr.relation_name);
+      if (nullptr == table) {
+        LOG_WARN("No such table [%s] in db [%s]",
+                 selects.conditions[i].left_attr.relation_name, db);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+      }
+    }
+    if (selects.conditions[i].right_is_attr == 1) {
+      if (selects.conditions[i].right_attr.relation_name == nullptr) {
+        continue;
+      }
+      table = DefaultHandler::get_default().find_table(
+          db, selects.conditions[i].right_attr.relation_name);
+      if (nullptr == table) {
+        LOG_WARN("No such table [%s] in db [%s]",
+                 selects.conditions[i].right_attr.relation_name, db);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+      }
+    }
+  }
+  table = DefaultHandler::get_default().find_table(db, table_name);
+  if (nullptr == table) {
+    LOG_WARN("No such table [%s] in db [%s]", table_name, db);
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+  return RC::SUCCESS;
+}
+RC create_selection_executor_v2(Trx *trx, const Selects &selects,
+                                const char *db, const char *table_name,
+                                SelectExeNode &select_node) {
+  Table *table;
+  RC rc;
+  rc = check_select_node_meta(selects, db, table_name, table);
+  // 列出跟这张表关联的Attr
+  TupleSchema schema;
+
+  //如果是聚合函数：count/min/max/avg(PARAMETER)，直接select PARAMETER
+  if (selects.aggregation_num > 0 && selects.attr_num == 0) {
+    for (int i = selects.aggregation_num - 1; i >= 0; i--) {
+      if (1 == selects.aggregations[i].is_value) {
+        // 列出这张表所有字段
+        TupleSchema::from_table(table, schema);
+        break;  // 没有校验，给出* 之后，再写字段的错误
+      }
+      const RelAttr &attr = selects.aggregations[i].attribute;
+      if (nullptr == attr.relation_name ||
+          0 == strcmp(table_name, attr.relation_name)) {
+        if (0 == strcmp("*", attr.attribute_name)) {
+          // 列出这张表所有字段
+          TupleSchema::from_table(table, schema);
+          break;  // 没有校验，给出* 之后，再写字段的错误
+        } else {
+          // 列出这张表相关字段
+          RC rc = schema_add_field(table, attr.attribute_name, schema);
+          if (rc != RC::SUCCESS) {
+            return rc;
+          }
+        }
+      }
+    }
+  } else {  // 正常的投影操作
+    for (int i = selects.attr_num - 1; i >= 0; i--) {
+      const RelAttr &attr = selects.attributes[i];
+      if (nullptr == attr.relation_name ||
+          0 == strcmp(table_name, attr.relation_name)) {
+        if (0 == strcmp("*", attr.attribute_name)) {
+          // 列出这张表所有字段
+          TupleSchema::from_table(table, schema);
+          break;  // 没有校验，给出* 之后，再写字段的错误
+        } else {
+          // 列出这张表相关字段
+          RC rc = schema_add_field(table, attr.attribute_name, schema);
+          if (rc != RC::SUCCESS) {
+            return rc;
+          }
+        }
+      }
+    }
+  }
+
+  // 找出仅与此表相关的过滤条件, 或者都是值的过滤条件
+  std::vector<DefaultConditionFilter *> condition_filters;
+  for (size_t i = 0; i < selects.condition_num; i++) {
+    const Condition &condition = selects.conditions[i];
+    if ((condition.left_is_attr == 0 &&
+         condition.right_is_attr == 0) ||  // 两边都是值
+        (condition.left_is_attr == 1 && condition.right_is_attr == 0 &&
+         match_table(selects, condition.left_attr.relation_name,
+                     table_name)) ||  // 左边是属性右边是值
+        (condition.left_is_attr == 0 && condition.right_is_attr == 1 &&
+         match_table(selects, condition.right_attr.relation_name,
+                     table_name)) ||  // 左边是值，右边是属性名
+        (condition.left_is_attr == 1 && condition.right_is_attr == 1 &&
+         match_table(selects, condition.left_attr.relation_name, table_name) &&
+         match_table(selects, condition.right_attr.relation_name,
+                     table_name))  // 左右都是属性名，并且表名都符合
+    ) {
+      DefaultConditionFilter *condition_filter = new DefaultConditionFilter();
+      RC rc = condition_filter->init(*table, condition);
+      if (rc != RC::SUCCESS) {
+        delete condition_filter;
+        for (DefaultConditionFilter *&filter : condition_filters) {
+          delete filter;
+        }
+        return rc;
+      }
+      condition_filters.push_back(condition_filter);
+    }
+  }
+
+  return select_node.init(trx, table, std::move(schema),
+                          std::move(condition_filters));
+}
+void aggregation_exec_v2(const Selects &selects, TupleSet &res_tuples) {
+  if (selects.aggregation_num > 0) {
+    //目前agg只涉及单表情况
+    const char *table_name = selects.relations[0];
+    //先设置schema
+    TupleSchema agg_schema;
+    for (size_t i = 0; i < selects.aggregation_num; i++) {
+      const Aggregation &agg = selects.aggregations[i];
+      //设置type
+      AttrType attr;
+      switch (agg.func_name) {
+        case FuncName::AGG_MAX:
+        case FuncName::AGG_MIN: {
+          if (agg.is_value) {
+            attr = agg.value.type;
+          } else {
+            //获取对应的field
+            const TupleSchema &ts = res_tuples.get_schema();
+            const TupleField &tf = ts.field(ts.index_of_field(
+                table_name,
+                agg.attribute.attribute_name));  //获取func(age)的age
+            attr = tf.type();
+          }
+
+          break;
+        }
+
+        case FuncName::AGG_COUNT:
+          attr = AttrType::INTS;
+          break;
+        case FuncName::AGG_AVG:
+          attr = AttrType::FLOATS;
+          break;
+      }
+
+      agg_schema.add(attr, table_name, agg_to_string(agg).c_str());
+    }
+    //再依次添加字段值
+    Tuple out;
+    for (size_t i = 0; i < selects.aggregation_num; i++) {
+      const Aggregation &agg = selects.aggregations[i];
+      const std::vector<Tuple> &tuples = res_tuples.tuples();
+      switch (agg.func_name) {
+        case FuncName::AGG_MAX:
+        case FuncName::AGG_MIN: {
+          int type = agg.func_name == FuncName::AGG_MAX ? 1 : -1;
+
+          //遍历所有元组，获取最大值
+          int target_idx = 0;
+          for (size_t t = 1; t < tuples.size(); t++) {
+            if (type * tuples[t]
+                           .get(res_tuples.get_schema().index_of_field(
+                               table_name, agg.attribute.attribute_name))
+                           .compare(tuples[target_idx].get(
+                               res_tuples.get_schema().index_of_field(
+                                   table_name, agg.attribute.attribute_name))) >
+                0) {
+              target_idx = t;
+            }
+          }
+          //增加这条记录
+          out.add(tuples[target_idx].get_pointer(
+              res_tuples.get_schema().index_of_field(
+                  table_name, agg.attribute.attribute_name)));
+
+          break;
+        }
+        case FuncName::AGG_COUNT: {
+          // 值为size的大小
+          //增加这条记录
+          out.add((int)tuples.size());
+          break;
+        }
+        case FuncName::AGG_AVG: {
+          //遍历所有元组，获取和
+          float sum = 0;
+          for (size_t t = 0; t < tuples.size(); t++) {
+            AttrType type = tuples[t]
+                                .get(res_tuples.get_schema().index_of_field(
+                                    table_name, agg.attribute.attribute_name))
+                                .get_type();
+            switch (type) {
+              case AttrType::INTS:
+                sum += ((IntValue &)tuples[t].get(
+                            res_tuples.get_schema().index_of_field(
+                                table_name, agg.attribute.attribute_name)))
+                           .get_value();
+                break;
+              case AttrType::FLOATS:
+                sum += ((FloatValue &)tuples[t].get(
+                            res_tuples.get_schema().index_of_field(
+                                table_name, agg.attribute.attribute_name)))
+                           .get_value();
+                break;
+              case AttrType::DATES:
+                sum += ((DateValue &)tuples[t].get(
+                            res_tuples.get_schema().index_of_field(
+                                table_name, agg.attribute.attribute_name)))
+                           .get_value();
+                break;
+              default:
+                // TODO: 报错，非数值类型
+                break;
+            }
+          }
+          //增加这条记录
+          out.add(sum / tuples.size());
+          break;
+        }
+      }
+    }
+    //等所有值都计算完再去清除res
+    res_tuples.clear();
+    res_tuples.set_schema(agg_schema);
+    res_tuples.add(std::move(out));
+  }
+
+  return;
+}
+
+RC generate_select_node(const Selects &selects, Session *session, Trx *trx,
+                        const char *db,
+                        std::vector<SelectExeNode *> &select_nodes) {
+  RC rc = RC::SUCCESS;
+  for (size_t i = 0; i < selects.relation_num; i++) {
+    const char *table_name = selects.relations[i];
+    SelectExeNode *select_node = new SelectExeNode;
+    rc = create_selection_executor_v2(trx, selects, db, table_name,
+                                      *select_node);
+    if (rc != RC::SUCCESS) {
+      delete select_node;
+      for (SelectExeNode *&tmp_node : select_nodes) {
+        delete tmp_node;
+      }
+      end_trx_if_need(session, trx, false);
+      return rc;
+    }
+    select_nodes.push_back(select_node);
+  }
+  if (select_nodes.empty()) {
+    LOG_ERROR("No table given");
+    end_trx_if_need(session, trx, false);
+    return RC::SQL_SYNTAX;
+  }
+  return rc;
+}
+RC exec_select_node(Session *session, Trx *trx,
+                    std::vector<SelectExeNode *> &select_nodes,
+                    std::vector<TupleSet> &tuple_sets) {
+  RC rc = RC::SUCCESS;
+  for (SelectExeNode *&node : select_nodes) {
+    TupleSet tuple_set;
+    rc = node->execute(tuple_set);
+    if (rc != RC::SUCCESS) {
+      select_nodes_destroy(select_nodes);
+      end_trx_if_need(session, trx, false);
+      return rc;
+    } else {
+      tuple_sets.push_back(std::move(tuple_set));
+    }
+  }
+  return rc;
+}
+void multi_table_select(const Selects &selects,
+                        const std::vector<TupleSet> &tuple_sets,
+                        TupleSet &print_tuples) {
+  // 本次查询了多张表，需要做join操作
+  // 【每个输出元组的列名需要扩展为[tableName].[colName]的形式】
+  // 测试环境会保证多表查询的每个attr都是*或table.id的格式，不会出现单单的id
+  // 需要按照selects.attribute的顺序添加，如果是t1.*就添加整张表
+  TupleSchema join_schema;
+  //仅仅是把每个表的每个字段无序拼接起来，用于下面的对应和查找
+  TupleSchema old_schema;
+  for (std::vector<TupleSet>::const_reverse_iterator rit = tuple_sets.rbegin(),
+                                                     rend = tuple_sets.rend();
+       rit != rend; ++rit) {
+    //这里是某张表投影完的所有字段，如果是select * from t1,t2;
+    // old_schema=[t1.a, t1.b, t2.a, t2.b]
+    old_schema.append(rit->get_schema());
+  }
+
+  //对照着列名的输出顺序。之后输出一行tuple的时候，tuple.col[i]就输出到select_order[i]的位置
+  std::vector<int> select_order;
+  for (int i = selects.attr_num - 1; i >= 0; i--) {
+    const RelAttr &rel_attr = selects.attributes[i];
+    if (0 == strcmp("*", rel_attr.attribute_name)) {
+      if (rel_attr.relation_name == nullptr) {
+        //如果是select * ，添加所有字段
+        for (size_t f = 0; f < old_schema.fields().size(); f++) {
+          join_schema.add(old_schema.fields()[f]);
+          select_order.push_back(f);
+        }
+      } else {
+        //如果是select t1.*，表名匹配的加入字段
+        for (size_t f = 0; f < old_schema.fields().size(); f++) {
+          if (0 == strcmp(old_schema.fields()[f].table_name(),
+                          rel_attr.relation_name)) {
+            join_schema.add(old_schema.fields()[f]);
+            select_order.push_back(f);
+          }
+        }
+      }
+    } else {
+      //如果是select t1.age，表名+字段名匹配的加入字段
+      int f = old_schema.index_of_field(rel_attr.relation_name,
+                                        rel_attr.attribute_name);
+      join_schema.add(old_schema.fields()[f]);
+      select_order.push_back(f);
+    }
+  }
+
+  print_tuples.set_schema(join_schema);
+  // 【联查的conditions需要找到对应的表】
+  // C x 3数组
+  // 每一条的3个元素代表（左值的属性在新schema的下标，CompOp运算符，右值的属性在新schema的下标）
+  std::vector<std::vector<int>> condition_idxs;
+  for (size_t i = 0; i < selects.condition_num; i++) {
+    const Condition &condition = selects.conditions[i];
+    if (condition.left_is_attr == 1 &&
+        condition.right_is_attr == 1)  // 左右都是属性名，并且表名都符合
+    {
+      std::vector<int> temp_con;
+      const char *l_table_name = condition.left_attr.relation_name;
+      const char *l_field_name = condition.left_attr.attribute_name;
+      const CompOp comp = condition.comp;
+      const char *r_table_name = condition.right_attr.relation_name;
+      const char *r_field_name = condition.right_attr.attribute_name;
+      temp_con.push_back(
+          print_tuples.get_schema().index_of_field(l_table_name, l_field_name));
+      temp_con.push_back(comp);
+      temp_con.push_back(
+          print_tuples.get_schema().index_of_field(r_table_name, r_field_name));
+      condition_idxs.push_back(temp_con);
+    }
+  }
+  // 【元组的拼接需要实现笛卡尔积】
+  // 给每个表分配一个pos指针，另外还需要一个输出用的temp_tuple
+  std::vector<std::vector<Tuple>::const_iterator> tuple_poses;
+  std::vector<std::vector<Tuple>::const_iterator> tuple_poses_begin;
+  std::vector<std::vector<Tuple>::const_iterator> tuple_poses_end;
+
+  std::vector<std::vector<Tuple>::const_iterator> temp_tuples;
+  for (std::vector<TupleSet>::const_reverse_iterator rit = tuple_sets.rbegin(),
+                                                     rend = tuple_sets.rend();
+       rit != rend; ++rit) {
+    tuple_poses.push_back(rit->tuples().begin());
+    tuple_poses_begin.push_back(rit->tuples().begin());
+    tuple_poses_end.push_back(rit->tuples().end());
+    temp_tuples.push_back(rit->tuples().begin());
+  }
+  const size_t N = tuple_sets.size();
+  //每个表都有数据才会有结果集，一旦有空表就是空结果
+  if (temp_tuples.size() == N) {
+    //补满后就输出
+    Tuple res_tuple = merge_tuples(temp_tuples, select_order);
+    if (match_join_condition(&res_tuple, condition_idxs))
+      print_tuples.add(std::move(res_tuple));
+    while (tuple_poses[0] != tuple_poses_end[0]) {
+      //弹出最末的Tuple
+      temp_tuples.pop_back();
+      //前进一步指针，如果越界，就回到表头(除了结束)，并继续弹出Tuple
+      tuple_poses[temp_tuples.size()]++;
+      if (tuple_poses[temp_tuples.size()] ==
+          tuple_poses_end[temp_tuples.size()]) {
+        if (temp_tuples.size() > 0)
+          tuple_poses[temp_tuples.size()] =
+              tuple_poses_begin[temp_tuples.size()];
+        continue;
+      }
+      //将元组补满
+      while (temp_tuples.size() < N) {
+        temp_tuples.push_back(tuple_poses[temp_tuples.size()]);
+      }
+      //补满后就输出
+      Tuple res_tuple = merge_tuples(temp_tuples, select_order);
+      if (match_join_condition(&res_tuple, condition_idxs))
+        print_tuples.add(std::move(res_tuple));
+    }
+  }
+}
+RC ExecuteStage::icy_do_select(const char *db, const Query *sql,
+                               SessionEvent *session_event) {
+  RC rc = RC::SUCCESS;
+  Session *session = session_event->get_client()->session;
+  Trx *trx = session->current_trx();
+  const Selects &selects = sql->sstr.selection;
+  std::vector<SelectExeNode *> select_nodes;
+  //每张表的投影操作，选取的范围包括属于此表的【attribute】【condition中的attribute】
+  //生成待执行投影Node
+  rc = generate_select_node(selects, session, trx, db, select_nodes);
+  if (rc != RC::SUCCESS) return rc;
+  //物化到内存，执行N个表的投影，生成N个tuple_set
+  std::vector<TupleSet> tuple_sets;
+  rc = exec_select_node(session, trx, select_nodes, tuple_sets);
+  if (rc != RC::SUCCESS) return rc;
+
+  std::stringstream ss;
+  TupleSet print_tuples;
+  if (tuple_sets.size() > 1) {
+    multi_table_select(selects, tuple_sets, print_tuples);
+    //聚合算子
+    aggregation_exec_v2(selects, print_tuples);
+    print_tuples.print(ss, selects.relation_num > 1);
+  } else {
+    //聚合算子
+    aggregation_exec_v2(selects, tuple_sets.front());
+    tuple_sets.front().print(ss, selects.relation_num > 1);
+  }
+
+  select_nodes_destroy(select_nodes);
+  session_event->set_response(ss.str());
+  end_trx_if_need(session, trx, true);
+  return rc;
+}
+//----火山模型----
+std::unique_ptr<AbstractExecutor> CreateExecutor(ExecutorContext *exec_ctx,
+                                                 AbstractPlanNode *plan) {
+  switch (plan->GetType()) {
+    // Create a new sequential scan executor.
+    case PlanType::SeqScan: {
+      return std::make_unique<SeqScanExecutor>(
+          exec_ctx, dynamic_cast<SeqScanPlanNode *>(plan));
+    }
+
+      // Create a new aggregation executor.
+      // case PlanType::Aggregation: {
+      //   auto agg_plan = dynamic_cast<const AggregationPlanNode *>(plan);
+      //   auto child_executor =
+      //       ExecutorFactory::CreateExecutor(exec_ctx,
+      //       agg_plan->GetChildPlan());
+      //   return std::make_unique<AggregationExecutor>(exec_ctx, agg_plan,
+      //                                                std::move(child_executor));
+      // }
+
+      // case PlanType::NestedLoopJoin: {
+      //   auto nested_loop_join_plan =
+      //       dynamic_cast<const NestedLoopJoinPlanNode *>(plan);
+      //   auto left =
+      //       CreateExecutor(exec_ctx, nested_loop_join_plan->GetLeftPlan());
+      //   auto right =
+      //       CreateExecutor(exec_ctx, nested_loop_join_plan->GetRightPlan());
+      //   return std::make_unique<NestedLoopJoinExecutor>(
+      //       exec_ctx, nested_loop_join_plan, std::move(left),
+      //       std::move(right));
+      // }
+
+    default: {
+      assert(false && "No Plan Type");
+    }
+  }
+}
+RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
+                                   SessionEvent *session_event) {
+  RC rc = RC::SUCCESS;
+  Session *session = session_event->get_client()->session;
+  Trx *trx = session->current_trx();
+  std::stringstream ss;
+
+  // query plan
+  Table *table = DefaultHandler::get_default().find_table(db, "t");
+  TupleSchema schema;
+  TupleSchema::from_table(table, schema);
+  schema.print(ss, false);
+  SeqScanPlanNode plan{&schema, "t"};
+
+  ExecutorContext exec_ctx{trx, db};
+  std::unique_ptr<AbstractExecutor> executor = CreateExecutor(&exec_ctx, &plan);
+  // prepare
+  executor->Init();
+
+  // execute
+  Tuple tuple;
+  RID rid;
+  // rid初始值
+  rid.page_num = 1;
+  rid.slot_num = -1;
+  while ((rc = executor->Next(&tuple, &rid)) == RC::SUCCESS) {
+    tuple.print(ss);
+  }
+  // if (rc != RC::EMPTY) {
+  //   end_trx_if_need(session, trx, false);
+  //   return rc;
+  // }
+  session_event->set_response(ss.str());
+  end_trx_if_need(session, trx, true);
+  return RC::SUCCESS;
 }
