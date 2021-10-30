@@ -29,6 +29,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/executor/executor_context.h"
 #include "sql/executor/executors/abstract_executor.h"
 #include "sql/executor/executors/seq_scan_executor.h"
+#include "sql/executor/expressions/abstract_expression.h"
+#include "sql/executor/expressions/column_value_expression.h"
 #include "sql/executor/plans/abstract_plan.h"
 #include "sql/executor/tuple.h"
 #include "storage/common/condition_filter.h"
@@ -1263,6 +1265,12 @@ std::unique_ptr<AbstractExecutor> CreateExecutor(ExecutorContext *exec_ctx,
     }
   }
 }
+const AbstractExpression *MakeColumnValueExpression(
+    const TupleSchema &schema, size_t tuple_idx, const std::string &col_name) {
+  size_t col_idx = schema.GetColIdx(col_name);
+  auto col_type = schema.field(col_idx).type();
+  return std::make_unique<ColumnValueExpression>(tuple_idx, col_idx, col_type);
+}
 RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
                                    SessionEvent *session_event) {
   RC rc = RC::SUCCESS;
@@ -1271,9 +1279,11 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   std::stringstream ss;
 
   // query plan
+
   Table *table = DefaultHandler::get_default().find_table(db, "t");
   TupleSchema schema;
   TupleSchema::from_table(table, schema);
+  auto *col_a = MakeColumnValueExpression(schema, 0, "id");
   schema.print(ss, false);
   SeqScanPlanNode plan{&schema, "t"};
 

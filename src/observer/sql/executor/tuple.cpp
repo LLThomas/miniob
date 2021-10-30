@@ -154,7 +154,13 @@ void TupleSchema::print(std::ostream &os, bool multi_table) const {
   }
   os << fields_.back().field_name() << std::endl;
 }
-
+size_t TupleSchema::GetColIdx(const std::string &col_name) const {
+  for (size_t i = 0; i < fields_.size(); ++i) {
+    if (std::string{fields_[i].field_name()} == col_name) {
+      return i;
+    }
+  }
+}
 /////////////////////////////////////////////////////////////////////////////
 TupleSet::TupleSet(TupleSet &&other)
     : tuples_(std::move(other.tuples_)), schema_(other.schema_) {
