@@ -1,51 +1,32 @@
+#ifndef __OBSERVER_SQL_ABSTRACT_EXPRESSION_H__
+#define __OBSERVER_SQL_ABSTRACT_EXPRESSION_H__
 #include <vector>
 
-#include "sql/executor/tuple.h"
+#include "sql/executor/value.h"
 #include "sql/parser/parse.h"
+class Tuple;
+class TupleSchema;
+
 class AbstractExpression {
  public:
-  /**
-   * Create a new AbstractExpression with the given children and return type.
-   * @param children the children of this abstract expression
-   * @param ret_type the return type of this abstract expression when it is
-   * evaluated
-   */
   AbstractExpression(std::vector<const AbstractExpression *> &&children,
                      AttrType ret_type)
       : children_{std::move(children)}, ret_type_{ret_type} {}
 
-  /** Virtual destructor. */
   virtual ~AbstractExpression() = default;
 
-  /** @return the value obtained by evaluating the tuple with the given schema
-   */
-  virtual const TupleValue &Evaluate(const Tuple *tuple,
-                                     const TupleSchema *schema) const = 0;
+  virtual const std::shared_ptr<TupleValue> &Evaluate(
+      const Tuple *tuple, const TupleSchema *schema) const = 0;
 
-  /**
-   * Returns the value obtained by evaluating a join.
-   * @param left_tuple the left tuple
-   * @param left_schema the left tuple's schema
-   * @param right_tuple the right tuple
-   * @param right_schema the right tuple's schema
-   * @return the value obtained by evaluating a join on the left and right
-   */
-  virtual const TupleValue &EvaluateJoin(
+  virtual const std::shared_ptr<TupleValue> &EvaluateJoin(
       const Tuple *left_tuple, const TupleSchema *left_schema,
       const Tuple *right_tuple, const TupleSchema *right_schema) const = 0;
 
-  /**
-   * Returns the value obtained by evaluating the aggregates.
-   * @param group_bys the group by values
-   * @param aggregates the aggregate values
-   * @return the value obtained by checking the aggregates and group bys
-   */
-  virtual const TupleValue &EvaluateAggregate(
-      const std::vector<Value> &group_bys,
-      const std::vector<Value> &aggregates) const = 0;
+  virtual const std::shared_ptr<TupleValue> &EvaluateAggregate(
+      const std::vector<TupleValue> &group_bys,
+      const std::vector<TupleValue> &aggregates) const = 0;
 
-  /** @return the child_idx'th child of this expression */
-  const AbstractExpression *GetChildAt(uint32_t child_idx) const {
+  const AbstractExpression *GetChildAt(size_t child_idx) const {
     return children_[child_idx];
   }
 
@@ -64,3 +45,4 @@ class AbstractExpression {
   /** The return type of this expression. */
   AttrType ret_type_;
 };
+#endif

@@ -46,6 +46,9 @@ Tuple::~Tuple() {}
 
 // add (Value && value)
 void Tuple::add(TupleValue *value) { values_.emplace_back(value); }
+void Tuple::add(const TupleValue *value) {
+  values_.emplace_back((TupleValue *)value);
+}
 
 void Tuple::add(const std::shared_ptr<TupleValue> &other) {
   values_.emplace_back(other);
@@ -93,8 +96,14 @@ void TupleSchema::add(AttrType type, const char *table_name,
   fields_.emplace_back(type, table_name, field_name);
 }
 
+void TupleSchema::add(AttrType type, const char *table_name,
+                      const char *field_name, const AbstractExpression *expr) {
+  fields_.emplace_back(type, table_name, field_name, expr);
+}
+
 void TupleSchema::add(const TupleField &otherfield) {
-  add(otherfield.type(), otherfield.table_name(), otherfield.field_name());
+  add(otherfield.type(), otherfield.table_name(), otherfield.field_name(),
+      otherfield.expr());
 }
 void TupleSchema::add_if_not_exists(AttrType type, const char *table_name,
                                     const char *field_name) {

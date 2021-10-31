@@ -1266,10 +1266,24 @@ std::unique_ptr<AbstractExecutor> CreateExecutor(ExecutorContext *exec_ctx,
   }
 }
 const AbstractExpression *MakeColumnValueExpression(
-    const TupleSchema &schema, size_t tuple_idx, const std::string &col_name) {
+    const TupleSchema &schema, size_t tuple_idx, const std::string &col_name,
+    std::vector<std::unique_ptr<AbstractExpression>> &expressions) {
   size_t col_idx = schema.GetColIdx(col_name);
   auto col_type = schema.field(col_idx).type();
-  return std::make_unique<ColumnValueExpression>(tuple_idx, col_idx, col_type);
+  expressions.emplace_back(
+      std::make_unique<ColumnValueExpression>(tuple_idx, col_idx, col_type));
+  return expressions.back().get();
+}
+void MakeOutputSchema(
+    const std::vector<std::pair<std::string, const AbstractExpression *>>
+        &exprs,
+    TupleSchema &schema, const char *table_name) {
+  for (const auto &input : exprs) {
+    schema.add({input.second->GetReturnType(), table_name, input.first.c_str(),
+                input.second
+
+    });
+  }
 }
 RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
                                    SessionEvent *session_event) {
@@ -1279,13 +1293,16 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   std::stringstream ss;
 
   // query plan
-
+  std::vector<std::unique_ptr<AbstractExpression>> allocated_expressions;
   Table *table = DefaultHandler::get_default().find_table(db, "t");
   TupleSchema schema;
   TupleSchema::from_table(table, schema);
-  auto *col_a = MakeColumnValueExpression(schema, 0, "id");
-  schema.print(ss, false);
-  SeqScanPlanNode plan{&schema, "t"};
+  const AbstractExpression *col_a =
+      MakeColumnValueExpression(schema, 0, "id", allocated_expressions);
+  TupleSchema output_schema;
+  MakeOutputSchema({{"id", col_a}}, output_schema, table->name());
+  output_schema.print(ss, false);
+  SeqScanPlanNode plan{&output_schema, table->name()};
 
   ExecutorContext exec_ctx{trx, db};
   std::unique_ptr<AbstractExecutor> executor = CreateExecutor(&exec_ctx, &plan);

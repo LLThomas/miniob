@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __OBSERVER_SQL_EXECUTOR_CONTEXT_H__
+#define __OBSERVER_SQL_EXECUTOR_CONTEXT_H__
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -17,3 +18,4 @@ class ExecutorContext {
   Trx *trx_;
   const char *db_;
 };
+#endif

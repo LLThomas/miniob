@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include <memory>
 #include <vector>
 
+#include "sql/executor/expressions/abstract_expression.h"
 #include "sql/executor/value.h"
 #include "sql/parser/parse.h"
 #include "storage/common/record_manager.h"
@@ -39,6 +40,7 @@ class Tuple {
       noexcept;
 
   void add(TupleValue *value);
+  void add(const TupleValue *value);
 
   void add(const std::shared_ptr<TupleValue> &other);
 
@@ -59,6 +61,7 @@ class Tuple {
   int size() const { return values_.size(); }
 
   const TupleValue &get(int index) const { return *values_[index]; }
+
   void clear() { values_.clear(); }
   const std::shared_ptr<TupleValue> &get_pointer(int index) const {
     return values_[index];
@@ -72,12 +75,19 @@ class TupleField {
  public:
   TupleField(AttrType type, const char *table_name, const char *field_name)
       : type_(type), table_name_(table_name), field_name_(field_name) {}
-
+  TupleField(AttrType type, const char *table_name, const char *field_name,
+             const AbstractExpression *expr)
+      : type_(type),
+        table_name_(table_name),
+        field_name_(field_name),
+        expr_(expr) {}
   AttrType type() const { return type_; }
 
   const char *table_name() const { return table_name_.c_str(); }
 
   const char *field_name() const { return field_name_.c_str(); }
+
+  const AbstractExpression *expr() const { return expr_; }
 
   std::string to_string() const;
 
@@ -85,6 +95,7 @@ class TupleField {
   AttrType type_;
   std::string table_name_;
   std::string field_name_;
+  const AbstractExpression *expr_;
 };
 
 class TupleSchema {
@@ -94,6 +105,8 @@ class TupleSchema {
   ~TupleSchema() = default;
 
   void add(AttrType type, const char *table_name, const char *field_name);
+  void add(AttrType type, const char *table_name, const char *field_name,
+           const AbstractExpression *expr);
   void add(const TupleField &otherfield);
 
   void add_if_not_exists(AttrType type, const char *table_name,

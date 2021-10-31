@@ -1,5 +1,6 @@
 
-#pragma once
+#ifndef __OBSERVER_SQL_ABSTRACT_PLAN_H__
+#define __OBSERVER_SQL_ABSTRACT_PLAN_H__
 #include <vector>
 
 #include "sql/executor/tuple.h"
@@ -29,3 +30,4 @@ class AbstractPlanNode {
   TupleSchema *output_schema_;
   std::vector<const AbstractPlanNode *> children_;
 };
+#endif

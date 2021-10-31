@@ -1,8 +1,10 @@
 #include "sql/executor/executors/seq_scan_executor.h"
 
+#include <iostream>
+
+#include "sql/executor/expressions/abstract_expression.h"
 #include "storage/common/table.h"
 #include "storage/default/default_handler.h"
-
 SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx,
                                  SeqScanPlanNode *plan)
     : AbstractExecutor(exec_ctx), plan_(plan) {}
@@ -37,9 +39,17 @@ RC SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   }
   rid->page_num = record.rid.page_num;
   rid->slot_num = record.rid.slot_num;
-  TupleSet unused_tupleset;  //暂时全部扫描
+  //（暂时）全部行，全部列扫描
+  TupleSet unused_tupleset;
   TupleRecordConverter converter{table, unused_tupleset};
   converter.record_to_tuple(tuple, &record);
-
+  //投影操作
+  Tuple projection_tuple;
+  for (auto &f : plan_->OutputSchema()->fields()) {
+    projection_tuple.add(f.expr()->Evaluate(tuple, plan_->OutputSchema()));
+  }
+  // //输出
+  tuple->operator=(std::move(projection_tuple));
+  tuple->print(std::cout);  // debug
   return RC::SUCCESS;
 }

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __OBSERVER_SQL_SEQ_SCAN_PLAN_H__
+#define __OBSERVER_SQL_SEQ_SCAN_PLAN_H__
 #include "sql/executor/plans/abstract_plan.h"
 #include "sql/executor/tuple.h"
 class SeqScanPlanNode : public AbstractPlanNode {
@@ -12,3 +13,4 @@ class SeqScanPlanNode : public AbstractPlanNode {
  private:
   const char* table_name_;  //需要进行序列扫描的表名（或唯一标识符）
 };
+#endif
