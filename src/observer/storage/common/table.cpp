@@ -313,10 +313,23 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out) {
   int record_size = table_meta_.record_size();
   char *record = new char[record_size];
 
+  uint32_t null_mask = 0;
   const int normal_field_start_index = table_meta_.sys_field_num();
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value &value = values[i];
+    if (value.type == NULLS) {
+      if (field->nullable()) {
+        null_mask |= 1u << (i + normal_field_start_index);
+        continue;
+      } else {
+        LOG_ERROR("Field %s is not nullable but a NULL is inserted.",
+                  field->name());
+        delete[] record;
+        return INVALID_ARGUMENT;
+      }
+    }
+
     if (field->type() == DATES && value.type == CHARS) {
       uint16_t date;
       RC rc = serialize_date(&date, (const char *)value.data);
@@ -335,6 +348,10 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out) {
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
     }
   }
+
+  // 只能工作在小端序的机器上
+  memcpy(record + table_meta_.null_mask_field()->offset(), (void *)&null_mask,
+         table_meta_.null_mask_field()->len());
 
   record_out = record;
   return RC::SUCCESS;

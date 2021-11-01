@@ -43,6 +43,11 @@
 #if YYDEBUG
 extern int yydebug;
 #endif
+/* "%code requires" blocks.  */
+#line 120 "yacc_sql.y"
+ #include <stdbool.h> 
+
+#line 51 "yacc_sql.tab.h"
 
 /* Token type.  */
 #ifndef YYTOKENTYPE
@@ -95,13 +100,17 @@ extern int yydebug;
     AGGMIN = 301,
     AGGCOUNT = 302,
     AGGAVG = 303,
-    NUMBER = 304,
-    FLOAT = 305,
-    ID = 306,
-    PATH = 307,
-    SSS = 308,
-    STAR = 309,
-    STRING_V = 310
+    NOT = 304,
+    NULL_TOK = 305,
+    NULLABLE = 306,
+    IS = 307,
+    NUMBER = 308,
+    FLOAT = 309,
+    ID = 310,
+    PATH = 311,
+    SSS = 312,
+    STAR = 313,
+    STRING_V = 314
   };
 #endif
 
@@ -109,7 +118,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 117 "yacc_sql.y"
+#line 122 "yacc_sql.y"
 
   struct _Attr *attr;
   struct _Condition *condition1;
@@ -117,9 +126,10 @@ union YYSTYPE
   char *string;
   int number;
   float floats;
-	char *position;
+  char *position;
+  bool *bools;
 
-#line 123 "yacc_sql.tab.h"
+#line 133 "yacc_sql.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

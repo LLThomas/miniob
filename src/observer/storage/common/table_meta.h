@@ -30,9 +30,7 @@ class TableMeta : public common::Serializable {
 
   TableMeta(const TableMeta &other);
 
-  void swap(TableMeta &other)
-
-      noexcept;
+  void swap(TableMeta &other) noexcept;
 
   RC init(const char *name, int field_num, const AttrInfo attributes[]);
 
@@ -42,6 +40,8 @@ class TableMeta : public common::Serializable {
   const char *name() const;
 
   const FieldMeta *trx_field() const;
+
+  const FieldMeta *null_mask_field() const;
 
   const FieldMeta *field(int index) const;
 

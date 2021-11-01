@@ -112,7 +112,12 @@ ParserContext *get_context(yyscan_t scanner)
 		AGGMIN
 		AGGCOUNT
 		AGGAVG
+		NOT
+		NULL_TOK
+		NULLABLE
+		IS
 		
+%code requires { #include <stdbool.h> }
 
 %union {
   struct _Attr *attr;
@@ -121,7 +126,8 @@ ParserContext *get_context(yyscan_t scanner)
   char *string;
   int number;
   float floats;
-	char *position;
+  char *position;
+  bool *bools;
 }
 
 %token <number> NUMBER
@@ -137,6 +143,7 @@ ParserContext *get_context(yyscan_t scanner)
 %type <condition1> condition;
 %type <value1> value;
 %type <number> number;
+%type <bools> nullable;
 
 %%
 
@@ -249,10 +256,10 @@ attr_def_list:
     ;
     
 attr_def:
-    ID_get type LBRACE number RBRACE 
+    ID_get type LBRACE number RBRACE nullable
 		{
 			AttrInfo attribute;
-			attr_info_init(&attribute, CONTEXT->id, $2, $4);
+			attr_info_init(&attribute, CONTEXT->id, $2, $4, $6);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name =(char*)malloc(sizeof(char));
 			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
@@ -260,11 +267,11 @@ attr_def:
 			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].length = $4;
 			CONTEXT->value_length++;
 		}
-    |ID_get type
+    |ID_get type nullable
 		{
 			AttrInfo attribute;
 			// 从 1970-01-01 ~ 2038-03-01 有 24896 天，DATE 类型使用两个字节存储
-			attr_info_init(&attribute, CONTEXT->id, $2, $2 == DATES ? 2 : 4);
+			attr_info_init(&attribute, CONTEXT->id, $2, $2 == DATES ? 2 : 4, $3);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name=(char*)malloc(sizeof(char));
 			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
@@ -273,6 +280,13 @@ attr_def:
 			CONTEXT->value_length++;
 		}
     ;
+
+nullable:
+    { $$ = false; }
+    | NULLABLE { $$ = true; }
+    | NOT NULL_TOK { $$ = false; }
+    ;
+
 number:
 		NUMBER {$$ = $1;}
 		;
@@ -340,6 +354,9 @@ value:
 		$1 = substr($1,1,strlen($1)-2);
   		value_init_string(&CONTEXT->values[CONTEXT->value_length++], $1);
 		}
+    |NULL_TOK {
+    		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
+    }
     ;
     
 delete:		/*  delete 语句的语法解析树*/
@@ -478,7 +495,25 @@ condition_list:
 			}
     ;
 condition:
-    ID comOp value 
+                ID IS NULL_TOK
+                {
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+
+			Condition condition;
+			condition_init(&condition, IS_LEFT_ATTR_NULL, 1, &left_attr, NULL, 0, NULL, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+                }
+                | ID DOT ID IS NULL_TOK
+                {
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
+
+			Condition condition;
+			condition_init(&condition, IS_LEFT_ATTR_NULL, 1, &left_attr, NULL, 0, NULL, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+                }
+                | ID comOp value
 		{
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, NULL, $1);
@@ -499,7 +534,7 @@ condition:
 			// $$->right_value = *$3;
 
 		}
-		|value comOp value 
+		| value comOp value
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
@@ -519,7 +554,7 @@ condition:
 			// $$->right_value = *$3;
 
 		}
-		|ID comOp ID 
+		| ID comOp ID
 		{
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, NULL, $1);
@@ -539,7 +574,7 @@ condition:
 			// $$->right_attr.attribute_name=$3;
 
 		}
-    |value comOp ID
+                | value comOp ID
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
 			RelAttr right_attr;
@@ -561,7 +596,7 @@ condition:
 			// $$->right_attr.attribute_name=$3;
 		
 		}
-    |ID DOT ID comOp value
+                | ID DOT ID comOp value
 		{
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, $1, $3);
@@ -581,8 +616,8 @@ condition:
 			// $$->right_attr.attribute_name=NULL;
 			// $$->right_value =*$5;			
 							
-    }
-    |value comOp ID DOT ID
+                }
+                | value comOp ID DOT ID
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
 
@@ -602,8 +637,8 @@ condition:
 			// $$->right_attr.relation_name = $3;
 			// $$->right_attr.attribute_name = $5;
 									
-    }
-    |ID DOT ID comOp ID DOT ID
+                }
+                |ID DOT ID comOp ID DOT ID
 		{
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, $1, $3);
@@ -621,7 +656,7 @@ condition:
 			// $$->right_is_attr = 1;		//属性
 			// $$->right_attr.relation_name=$5;
 			// $$->right_attr.attribute_name=$7;
-    }
+                }
     ;
 
 comOp:
