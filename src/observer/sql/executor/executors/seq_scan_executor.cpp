@@ -5,6 +5,8 @@
 #include "sql/executor/expressions/abstract_expression.h"
 #include "storage/common/table.h"
 #include "storage/default/default_handler.h"
+#include "storage/common/condition_filter.h"
+
 SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx,
                                  SeqScanPlanNode *plan)
     : AbstractExecutor(exec_ctx), plan_(plan) {}
@@ -33,10 +35,21 @@ RC SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   Record record;
   record.rid = *(rid);
   RecordFileScanner scanner;
-  rc = table->scan_one_tuple(&record);
+  // rc = table->scan_one_tuple(&record);
+  // scan record by filter
+  CompositeConditionFilter condition_filter;
+  condition_filter.init((const ConditionFilter **)plan_->GetFilter().data(),
+                        plan_->GetFilter().size());
+  rc = table->scan_one_tuple_by_filter(&record, &condition_filter);
+
+  LOG_ERROR("%s %s", record.data, strrc(rc));
+
   if (rc != RC::SUCCESS) {
     return rc;
   }
+
+  LOG_ERROR("%s", strrc(rc));
+
   rid->page_num = record.rid.page_num;
   rid->slot_num = record.rid.slot_num;
   //（暂时）全部行，全部列扫描

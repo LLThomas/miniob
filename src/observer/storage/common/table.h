@@ -79,6 +79,8 @@ class Table {
 
   RC create_index(Trx *trx, const char *index_name, const char *attribute_name);
 
+  RC scan_one_tuple_by_filter(Record *record, ConditionFilter *filter);
+
   RC scan_one_tuple(Record *record);
 
  public:

@@ -5,10 +5,7 @@
 // #include <utility>
 // #include <vector>
 
-// #include "catalog/schema.h"
-// #include "execution/expressions/abstract_expression.h"
-// #include "storage/table/tuple.h"
-// #include "type/value_factory.h"
+// #include "executor/expressions/abstract_expression.h"
 
 // /** ComparisonType represents the type of comparison that we want to perform.
 // */ enum class ComparisonType {

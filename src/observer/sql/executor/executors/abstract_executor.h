@@ -15,6 +15,6 @@ class AbstractExecutor {
   virtual TupleSchema *GetOutputSchema() = 0;
 
  protected:
-  ExecutorContext *exec_ctx_;
+ ExecutorContext *exec_ctx_;
 };
 #endif

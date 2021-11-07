@@ -4,7 +4,10 @@
 #include <vector>
 
 #include "sql/executor/tuple.h"
-enum class PlanType { SeqScan };
+enum class PlanType { 
+  SeqScan, 
+  HashJoin
+};
 
 class AbstractPlanNode {
  public:
@@ -16,8 +19,9 @@ class AbstractPlanNode {
 
   TupleSchema *OutputSchema() const { return output_schema_; }
 
-  const AbstractPlanNode *GetChildAt(int child_idx) const {
-    return children_[child_idx];
+  AbstractPlanNode *GetChildAt(int child_idx) const {
+    // return children_[child_idx];
+    return nullptr;
   }
 
   const std::vector<const AbstractPlanNode *> &GetChildren() const {

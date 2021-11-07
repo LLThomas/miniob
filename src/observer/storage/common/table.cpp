@@ -493,6 +493,29 @@ RC Table::scan_record_by_index(Trx *trx, IndexScanner *scanner,
   return rc;
 }
 
+RC Table::scan_one_tuple_by_filter(Record *record, ConditionFilter *filter) {
+  RC rc = RC::SUCCESS;
+  RecordFileScanner scanner;
+  rc = scanner.open_scan(*data_buffer_pool_, file_id_, filter);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("failed to open scanner. file id=%d. rc=%d:%s", file_id_, rc,
+              strrc(rc));
+    return rc;
+  }
+  rc = scanner.get_next_record(record);
+  // if (RC::RECORD_EOF == rc) {
+  //   rc = RC::SUCCESS;
+  // } else {
+  //   LOG_ERROR("failed to scan record. file id=%d, rc=%d:%s", file_id_, rc,
+  //             strrc(rc));
+  // }
+  scanner.close_scan();
+
+  LOG_ERROR(" table: %s %s", record->data, strrc(rc));
+
+  return rc;
+}
+
 RC Table::scan_one_tuple(Record *record) {
   RC rc = RC::SUCCESS;
 
@@ -513,6 +536,7 @@ RC Table::scan_one_tuple(Record *record) {
   rc = scanner.get_next_record(record);
   return rc;
 }
+
 class IndexInserter {
  public:
   explicit IndexInserter(Index *index) : index_(index) {}
