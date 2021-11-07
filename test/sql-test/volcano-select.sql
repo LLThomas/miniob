@@ -8,6 +8,6 @@ insert into t values(6,6.666);
 
 select age from t;
 select * from t;
--- select * from t where id>3;
+select * from t where id>3;
 -- select age from t where id>3;
 -- select * from t where id>3 and age<6.0; 

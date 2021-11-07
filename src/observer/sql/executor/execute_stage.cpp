@@ -36,6 +36,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/executor/expressions/abstract_expression.h"
 #include "sql/executor/expressions/column_value_expression.h"
 #include "sql/executor/expressions/comparison_expression.h"
+#include "sql/executor/expressions/constant_value_expression.h"
 #include "sql/executor/plans/abstract_plan.h"
 #include "sql/executor/tuple.h"
 #include "storage/common/condition_filter.h"
