@@ -5,7 +5,9 @@
 // #include <utility>
 // #include <vector>
 
-// #include "executor/expressions/abstract_expression.h"
+// #include "sql/executor/expressions/abstract_expression.h"
+// #include "sql/executor/tuple.h"
+// #include "sql/executor/value.h"
 
 // /** ComparisonType represents the type of comparison that we want to perform.
 // */ enum class ComparisonType {
@@ -27,8 +29,8 @@
 //    */
 //   ComparisonExpression(const AbstractExpression *left,
 //                        const AbstractExpression *right,
-//                        ComparisonType comp_type)
-//       : AbstractExpression({left, right}, TypeId::BOOLEAN),
+//                        CompOp comp_type)
+//       : AbstractExpression({left, right}, AttrType::BOOLEAN),
 //         comp_type_{comp_type} {}
 
 //   TupleValue Evaluate(const Tuple *tuple, const Schema *schema) const

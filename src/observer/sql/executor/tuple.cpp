@@ -269,7 +269,7 @@ void TupleRecordConverter::add_record(const char *record) {
 
 void TupleRecordConverter::record_to_tuple(Tuple *tuple, Record *record) {
   const TableMeta &table_meta = table_->table_meta();
-  for (int i = 1; i <= table_meta.field_num(); i++) {
+  for (int i = 1; i < table_meta.field_num(); i++) {
     const FieldMeta *field_meta = table_meta.field(i);
     assert(field_meta != nullptr);
     switch (field_meta->type()) {

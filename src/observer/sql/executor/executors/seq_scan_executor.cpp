@@ -3,9 +3,9 @@
 #include <iostream>
 
 #include "sql/executor/expressions/abstract_expression.h"
+#include "storage/common/condition_filter.h"
 #include "storage/common/table.h"
 #include "storage/default/default_handler.h"
-#include "storage/common/condition_filter.h"
 
 SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx,
                                  SeqScanPlanNode *plan)
