@@ -16,10 +16,10 @@ See the Mulan PSL v2 for more details. */
 
 #include <string.h>
 
+#include <iomanip>
 #include <ostream>
 #include <sstream>
 #include <string>
-#include <iomanip>
 
 #include "execute_stage.h"
 #include "rc.h"
@@ -85,21 +85,22 @@ class FloatValue : public TupleValue {
  public:
   explicit FloatValue(float value) : value_(value) {}
 
-  void to_string(std::ostream &os) const override { 
-    int n=2;
+  void to_string(std::ostream &os) const override {
+    int n = 2;
     //保留两位小数，含零
     std::stringstream temp_ss;
     temp_ss.setf(std::ios::fixed);
-    temp_ss << std::setprecision(n)<<value_;
+    temp_ss << std::setprecision(n) << value_;
     std::string out;
     temp_ss >> out;
     //此时只有三种情况 X.00 X.X0 X.XX
-    for(;n>=0;n--)
-    {
-      if(out.back()=='0' || out.back()=='.') out.pop_back();
-      else break;
+    for (; n >= 0; n--) {
+      if (out.back() == '0' || out.back() == '.')
+        out.pop_back();
+      else
+        break;
     }
-    os<<out;
+    os << out;
   }
 
   int compare(const TupleValue &other) const override {

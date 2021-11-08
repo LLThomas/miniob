@@ -14,8 +14,8 @@ See the Mulan PSL v2 for more details. */
 #ifndef __OBSERVER_STORAGE_COMMON_TABLE_H__
 #define __OBSERVER_STORAGE_COMMON_TABLE_H__
 
+#include "sql/executor/expressions/abstract_expression.h"
 #include "storage/common/table_meta.h"
-
 class DiskBufferPool;
 
 class RecordFileHandler;
@@ -78,6 +78,10 @@ class Table {
                  void (*record_reader)(const char *data, void *context));
 
   RC create_index(Trx *trx, const char *index_name, const char *attribute_name);
+
+  RC scan_one_tuple_by_filter(Record *record, ConditionFilter *filter);
+
+  RC scan_one_tuple(Record *record);
 
  public:
   const char *name() const;

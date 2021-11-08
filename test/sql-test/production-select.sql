@@ -20,3 +20,4 @@ select pr1.id,pr2.price,pr1.price from pr1,pr2;
 select pr2.*,pr1.price from pr1,pr2;
 select * from pr1,pr2,pr3;
 select pr2.id,pr3.*,pr1.price from pr1,pr2,pr3;
+select pr2.id from pr1,pr2 where pr1.id<3 and pr2.price=7.345 and pr1.id=pr2.id;

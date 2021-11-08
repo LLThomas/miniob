@@ -77,6 +77,8 @@ class DefaultConditionFilter : public ConditionFilter {
         case GREAT_THAN:
           op = LESS_THAN;
           break;
+        default:
+          break;
       }
     }
     return op;

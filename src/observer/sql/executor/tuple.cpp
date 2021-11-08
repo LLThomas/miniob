@@ -14,6 +14,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/executor/tuple.h"
 
 #include "common/log/log.h"
+#include "storage/common/record_manager.h"
 #include "storage/common/table.h"
 
 Tuple::Tuple(const Tuple &other) {
@@ -45,6 +46,9 @@ Tuple::~Tuple() {}
 
 // add (Value && value)
 void Tuple::add(TupleValue *value) { values_.emplace_back(value); }
+void Tuple::add(const TupleValue *value) {
+  values_.emplace_back((TupleValue *)value);
+}
 
 void Tuple::add(const std::shared_ptr<TupleValue> &other) {
   values_.emplace_back(other);
@@ -57,7 +61,17 @@ void Tuple::add(uint16_t value) { add(new DateValue(value)); }
 void Tuple::add(float value) { add(new FloatValue(value)); }
 
 void Tuple::add(const char *s, int len) { add(new StringValue(s, len)); }
-
+void Tuple::print(std::ostream &os) {
+  for (std::vector<std::shared_ptr<TupleValue>>::const_iterator
+           iter = values_.begin(),
+           end = --values_.end();
+       iter != end; ++iter) {
+    (*iter)->to_string(os);
+    os << " | ";
+  }
+  values_.back()->to_string(os);
+  os << std::endl;
+}
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TupleField::to_string() const {
@@ -82,8 +96,14 @@ void TupleSchema::add(AttrType type, const char *table_name,
   fields_.emplace_back(type, table_name, field_name);
 }
 
+void TupleSchema::add(AttrType type, const char *table_name,
+                      const char *field_name, const AbstractExpression *expr) {
+  fields_.emplace_back(type, table_name, field_name, expr);
+}
+
 void TupleSchema::add(const TupleField &otherfield) {
-  add(otherfield.type(), otherfield.table_name(), otherfield.field_name());
+  add(otherfield.type(), otherfield.table_name(), otherfield.field_name(),
+      otherfield.expr());
 }
 void TupleSchema::add_if_not_exists(AttrType type, const char *table_name,
                                     const char *field_name) {
@@ -143,7 +163,13 @@ void TupleSchema::print(std::ostream &os, bool multi_table) const {
   }
   os << fields_.back().field_name() << std::endl;
 }
-
+size_t TupleSchema::GetColIdx(const std::string &col_name) const {
+  for (size_t i = 0; i < fields_.size(); ++i) {
+    if (std::string{fields_[i].field_name()} == col_name) {
+      return i;
+    }
+  }
+}
 /////////////////////////////////////////////////////////////////////////////
 TupleSet::TupleSet(TupleSet &&other)
     : tuples_(std::move(other.tuples_)), schema_(other.schema_) {
@@ -208,7 +234,6 @@ const std::vector<Tuple> &TupleSet::tuples() const { return tuples_; }
 /////////////////////////////////////////////////////////////////////////////
 TupleRecordConverter::TupleRecordConverter(Table *table, TupleSet &tuple_set)
     : table_(table), tuple_set_(tuple_set) {}
-
 void TupleRecordConverter::add_record(const char *record) {
   const TupleSchema &schema = tuple_set_.schema();
   Tuple tuple;
@@ -240,4 +265,34 @@ void TupleRecordConverter::add_record(const char *record) {
   }
 
   tuple_set_.add(std::move(tuple));
+}
+
+void TupleRecordConverter::record_to_tuple(Tuple *tuple, Record *record) {
+  const TableMeta &table_meta = table_->table_meta();
+  for (int i = 1; i < table_meta.field_num(); i++) {
+    const FieldMeta *field_meta = table_meta.field(i);
+    assert(field_meta != nullptr);
+    switch (field_meta->type()) {
+      case INTS: {
+        int value = *(int *)(record->data + field_meta->offset());
+        tuple->add(value);
+      } break;
+      case DATES: {
+        uint16_t value = *(uint16_t *)(record->data + field_meta->offset());
+        tuple->add(value);
+      } break;
+      case FLOATS: {
+        float value = *(float *)(record->data + field_meta->offset());
+        tuple->add(value);
+      } break;
+      case CHARS: {
+        const char *s =
+            record->data + field_meta->offset();  // 现在当做Cstring来处理
+        tuple->add(s, strlen(s));
+      } break;
+      default: {
+        LOG_PANIC("Unsupported field type. type=%d", field_meta->type());
+      }
+    }
+  }
 }
