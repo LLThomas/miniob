@@ -22,6 +22,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/string.h"
 #include "common/log/log.h"
 #include "common/os/path.h"
+#include "sql/executor/expressions/abstract_expression.h"
 #include "sql/executor/value.h"
 #include "storage/common/bplus_tree_index.h"
 #include "storage/common/condition_filter.h"

@@ -1290,15 +1290,22 @@ const AbstractExpression *MakeColumnValueExpression(
       std::make_unique<ColumnValueExpression>(tuple_idx, col_idx, col_type));
   return expressions.back().get();
 }
-// const AbstractExpression *MakeComparisonExpression(
-//     const TupleSchema &schema, size_t tuple_idx, const std::string &col_name,
-//     std::vector<std::unique_ptr<AbstractExpression>> &expressions) {
-//   size_t col_idx = schema.GetColIdx(col_name);
-//   auto col_type = schema.field(col_idx).type();
-//   expressions.emplace_back(
-//       std::make_unique<ColumnValueExpression>(tuple_idx, col_idx, col_type));
-//   return expressions.back().get();
-// }
+
+const AbstractExpression *MakeConstantValueExpression(
+    const std::shared_ptr<TupleValue> &val,
+    std::vector<std::unique_ptr<AbstractExpression>> &expressions) {
+  expressions.emplace_back(std::make_unique<ConstantValueExpression>(val));
+  return expressions.back().get();
+}
+
+const AbstractExpression *MakeComparisonExpression(
+    const AbstractExpression *lhs, const AbstractExpression *rhs,
+    CompOp comp_type,
+    std::vector<std::unique_ptr<AbstractExpression>> &expressions) {
+  expressions.emplace_back(
+      std::make_unique<ComparisonExpression>(lhs, rhs, comp_type));
+  return expressions.back().get();
+}
 void MakeOutputSchema(
     const std::vector<std::pair<std::string, const AbstractExpression *>>
         &exprs,
@@ -1309,16 +1316,41 @@ void MakeOutputSchema(
   }
 }
 
-// const AbstractExpression *MakeComparisonExpression(const AbstractExpression
-// *lhs, const AbstractExpression *rhs,
-//                                                      ComparisonType
-//                                                      comp_type,
-//                                                      std::vector<std::unique_ptr<AbstractExpression>>
-//                                                      &expressions) {
-//     expressions.emplace_back(std::make_unique<ComparisonExpression>(lhs, rhs,
-//     comp_type)); return expressions.back().get();
-//   }
-
+const AbstractExpression *ParseConditionToExpression(
+    const RelAttr rel, const Value val, const int is_attr,
+    std::unordered_map<std::string, const Table *> from_tables_map,
+    std::vector<std::unique_ptr<AbstractExpression>> &expressions) {
+  if (is_attr == 1) {
+    std::string table_name;
+    if (rel.relation_name == nullptr) {
+      table_name = from_tables_map[""]->name();
+    } else {
+      table_name = rel.relation_name;
+    }
+    TupleSchema schema;
+    TupleSchema::from_table(from_tables_map[table_name], schema);
+    return MakeColumnValueExpression(schema, 0, rel.attribute_name,
+                                     expressions);
+  } else {
+    switch (val.type) {
+      case AttrType::INTS: {
+        return MakeConstantValueExpression(
+            std::make_shared<IntValue>(*((int *)val.data)), expressions);
+      }
+      case AttrType::FLOATS: {
+        return MakeConstantValueExpression(
+            std::make_shared<FloatValue>(*((float *)val.data)), expressions);
+      }
+      case AttrType::DATES: {
+        return MakeConstantValueExpression(
+            std::make_shared<DateValue>(*((uint16_t *)val.data)), expressions);
+      }
+      default:
+        // TODO: 报错，非数值类型
+        return nullptr;
+    }
+  }
+}
 RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
                                    SessionEvent *session_event) {
   RC rc = RC::SUCCESS;
@@ -1337,6 +1369,12 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
         db, sql->sstr.selection.relations[i]);
     from_tables.emplace_back(table);
   }
+  // 生成哈希表{表名,表指针}
+  std::unordered_map<std::string, const Table *> from_tables_map;
+  for (size_t i = 0; i < from_tables.size(); i++) {
+    from_tables_map[from_tables[i]->name()] = from_tables[i];
+  }
+  from_tables_map[""] = from_tables[0];
   // 2. sort from_tables by table length
   std::sort(from_tables.begin(), from_tables.end(),
             [](const Table *t1, const Table *t2) {
@@ -1360,6 +1398,18 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   //     where_comp[con.right_attr.relation_name].push_back(con);
   //   }
   // }
+  std::vector<const AbstractExpression *> predicates;  //默认全是用AND连接的
+  for (size_t i = 0; i < sql->sstr.selection.condition_num; i++) {
+    Condition con = sql->sstr.selection.conditions[i];
+    const AbstractExpression *lhs = ParseConditionToExpression(
+        con.left_attr, con.left_value, con.left_is_attr, from_tables_map,
+        allocated_expressions);
+    const AbstractExpression *rhs = ParseConditionToExpression(
+        con.right_attr, con.right_value, con.right_is_attr, from_tables_map,
+        allocated_expressions);
+    predicates.push_back(
+        MakeComparisonExpression(lhs, rhs, con.comp, allocated_expressions));
+  }
   // 4. parse SELECT
   std::vector<std::pair<std::string, const AbstractExpression *>> out_proj;
   for (size_t i = 0; i < sql->sstr.selection.attr_num; i++) {
@@ -1463,8 +1513,8 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   }
   MakeOutputSchema(out_proj, scan_schema, scan_table->name());
   scan_schema.print(ss, false);
-  scan_plan = std::make_unique<SeqScanPlanNode>(
-      &scan_schema, scan_table->name(), condition_filters);
+  scan_plan = std::make_unique<SeqScanPlanNode>(&scan_schema,
+                                                scan_table->name(), predicates);
 
   // execute plan
   ExecutorContext exec_ctx{trx, db};

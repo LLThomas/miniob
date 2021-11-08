@@ -16,19 +16,19 @@ class ConstantValueExpression : public AbstractExpression {
   explicit ConstantValueExpression(const std::shared_ptr<TupleValue> &val)
       : AbstractExpression({}, val->get_type()), val_(val) {}
 
-  const std::shared_ptr<TupleValue> &Evaluate(
+  const std::shared_ptr<TupleValue> Evaluate(
       const Tuple *tuple, const TupleSchema *schema) const override {
     return val_;
   }
 
-  const std::shared_ptr<TupleValue> &EvaluateJoin(
+  const std::shared_ptr<TupleValue> EvaluateJoin(
       const Tuple *left_tuple, const TupleSchema *left_schema,
       const Tuple *right_tuple,
       const TupleSchema *right_schema) const override {
     return val_;
   }
 
-  const std::shared_ptr<TupleValue> &EvaluateAggregate(
+  const std::shared_ptr<TupleValue> EvaluateAggregate(
       const std::vector<TupleValue> &group_bys,
       const std::vector<TupleValue> &aggregates) const override {
     return val_;

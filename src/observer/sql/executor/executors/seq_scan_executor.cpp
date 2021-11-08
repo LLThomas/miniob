@@ -18,7 +18,9 @@ RC SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
     rid->page_num = 1;  // from 1 参考DiskBufferPool
     rid->slot_num = -1;
   }
-  tuple->clear();
+  Table *table = DefaultHandler::get_default().find_table(
+      exec_ctx_->getDB(), plan_->GetTableName());
+
   RC rc;
   // //用随机数代替表
   // int random_value = rand() % 100;
@@ -30,32 +32,41 @@ RC SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   // }
 
   //单行扫描
-  Table *table = DefaultHandler::get_default().find_table(
-      exec_ctx_->getDB(), plan_->GetTableName());
-  Record record;
-  record.rid = *(rid);
-  RecordFileScanner scanner;
-  // rc = table->scan_one_tuple(&record);
-  // scan record by filter
-  CompositeConditionFilter condition_filter;
-  condition_filter.init((const ConditionFilter **)plan_->GetFilter().data(),
-                        plan_->GetFilter().size());
-  rc = table->scan_one_tuple_by_filter(&record, &condition_filter);
+  bool passed = false;
+  while (!passed) {
+    tuple->clear();
+    Record record;
+    record.rid = *(rid);
+    RecordFileScanner scanner;
+    rc = table->scan_one_tuple(&record);
+    // scan record by filter
+    // CompositeConditionFilter condition_filter;
+    // condition_filter.init((const ConditionFilter
+    // **)plan_->GetFilter().data(),
+    //                       plan_->GetFilter().size());
+    // rc = table->scan_one_tuple_by_filter(&record, &condition_filter);
 
-  LOG_ERROR("%s %s", record.data, strrc(rc));
+    if (rc != RC::SUCCESS) {
+      return rc;
+    }
 
-  if (rc != RC::SUCCESS) {
-    return rc;
+    rid->page_num = record.rid.page_num;
+    rid->slot_num = record.rid.slot_num;
+    //（暂时）全部行，全部列扫描
+    TupleSet unused_tupleset;
+    TupleRecordConverter converter{table, unused_tupleset};
+    converter.record_to_tuple(tuple, &record);
+    //候选操作
+    passed = true;
+    for (int i = 0; i < plan_->GetPredicates().size(); i++) {
+      const std::shared_ptr<TupleValue> comp_val =
+          plan_->GetPredicates()[i]->Evaluate(tuple, plan_->OutputSchema());
+      if (comp_val->compare(IntValue(true)) != 0) {  // comp_val!=true
+        passed = false;
+        break;
+      }
+    }
   }
-
-  LOG_ERROR("%s", strrc(rc));
-
-  rid->page_num = record.rid.page_num;
-  rid->slot_num = record.rid.slot_num;
-  //（暂时）全部行，全部列扫描
-  TupleSet unused_tupleset;
-  TupleRecordConverter converter{table, unused_tupleset};
-  converter.record_to_tuple(tuple, &record);
   //投影操作
   Tuple projection_tuple;
   for (auto &f : plan_->OutputSchema()->fields()) {

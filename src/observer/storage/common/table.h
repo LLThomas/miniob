@@ -14,8 +14,8 @@ See the Mulan PSL v2 for more details. */
 #ifndef __OBSERVER_STORAGE_COMMON_TABLE_H__
 #define __OBSERVER_STORAGE_COMMON_TABLE_H__
 
+#include "sql/executor/expressions/abstract_expression.h"
 #include "storage/common/table_meta.h"
-
 class DiskBufferPool;
 
 class RecordFileHandler;

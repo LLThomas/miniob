@@ -2,6 +2,7 @@
 #ifndef __OBSERVER_SQL_COMPARISON_EXPRESSION_H__
 #define __OBSERVER_SQL_COMPARISON_EXPRESSION_H__
 
+#include <iostream>
 #include <utility>
 #include <vector>
 
@@ -22,14 +23,14 @@ class ComparisonExpression : public AbstractExpression {
       : AbstractExpression({left, right}, AttrType::INTS),
         comp_type_{comp_type} {}
 
-  const std::shared_ptr<TupleValue> &Evaluate(
+  const std::shared_ptr<TupleValue> Evaluate(
       const Tuple *tuple, const TupleSchema *schema) const override {
     std::shared_ptr<TupleValue> lhs = GetChildAt(0)->Evaluate(tuple, schema);
     std::shared_ptr<TupleValue> rhs = GetChildAt(1)->Evaluate(tuple, schema);
     return std::make_shared<IntValue>(PerformComparison(lhs, rhs));
   }
 
-  const std::shared_ptr<TupleValue> &EvaluateJoin(
+  const std::shared_ptr<TupleValue> EvaluateJoin(
       const Tuple *left_tuple, const TupleSchema *left_schema,
       const Tuple *right_tuple,
       const TupleSchema *right_schema) const override {
@@ -40,7 +41,7 @@ class ComparisonExpression : public AbstractExpression {
     return std::make_shared<IntValue>(PerformComparison(lhs, rhs));
   }
 
-  const std::shared_ptr<TupleValue> &EvaluateAggregate(
+  const std::shared_ptr<TupleValue> EvaluateAggregate(
       const std::vector<TupleValue> &group_bys,
       const std::vector<TupleValue> &aggregates) const override {
     std::shared_ptr<TupleValue> lhs =

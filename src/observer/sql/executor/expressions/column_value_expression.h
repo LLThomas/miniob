@@ -18,12 +18,12 @@ class ColumnValueExpression : public AbstractExpression {
         tuple_idx_{tuple_idx},
         col_idx_{col_idx} {}
 
-  const std::shared_ptr<TupleValue> &Evaluate(
+  const std::shared_ptr<TupleValue> Evaluate(
       const Tuple *tuple, const TupleSchema *schema) const override {
     return tuple->get_pointer(col_idx_);
   }
 
-  const std::shared_ptr<TupleValue> &EvaluateJoin(
+  const std::shared_ptr<TupleValue> EvaluateJoin(
       const Tuple *left_tuple, const TupleSchema *left_schema,
       const Tuple *right_tuple,
       const TupleSchema *right_schema) const override {
@@ -31,7 +31,7 @@ class ColumnValueExpression : public AbstractExpression {
                            : right_tuple->get_pointer(col_idx_);
   }
 
-  const std::shared_ptr<TupleValue> &EvaluateAggregate(
+  const std::shared_ptr<TupleValue> EvaluateAggregate(
       const std::vector<TupleValue> &group_bys,
       const std::vector<TupleValue> &aggregates) const override {
     assert(false &&

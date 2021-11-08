@@ -15,14 +15,14 @@ class AbstractExpression {
 
   virtual ~AbstractExpression() = default;
 
-  virtual const std::shared_ptr<TupleValue> &Evaluate(
+  virtual const std::shared_ptr<TupleValue> Evaluate(
       const Tuple *tuple, const TupleSchema *schema) const = 0;
 
-  virtual const std::shared_ptr<TupleValue> &EvaluateJoin(
+  virtual const std::shared_ptr<TupleValue> EvaluateJoin(
       const Tuple *left_tuple, const TupleSchema *left_schema,
       const Tuple *right_tuple, const TupleSchema *right_schema) const = 0;
 
-  virtual const std::shared_ptr<TupleValue> &EvaluateAggregate(
+  virtual const std::shared_ptr<TupleValue> EvaluateAggregate(
       const std::vector<TupleValue> &group_bys,
       const std::vector<TupleValue> &aggregates) const = 0;
 
