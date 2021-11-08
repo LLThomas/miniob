@@ -1342,8 +1342,14 @@ const AbstractExpression *ParseConditionToExpression(
             std::make_shared<FloatValue>(*((float *)val.data)), expressions);
       }
       case AttrType::DATES: {
+        uint16_t d;
+        serialize_date(&d, (const char *)val.data);
+        return MakeConstantValueExpression(std::make_shared<DateValue>(d),
+                                           expressions);
+      }
+      case AttrType::CHARS: {
         return MakeConstantValueExpression(
-            std::make_shared<DateValue>(*((uint16_t *)val.data)), expressions);
+            std::make_shared<StringValue>((const char *)val.data), expressions);
       }
       default:
         // TODO: 报错，非数值类型
@@ -1401,6 +1407,33 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   std::vector<const AbstractExpression *> predicates;  //默认全是用AND连接的
   for (size_t i = 0; i < sql->sstr.selection.condition_num; i++) {
     Condition con = sql->sstr.selection.conditions[i];
+
+    // 对 DATE 类型进行特殊处理
+    if (con.left_is_attr) {
+      auto rel_name = con.left_attr.relation_name == nullptr
+                          ? ""
+                          : con.left_attr.relation_name;
+      AttrType left_type = from_tables_map[rel_name]
+                               ->table_meta()
+                               .field(con.left_attr.attribute_name)
+                               ->type();
+      if (left_type == DATES && !con.right_is_attr &&
+          con.right_value.type == CHARS)
+        con.right_value.type = DATES;
+    }
+    if (con.right_is_attr) {
+      auto rel_name = con.right_attr.relation_name == nullptr
+                          ? ""
+                          : con.right_attr.relation_name;
+      AttrType right_type = from_tables_map[rel_name]
+                                ->table_meta()
+                                .field(con.right_attr.attribute_name)
+                                ->type();
+      if (right_type == DATES && !con.left_is_attr &&
+          con.left_value.type == CHARS)
+        con.left_value.type = DATES;
+    }
+
     const AbstractExpression *lhs = ParseConditionToExpression(
         con.left_attr, con.left_value, con.left_is_attr, from_tables_map,
         allocated_expressions);
