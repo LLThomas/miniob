@@ -15,6 +15,11 @@ TEST_F(NullTest, no_index) {
   ASSERT_EQ(ExecuteSql("insert into t values (null, 1, 1);"), "FAILURE\n");
   ASSERT_EQ(ExecuteSql("insert into t values (1, null, 1);"), "FAILURE\n");
   ASSERT_EQ(ExecuteSql("insert into t values (1, 1, null);"), "SUCCESS\n");
-  ASSERT_EQ(ExecuteSql("select * from t;"), "a | b | c\n1 | 1 | null\n");
-//  ASSERT_EQ(ExecuteSql("select * from t where c is null;"), "a | b | c\n1 | 1 | null\n");
+  ASSERT_EQ(ExecuteSql("insert into t values (1, 1, 1);"), "SUCCESS\n");
+  ASSERT_EQ(ExecuteSql("select * from t;"),
+            "a | b | c\n1 | 1 | null\n1 | 1 | 1\n");
+  ASSERT_EQ(ExecuteSql("select * from t where c is null;"),
+            "a | b | c\n1 | 1 | null\n");
+  ASSERT_EQ(ExecuteSql("select * from t where c is not null;"),
+            "a | b | c\n1 | 1 | 1\n");
 }

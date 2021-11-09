@@ -1477,9 +1477,12 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
     const AbstractExpression *lhs = ParseConditionToExpression(
         con.left_attr, con.left_value, con.left_is_attr, from_tables_map,
         allocated_expressions);
-    const AbstractExpression *rhs = ParseConditionToExpression(
-        con.right_attr, con.right_value, con.right_is_attr, from_tables_map,
-        allocated_expressions);
+    const AbstractExpression *rhs = nullptr;
+    if (con.comp != IS_LEFT_ATTR_NULL && con.comp != IS_LEFT_ATTR_NOT_NULL) {
+      rhs = ParseConditionToExpression(con.right_attr, con.right_value,
+                                       con.right_is_attr, from_tables_map,
+                                       allocated_expressions);
+    }
     predicates.push_back(
         MakeComparisonExpression(lhs, rhs, con.comp, allocated_expressions));
   }

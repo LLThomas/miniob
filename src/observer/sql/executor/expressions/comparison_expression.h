@@ -26,7 +26,10 @@ class ComparisonExpression : public AbstractExpression {
   const std::shared_ptr<TupleValue> Evaluate(
       const Tuple *tuple, const TupleSchema *schema) const override {
     std::shared_ptr<TupleValue> lhs = GetChildAt(0)->Evaluate(tuple, schema);
-    std::shared_ptr<TupleValue> rhs = GetChildAt(1)->Evaluate(tuple, schema);
+    std::shared_ptr<TupleValue> rhs = nullptr;
+    if (comp_type_ != IS_LEFT_ATTR_NULL && comp_type_ != IS_LEFT_ATTR_NOT_NULL) {
+      rhs = GetChildAt(1)->Evaluate(tuple, schema);
+    }
     return std::make_shared<IntValue>(PerformComparison(lhs, rhs));
   }
 
@@ -67,6 +70,10 @@ class ComparisonExpression : public AbstractExpression {
         return lhs->compare(*rhs) > 0;
       case CompOp::GREAT_EQUAL:
         return lhs->compare(*rhs) >= 0;
+      case CompOp::IS_LEFT_ATTR_NULL:
+        return std::dynamic_pointer_cast<NullValue>(lhs) != nullptr;
+      case CompOp::IS_LEFT_ATTR_NOT_NULL:
+        return std::dynamic_pointer_cast<NullValue>(lhs) == nullptr;
       default:
         assert(false && "Unsupported comparison type.");
     }

@@ -83,7 +83,7 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr,
     condition->left_value = *left_value;
   }
 
-  if (comp != IS_LEFT_ATTR_NULL) {
+  if (comp != IS_LEFT_ATTR_NULL && comp != IS_LEFT_ATTR_NOT_NULL) {
     condition->right_is_attr = right_is_attr;
     if (right_is_attr) {
       condition->right_attr = *right_attr;

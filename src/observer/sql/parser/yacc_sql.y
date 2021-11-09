@@ -504,6 +504,15 @@ condition:
 			condition_init(&condition, IS_LEFT_ATTR_NULL, 1, &left_attr, NULL, 0, NULL, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
+                | ID IS NOT NULL_TOK
+                {
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+
+			Condition condition;
+			condition_init(&condition, IS_LEFT_ATTR_NOT_NULL, 1, &left_attr, NULL, 0, NULL, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+                }
                 | ID DOT ID IS NULL_TOK
                 {
 			RelAttr left_attr;
@@ -511,6 +520,15 @@ condition:
 
 			Condition condition;
 			condition_init(&condition, IS_LEFT_ATTR_NULL, 1, &left_attr, NULL, 0, NULL, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+                }
+                | ID DOT ID IS NOT NULL_TOK
+                {
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+
+			Condition condition;
+			condition_init(&condition, IS_LEFT_ATTR_NOT_NULL, 1, &left_attr, NULL, 0, NULL, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
                 | ID comOp value
