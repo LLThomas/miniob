@@ -45,6 +45,8 @@ void relation_attr_destroy(RelAttr *relation_attr) {
   relation_attr->attribute_name = nullptr;
 }
 
+void value_init_null(Value *value) { value->type = NULLS; }
+
 void value_init_integer(Value *value, int v) {
   value->type = INTS;
   value->data = malloc(sizeof(v));
@@ -63,8 +65,10 @@ void value_init_string(Value *value, const char *v) {
 }
 
 void value_destroy(Value *value) {
+  if (value->type != NULLS && value->type != UNDEFINED) {
+    free(value->data);
+  }
   value->type = UNDEFINED;
-  free(value->data);
   value->data = nullptr;
 }
 
@@ -79,11 +83,13 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr,
     condition->left_value = *left_value;
   }
 
-  condition->right_is_attr = right_is_attr;
-  if (right_is_attr) {
-    condition->right_attr = *right_attr;
-  } else {
-    condition->right_value = *right_value;
+  if (comp != IS_LEFT_ATTR_NULL) {
+    condition->right_is_attr = right_is_attr;
+    if (right_is_attr) {
+      condition->right_attr = *right_attr;
+    } else {
+      condition->right_value = *right_value;
+    }
   }
 }
 
@@ -108,10 +114,11 @@ void aggregation_destroy(Aggregation *aggregation) {
 }
 
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type,
-                    size_t length) {
+                    size_t length, bool nullable) {
   attr_info->name = strdup(name);
   attr_info->type = type;
   attr_info->length = length;
+  attr_info->nullable = nullable;
 }
 
 void attr_info_destroy(AttrInfo *attr_info) {
@@ -138,6 +145,7 @@ void selects_append_conditions(Selects *selects, Condition conditions[],
   }
   selects->condition_num = condition_num;
 }
+
 void selects_append_aggregation(Selects *selects, Aggregation *aggregation) {
   selects->aggregations[selects->aggregation_num++] = *aggregation;
 }

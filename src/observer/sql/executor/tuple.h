@@ -44,6 +44,8 @@ class Tuple {
 
   void add(const std::shared_ptr<TupleValue> &other);
 
+  void add();
+
   void add(int value);
 
   void add(uint16_t value);

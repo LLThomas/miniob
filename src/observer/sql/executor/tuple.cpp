@@ -54,6 +54,8 @@ void Tuple::add(const std::shared_ptr<TupleValue> &other) {
   values_.emplace_back(other);
 }
 
+void Tuple::add() { add(new NullValue()); }
+
 void Tuple::add(int value) { add(new IntValue(value)); }
 
 void Tuple::add(uint16_t value) { add(new DateValue(value)); }
@@ -269,7 +271,15 @@ void TupleRecordConverter::add_record(const char *record) {
 
 void TupleRecordConverter::record_to_tuple(Tuple *tuple, Record *record) {
   const TableMeta &table_meta = table_->table_meta();
-  for (int i = 1; i < table_meta.field_num(); i++) {
+  int null_mask_field_offset = table_meta.null_mask_field()->offset();
+  int null_mask =
+      *(int *)(record->data + null_mask_field_offset) & 0x00FFFFFFFF;
+  int sys_field_num = table_meta.sys_field_num();
+  for (int i = sys_field_num; i < table_meta.field_num(); i++) {
+    if (null_mask >> i & 1) {
+      tuple->add();
+      continue;
+    }
     const FieldMeta *field_meta = table_meta.field(i);
     assert(field_meta != nullptr);
     switch (field_meta->type()) {

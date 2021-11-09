@@ -31,9 +31,7 @@ TableMeta::TableMeta(const TableMeta &other)
       indexes_(other.indexes_),
       record_size_(other.record_size_) {}
 
-void TableMeta::swap(TableMeta &other)
-
-    noexcept {
+void TableMeta::swap(TableMeta &other) noexcept {
   name_.swap(other.name_);
   fields_.swap(other.fields_);
   indexes_.swap(other.indexes_);
@@ -43,13 +41,22 @@ void TableMeta::swap(TableMeta &other)
 RC TableMeta::init_sys_fields() {
   sys_fields_.reserve(1);
   FieldMeta field_meta;
-  RC rc = field_meta.init(Trx::trx_field_name(), Trx::trx_field_type(), 0,
-                          Trx::trx_field_len(), false);
+  RC rc;
+  rc = field_meta.init(Trx::trx_field_name(), Trx::trx_field_type(), 0,
+                       Trx::trx_field_len(), false, false);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to init trx field. rc = %d:%s", rc, strrc(rc));
     return rc;
   }
+  sys_fields_.push_back(field_meta);
 
+  // isFieldINull? := (valueOf(__null_mask) >> i) & 1
+  rc = field_meta.init("__null_mask", INTS, Trx::trx_field_len(), 3, false,
+                       false);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to init null_mask field. rc = %d:%s", rc, strrc(rc));
+    return rc;
+  }
   sys_fields_.push_back(field_meta);
   return rc;
 }
@@ -83,13 +90,16 @@ RC TableMeta::init(const char *name, int field_num,
 
   int field_offset =
       sys_fields_.back().offset() +
-      sys_fields_.back()
-          .len();  // 当前实现下，所有类型都是4字节对齐的，所以不再考虑字节对齐问题
+      // 当前实现下，所有类型都是4字节对齐的，所以不再考虑字节对齐问题
+      // FIXME: 现在 DATE 和 __null_mask 字段都不是 4
+      // 字节对齐的，会带来什么影响？
+      sys_fields_.back().len();
 
   for (int i = 0; i < field_num; i++) {
     const AttrInfo &attr_info = attributes[i];
-    rc = fields_[i + sys_fields_.size()].init(
-        attr_info.name, attr_info.type, field_offset, attr_info.length, true);
+    rc = fields_[i + sys_fields_.size()].init(attr_info.name, attr_info.type,
+                                              field_offset, attr_info.length,
+                                              true, attr_info.nullable);
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Failed to init field meta. table name=%s, field name: %s",
                 name, attr_info.name);
@@ -114,6 +124,8 @@ RC TableMeta::add_index(const IndexMeta &index) {
 const char *TableMeta::name() const { return name_.c_str(); }
 
 const FieldMeta *TableMeta::trx_field() const { return &fields_[0]; }
+
+const FieldMeta *TableMeta::null_mask_field() const { return &fields_[1]; }
 
 const FieldMeta *TableMeta::field(int index) const { return &fields_[index]; }
 
