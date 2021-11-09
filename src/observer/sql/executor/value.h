@@ -140,4 +140,13 @@ class StringValue : public TupleValue {
   std::string value_;
 };
 
+class NullValue : public TupleValue {
+ public:
+  void to_string(std::ostream &os) const override { os << "null"; };
+
+  int compare(const TupleValue &other) const override { return false; };
+
+  virtual AttrType get_type() const override { return NULLS; }
+};
+
 #endif  //__OBSERVER_SQL_EXECUTOR_VALUE_H_

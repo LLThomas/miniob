@@ -84,7 +84,7 @@ int FieldMeta::len() const { return attr_len_; }
 
 bool FieldMeta::visible() const { return visible_; }
 
-bool FieldMeta::nullable() const { return visible_; }
+bool FieldMeta::nullable() const { return nullable_; }
 
 void FieldMeta::desc(std::ostream &os) const {
   os << "field name=" << name_ << ", type=" << attr_type_to_string(attr_type_)

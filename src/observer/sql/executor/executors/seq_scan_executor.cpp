@@ -22,14 +22,6 @@ RC SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
       exec_ctx_->getDB(), plan_->GetTableName());
 
   RC rc;
-  // //用随机数代替表
-  // int random_value = rand() % 100;
-  // tuple->add(random_value);
-  // if (random_value % 4 != 0) {
-  //   return RC::SUCCESS;
-  // } else {
-  //   return RC::EMPTY;
-  // }
 
   //单行扫描
   bool passed = false;
