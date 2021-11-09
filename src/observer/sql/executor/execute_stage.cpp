@@ -1428,10 +1428,16 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
       auto rel_name = con.left_attr.relation_name == nullptr
                           ? ""
                           : con.left_attr.relation_name;
+      // condition attr check
+      if (from_tables_map[rel_name]->table_meta().field(con.left_attr.attribute_name) == nullptr) {
+        LOG_WARN("No such field. %s.%s", con.left_attr.relation_name, con.left_attr.relation_name);
+        return RC::SCHEMA_FIELD_MISSING;
+      }
       AttrType left_type = from_tables_map[rel_name]
                                ->table_meta()
                                .field(con.left_attr.attribute_name)
                                ->type();
+
       if (left_type == DATES && !con.right_is_attr &&
           con.right_value.type == CHARS)
         con.right_value.type = DATES;
@@ -1446,6 +1452,11 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
       auto rel_name = con.right_attr.relation_name == nullptr
                           ? ""
                           : con.right_attr.relation_name;
+      // condition attr check
+      if (from_tables_map[rel_name]->table_meta().field(con.right_attr.attribute_name) == nullptr) {
+        LOG_WARN("No such field. %s.%s", con.right_attr.relation_name, con.right_attr.relation_name);
+        return RC::SCHEMA_FIELD_MISSING;
+      }
       AttrType right_type = from_tables_map[rel_name]
                                 ->table_meta()
                                 .field(con.right_attr.attribute_name)
@@ -1476,6 +1487,11 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
       LOG_WARN("No such table [%s] in db [%s]",
                table_name, db);
         return RC::SCHEMA_TABLE_NOT_EXIST;
+    }
+    // select attr check
+    if (from_tables_map[table_name]->table_meta().field(attr_name) != nullptr) {
+      LOG_WARN("No such field. %s.%s", table_name, attr_name);
+      return RC::SCHEMA_FIELD_MISSING;
     }
     //生成字段的输出格式
     std::string out_str;
