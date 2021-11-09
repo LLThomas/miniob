@@ -1504,8 +1504,10 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
       return RC::SCHEMA_TABLE_NOT_EXIST;
     }
     // select attr check
-    if (strcmp(attr_name, "*") != 0 && table_name != nullptr &&
-        from_tables_map[table_name]->table_meta().field(attr_name) != nullptr) {
+    if (strcmp(attr_name, "*") != 0 &&
+        from_tables_map[table_name == nullptr ? "" : table_name]
+                ->table_meta()
+                .field(attr_name) == nullptr) {
       LOG_WARN("No such field. %s.%s", table_name, attr_name);
       return RC::SCHEMA_FIELD_MISSING;
     }
