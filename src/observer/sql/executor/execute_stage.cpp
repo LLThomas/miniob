@@ -1376,6 +1376,12 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
     Table *table;
     table = DefaultHandler::get_default().find_table(
         db, sql->sstr.selection.relations[i]);
+    // from table check
+    if (table == nullptr) {
+      LOG_WARN("No such table [%s] in db [%s]",
+               sql->sstr.selection.relations[i], db);
+      return RC::SCHEMA_TABLE_NOT_EXIST;
+    }
     from_tables.emplace_back(table);
   }
   // 生成哈希表{表名,表指针}
@@ -1413,6 +1419,12 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
 
     // 对 DATE 类型进行特殊处理
     if (con.left_is_attr) {
+      // condition table check
+      if (con.left_attr.relation_name != nullptr && DefaultHandler::get_default().find_table(db, con.left_attr.relation_name) == nullptr) {
+        LOG_WARN("No such table [%s] in db [%s]",
+               con.left_attr.relation_name, db);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+      }
       auto rel_name = con.left_attr.relation_name == nullptr
                           ? ""
                           : con.left_attr.relation_name;
@@ -1425,6 +1437,12 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
         con.right_value.type = DATES;
     }
     if (con.right_is_attr) {
+      // condition table check
+      if (con.right_attr.relation_name != nullptr && DefaultHandler::get_default().find_table(db, con.right_attr.relation_name) == nullptr) {
+        LOG_WARN("No such table [%s] in db [%s]",
+               con.right_attr.relation_name, db);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+      }
       auto rel_name = con.right_attr.relation_name == nullptr
                           ? ""
                           : con.right_attr.relation_name;
@@ -1453,6 +1471,12 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
     ra = sql->sstr.selection.attributes[i];
     const char *table_name = ra.relation_name;
     const char *attr_name = ra.attribute_name;
+    // select table check
+    if (DefaultHandler::get_default().find_table(db, table_name) == nullptr) {
+      LOG_WARN("No such table [%s] in db [%s]",
+               table_name, db);
+        return RC::SCHEMA_TABLE_NOT_EXIST;
+    }
     //生成字段的输出格式
     std::string out_str;
 
