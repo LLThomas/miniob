@@ -1311,8 +1311,11 @@ void MakeOutputSchema(
         &exprs,
     TupleSchema &schema, const char *table_name) {
   for (const auto &input : exprs) {
+    int dot = input.first.find('.');
+    std::string field_name =
+        dot == std::string::npos ? input.first : input.first.substr(dot + 1);
     schema.add(TupleField{input.second->GetReturnType(), table_name,
-                          input.first.c_str(), input.second});
+                          field_name.c_str(), input.second});
   }
 }
 
