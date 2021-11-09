@@ -1445,7 +1445,7 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   }
   // 4. parse SELECT
   std::vector<std::pair<std::string, const AbstractExpression *>> out_proj;
-  for (size_t i = 0; i < sql->sstr.selection.attr_num; i++) {
+  for (int i = sql->sstr.selection.attr_num - 1; i >= 0; i--) {
     RelAttr ra;
     ra = sql->sstr.selection.attributes[i];
     const char *table_name = ra.relation_name;

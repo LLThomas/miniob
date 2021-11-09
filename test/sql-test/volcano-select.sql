@@ -6,7 +6,7 @@ insert into t values(4,4.444);
 insert into t values(5,5.555);
 insert into t values(6,6.666);
 
-select age from t;
+select id,age from t;
 select * from t;
 select * from t where id<3;
 select age from t where id>3;
