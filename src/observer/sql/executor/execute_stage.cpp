@@ -1420,17 +1420,21 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
     // 对 DATE 类型进行特殊处理
     if (con.left_is_attr) {
       // condition table check
-      if (con.left_attr.relation_name != nullptr && DefaultHandler::get_default().find_table(db, con.left_attr.relation_name) == nullptr) {
-        LOG_WARN("No such table [%s] in db [%s]",
-               con.left_attr.relation_name, db);
+      if (con.left_attr.relation_name != nullptr &&
+          DefaultHandler::get_default().find_table(
+              db, con.left_attr.relation_name) == nullptr) {
+        LOG_WARN("No such table [%s] in db [%s]", con.left_attr.relation_name,
+                 db);
         return RC::SCHEMA_TABLE_NOT_EXIST;
       }
       auto rel_name = con.left_attr.relation_name == nullptr
                           ? ""
                           : con.left_attr.relation_name;
       // condition attr check
-      if (from_tables_map[rel_name]->table_meta().field(con.left_attr.attribute_name) == nullptr) {
-        LOG_WARN("No such field. %s.%s", con.left_attr.relation_name, con.left_attr.relation_name);
+      if (from_tables_map[rel_name]->table_meta().field(
+              con.left_attr.attribute_name) == nullptr) {
+        LOG_WARN("No such field. %s.%s", con.left_attr.relation_name,
+                 con.left_attr.relation_name);
         return RC::SCHEMA_FIELD_MISSING;
       }
       AttrType left_type = from_tables_map[rel_name]
@@ -1444,17 +1448,21 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
     }
     if (con.right_is_attr) {
       // condition table check
-      if (con.right_attr.relation_name != nullptr && DefaultHandler::get_default().find_table(db, con.right_attr.relation_name) == nullptr) {
-        LOG_WARN("No such table [%s] in db [%s]",
-               con.right_attr.relation_name, db);
+      if (con.right_attr.relation_name != nullptr &&
+          DefaultHandler::get_default().find_table(
+              db, con.right_attr.relation_name) == nullptr) {
+        LOG_WARN("No such table [%s] in db [%s]", con.right_attr.relation_name,
+                 db);
         return RC::SCHEMA_TABLE_NOT_EXIST;
       }
       auto rel_name = con.right_attr.relation_name == nullptr
                           ? ""
                           : con.right_attr.relation_name;
       // condition attr check
-      if (from_tables_map[rel_name]->table_meta().field(con.right_attr.attribute_name) == nullptr) {
-        LOG_WARN("No such field. %s.%s", con.right_attr.relation_name, con.right_attr.relation_name);
+      if (from_tables_map[rel_name]->table_meta().field(
+              con.right_attr.attribute_name) == nullptr) {
+        LOG_WARN("No such field. %s.%s", con.right_attr.relation_name,
+                 con.right_attr.relation_name);
         return RC::SCHEMA_FIELD_MISSING;
       }
       AttrType right_type = from_tables_map[rel_name]
@@ -1483,13 +1491,14 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
     const char *table_name = ra.relation_name;
     const char *attr_name = ra.attribute_name;
     // select table check
-    if (DefaultHandler::get_default().find_table(db, table_name) == nullptr) {
-      LOG_WARN("No such table [%s] in db [%s]",
-               table_name, db);
-        return RC::SCHEMA_TABLE_NOT_EXIST;
+    if (table_name != nullptr &&
+        DefaultHandler::get_default().find_table(db, table_name) == nullptr) {
+      LOG_WARN("No such table [%s] in db [%s]", table_name, db);
+      return RC::SCHEMA_TABLE_NOT_EXIST;
     }
     // select attr check
-    if (from_tables_map[table_name]->table_meta().field(attr_name) != nullptr) {
+    if (strcmp(attr_name, "*") != 0 && table_name != nullptr &&
+        from_tables_map[table_name]->table_meta().field(attr_name) != nullptr) {
       LOG_WARN("No such field. %s.%s", table_name, attr_name);
       return RC::SCHEMA_FIELD_MISSING;
     }
