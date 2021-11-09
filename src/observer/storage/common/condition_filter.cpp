@@ -48,7 +48,7 @@ DefaultConditionFilter::~DefaultConditionFilter() {
 
 RC DefaultConditionFilter::init(const ConDesc &left, const ConDesc &right,
                                 AttrType attr_type, CompOp comp_op) {
-  if (attr_type < CHARS || attr_type > FLOATS) {
+  if (attr_type < CHARS || attr_type > NULLS) {
     LOG_ERROR("Invalid condition with unsupported attribute type: %d",
               attr_type);
     return RC::INVALID_ARGUMENT;
@@ -154,8 +154,9 @@ RC DefaultConditionFilter::init(Table &table, const Condition &condition) {
   //  }
   // NOTE：这里没有实现不同类型的数据比较，比如整数跟浮点数之间的对比
   // 但是选手们还是要实现。这个功能在预选赛中会出现
-  if (type_left != type_right && condition.comp != IS_LEFT_ATTR_NULL &&
-      condition.comp != IS_LEFT_ATTR_NOT_NULL) {
+  if (type_left != type_right && condition.comp != IS_LEFT_NULL &&
+      condition.comp != IS_LEFT_NOT_NULL && type_left != NULLS &&
+      type_right != NULLS) {
     return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
 

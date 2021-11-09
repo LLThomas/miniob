@@ -22,4 +22,9 @@ TEST_F(NullTest, no_index) {
             "a | b | c\n1 | 1 | null\n");
   ASSERT_EQ(ExecuteSql("select * from t where c is not null;"),
             "a | b | c\n1 | 1 | 1\n");
+  ASSERT_EQ(ExecuteSql("select * from t where 1 is null;"), "a | b | c\n");
+  ASSERT_EQ(ExecuteSql("select * from t where 1 is not null;"),
+            "a | b | c\n1 | 1 | null\n1 | 1 | 1\n");
+  ASSERT_EQ(ExecuteSql("select * from t where 1 = null;"), "a | b | c\n");
+  ASSERT_EQ(ExecuteSql("select * from t where null = 1;"), "a | b | c\n");
 }

@@ -27,7 +27,7 @@ class ComparisonExpression : public AbstractExpression {
       const Tuple *tuple, const TupleSchema *schema) const override {
     std::shared_ptr<TupleValue> lhs = GetChildAt(0)->Evaluate(tuple, schema);
     std::shared_ptr<TupleValue> rhs = nullptr;
-    if (comp_type_ != IS_LEFT_ATTR_NULL && comp_type_ != IS_LEFT_ATTR_NOT_NULL) {
+    if (comp_type_ != IS_LEFT_NULL && comp_type_ != IS_LEFT_NOT_NULL) {
       rhs = GetChildAt(1)->Evaluate(tuple, schema);
     }
     return std::make_shared<IntValue>(PerformComparison(lhs, rhs));
@@ -57,6 +57,10 @@ class ComparisonExpression : public AbstractExpression {
  private:
   int PerformComparison(const std::shared_ptr<TupleValue> &lhs,
                         const std::shared_ptr<TupleValue> &rhs) const {
+    if (comp_type_ != IS_LEFT_NULL && comp_type_ != IS_LEFT_NOT_NULL) {
+      return !(std::dynamic_pointer_cast<NullValue>(lhs) != nullptr ||
+               std::dynamic_pointer_cast<NullValue>(rhs) != nullptr);
+    }
     switch (comp_type_) {
       case CompOp::EQUAL_TO:
         return lhs->compare(*rhs) == 0;
@@ -70,9 +74,9 @@ class ComparisonExpression : public AbstractExpression {
         return lhs->compare(*rhs) > 0;
       case CompOp::GREAT_EQUAL:
         return lhs->compare(*rhs) >= 0;
-      case CompOp::IS_LEFT_ATTR_NULL:
+      case CompOp::IS_LEFT_NULL:
         return std::dynamic_pointer_cast<NullValue>(lhs) != nullptr;
-      case CompOp::IS_LEFT_ATTR_NOT_NULL:
+      case CompOp::IS_LEFT_NOT_NULL:
         return std::dynamic_pointer_cast<NullValue>(lhs) == nullptr;
       default:
         assert(false && "Unsupported comparison type.");

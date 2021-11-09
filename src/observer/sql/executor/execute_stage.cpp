@@ -1354,6 +1354,10 @@ const AbstractExpression *ParseConditionToExpression(
         return MakeConstantValueExpression(
             std::make_shared<StringValue>((const char *)val.data), expressions);
       }
+      case AttrType::NULLS: {
+        return MakeConstantValueExpression(std::make_shared<NullValue>(),
+                                           expressions);
+      }
       default:
         // TODO: 报错，非数值类型
         return nullptr;
@@ -1478,7 +1482,7 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
         con.left_attr, con.left_value, con.left_is_attr, from_tables_map,
         allocated_expressions);
     const AbstractExpression *rhs = nullptr;
-    if (con.comp != IS_LEFT_ATTR_NULL && con.comp != IS_LEFT_ATTR_NOT_NULL) {
+    if (con.comp != IS_LEFT_NULL && con.comp != IS_LEFT_NOT_NULL) {
       rhs = ParseConditionToExpression(con.right_attr, con.right_value,
                                        con.right_is_attr, from_tables_map,
                                        allocated_expressions);
