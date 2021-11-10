@@ -1306,15 +1306,16 @@ const AbstractExpression *MakeComparisonExpression(
       std::make_unique<ComparisonExpression>(lhs, rhs, comp_type));
   return expressions.back().get();
 }
+
 void MakeOutputSchema(
     const std::vector<std::pair<std::string, const AbstractExpression *>>
         &exprs,
-    TupleSchema &schema, const char *table_name) {
+    TupleSchema *schema, const char *table_name) {
   for (const auto &input : exprs) {
     int dot = input.first.find('.');
     std::string field_name =
         dot == std::string::npos ? input.first : input.first.substr(dot + 1);
-    schema.add(TupleField{input.second->GetReturnType(), table_name,
+    schema->add(TupleField{input.second->GetReturnType(), table_name,
                           field_name.c_str(), input.second});
   }
 }
@@ -1364,63 +1365,104 @@ const AbstractExpression *ParseConditionToExpression(
     }
   }
 }
-RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
-                                   SessionEvent *session_event) {
-  RC rc = RC::SUCCESS;
-  Session *session = session_event->get_client()->session;
-  Trx *trx = session->current_trx();
-  std::stringstream ss;
 
-  // build query plan
-  //全局变量
-  std::vector<std::unique_ptr<AbstractExpression>> allocated_expressions;
-  // 1. parse FROM
-  std::vector<Table *> from_tables;
-  for (size_t i = 0; i < sql->sstr.selection.relation_num; i++) {
-    Table *table;
-    table = DefaultHandler::get_default().find_table(
-        db, sql->sstr.selection.relations[i]);
-    // from table check
-    if (table == nullptr) {
-      LOG_WARN("No such table [%s] in db [%s]",
-               sql->sstr.selection.relations[i], db);
+RC PlanSelect(const char *db, const Selects &selects,
+              std::vector<Table *> tables,
+              std::unordered_map<std::string, const Table *> tables_map,
+              std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
+              std::vector<std::pair<std::string, const AbstractExpression *>>
+                  &out_projections) {
+  for (int i = selects.attr_num - 1; i >= 0; i--) {
+    RelAttr ra;
+    ra = selects.attributes[i];
+    const char *table_name = ra.relation_name;
+    const char *attr_name = ra.attribute_name;
+    // select table check
+    if (table_name != nullptr &&
+        DefaultHandler::get_default().find_table(db, table_name) == nullptr) {
+      LOG_WARN("No such table [%s] in db [%s]", table_name, db);
       return RC::SCHEMA_TABLE_NOT_EXIST;
     }
-    from_tables.emplace_back(table);
+    // select attr check
+    if (strcmp(attr_name, "*") != 0 &&
+        tables_map[table_name == nullptr ? "" : table_name]->table_meta().field(
+            attr_name) == nullptr) {
+      LOG_WARN("No such field. %s.%s", table_name, attr_name);
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+    //生成字段的输出格式
+    std::string out_str;
+
+    if (table_name == nullptr) {
+      //单表的tablename全部等于FROM的那个表
+      table_name = tables[0]->name();
+      // 输出列名时没有表名
+    } else {
+      // 输出："TableA."
+      out_str = std::string(table_name) + ".";
+    }
+    //找到对应的表
+    int idx = 0;
+    for (; idx < tables.size(); idx++) {
+      if (0 == strcmp(tables[idx]->name(), table_name)) {
+        break;
+      }
+    }
+    if (idx == tables_map.size()) {
+      LOG_ERROR("有空处理一下报错，没找到表");
+    }
+
+    const Table *current_table = tables[idx];
+    TupleSchema current_schema;
+    TupleSchema::from_table(current_table, current_schema);
+    if (0 == strcmp("*", attr_name)) {
+      // "*" 代表映射所有字段
+      for (int f = 0; f < current_schema.fields().size(); f++) {
+        const char *temp_attr_name = current_schema.field(f).field_name();
+        out_projections.push_back(
+            {out_str + temp_attr_name,
+             MakeColumnValueExpression(current_schema, 0, temp_attr_name,
+                                       out_exprs)});
+      }
+    } else {
+      out_projections.push_back(
+          {out_str + attr_name,
+           MakeColumnValueExpression(current_schema, 0, attr_name, out_exprs)});
+    }
   }
-  // 生成哈希表{表名,表指针}
-  std::unordered_map<std::string, const Table *> from_tables_map;
-  for (size_t i = 0; i < from_tables.size(); i++) {
-    from_tables_map[from_tables[i]->name()] = from_tables[i];
+  return RC::SUCCESS;
+}
+RC PlanFrom(const char *db, const Selects &selects,
+            std::vector<Table *> &out_tables,
+            std::unordered_map<std::string, const Table *> &out_tables_map) {
+  for (size_t i = 0; i < selects.relation_num; i++) {
+    Table *table;
+    table = DefaultHandler::get_default().find_table(db, selects.relations[i]);
+    // from table check
+    if (table == nullptr) {
+      LOG_WARN("No such table [%s] in db [%s]", selects.relations[i], db);
+      return RC::SCHEMA_TABLE_NOT_EXIST;
+    }
+    out_tables.emplace_back(table);
   }
-  from_tables_map[""] = from_tables[0];
+  for (size_t i = 0; i < out_tables.size(); i++) {
+    out_tables_map[out_tables[i]->name()] = out_tables[i];
+  }
+  out_tables_map[""] = out_tables[0];
   // 2. sort from_tables by table length
-  std::sort(from_tables.begin(), from_tables.end(),
+  std::sort(out_tables.begin(), out_tables.end(),
             [](const Table *t1, const Table *t2) {
               return t1->table_meta().record_size() <
                      t2->table_meta().record_size();
             });
-  // 3. parse WHERE
-  // std::unordered_map<const char *, std::set<char *>> where_join;
-  // std::unordered_map<const char *, std::vector<Condition>> where_comp;
-  // for (size_t i = 0; i < sql->sstr.selection.condition_num; i++) {
-  //   Condition con;
-  //   con = sql->sstr.selection.conditions[i];
-  //   if (con.left_is_attr == 1 && con.right_is_attr == 1) {
-  //     where_join[con.left_attr.relation_name].insert(
-  //         con.left_attr.attribute_name);
-  //     where_join[con.right_attr.relation_name].insert(
-  //         con.right_attr.attribute_name);
-  //   } else if (con.left_is_attr == 1) {
-  //     where_comp[con.left_attr.relation_name].push_back(con);
-  //   } else {
-  //     where_comp[con.right_attr.relation_name].push_back(con);
-  //   }
-  // }
-  std::vector<const AbstractExpression *> predicates;  //默认全是用AND连接的
-  for (size_t i = 0; i < sql->sstr.selection.condition_num; i++) {
-    Condition con = sql->sstr.selection.conditions[i];
-
+  return RC::SUCCESS;
+}
+RC PlanWhere(const char *db, const Selects &selects,
+             std::unordered_map<std::string, const Table *> tables_map,
+             std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
+             std::vector<const AbstractExpression *> &out_predicates) {
+  for (size_t i = 0; i < selects.condition_num; i++) {
+    Condition con = selects.conditions[i];
     // 对 DATE 类型进行特殊处理
     if (con.left_is_attr) {
       // condition table check
@@ -1435,13 +1477,13 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
                           ? ""
                           : con.left_attr.relation_name;
       // condition attr check
-      if (from_tables_map[rel_name]->table_meta().field(
+      if (tables_map[rel_name]->table_meta().field(
               con.left_attr.attribute_name) == nullptr) {
         LOG_WARN("No such field. %s.%s", con.left_attr.relation_name,
                  con.left_attr.relation_name);
         return RC::SCHEMA_FIELD_MISSING;
       }
-      AttrType left_type = from_tables_map[rel_name]
+      AttrType left_type = tables_map[rel_name]
                                ->table_meta()
                                .field(con.left_attr.attribute_name)
                                ->type();
@@ -1463,13 +1505,13 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
                           ? ""
                           : con.right_attr.relation_name;
       // condition attr check
-      if (from_tables_map[rel_name]->table_meta().field(
+      if (tables_map[rel_name]->table_meta().field(
               con.right_attr.attribute_name) == nullptr) {
         LOG_WARN("No such field. %s.%s", con.right_attr.relation_name,
                  con.right_attr.relation_name);
         return RC::SCHEMA_FIELD_MISSING;
       }
-      AttrType right_type = from_tables_map[rel_name]
+      AttrType right_type = tables_map[rel_name]
                                 ->table_meta()
                                 .field(con.right_attr.attribute_name)
                                 ->type();
@@ -1479,140 +1521,79 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
     }
 
     const AbstractExpression *lhs = ParseConditionToExpression(
-        con.left_attr, con.left_value, con.left_is_attr, from_tables_map,
-        allocated_expressions);
+        con.left_attr, con.left_value, con.left_is_attr, tables_map, out_exprs);
     const AbstractExpression *rhs = nullptr;
     if (con.comp != IS_LEFT_NULL && con.comp != IS_LEFT_NOT_NULL) {
-      rhs = ParseConditionToExpression(con.right_attr, con.right_value,
-                                       con.right_is_attr, from_tables_map,
-                                       allocated_expressions);
+      rhs =
+          ParseConditionToExpression(con.right_attr, con.right_value,
+                                     con.right_is_attr, tables_map, out_exprs);
     }
-    predicates.push_back(
-        MakeComparisonExpression(lhs, rhs, con.comp, allocated_expressions));
+    out_predicates.emplace_back(
+        MakeComparisonExpression(lhs, rhs, con.comp, out_exprs));
   }
-  // 4. parse SELECT
-  std::vector<std::pair<std::string, const AbstractExpression *>> out_proj;
-  for (int i = sql->sstr.selection.attr_num - 1; i >= 0; i--) {
-    RelAttr ra;
-    ra = sql->sstr.selection.attributes[i];
-    const char *table_name = ra.relation_name;
-    const char *attr_name = ra.attribute_name;
-    // select table check
-    if (table_name != nullptr &&
-        DefaultHandler::get_default().find_table(db, table_name) == nullptr) {
-      LOG_WARN("No such table [%s] in db [%s]", table_name, db);
-      return RC::SCHEMA_TABLE_NOT_EXIST;
-    }
-    // select attr check
-    if (strcmp(attr_name, "*") != 0 &&
-        from_tables_map[table_name == nullptr ? "" : table_name]
-                ->table_meta()
-                .field(attr_name) == nullptr) {
-      LOG_WARN("No such field. %s.%s", table_name, attr_name);
-      return RC::SCHEMA_FIELD_MISSING;
-    }
-    //生成字段的输出格式
-    std::string out_str;
+  return RC::SUCCESS;
+}
+RC BuildQueryPlan(std::vector<std::unique_ptr<AbstractPlanNode>> &out_plans,
+                  std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
+                  std::vector<std::unique_ptr<TupleSchema>> &out_schemas,
+                  const char *db, const Selects &selects) {
+  RC rc = RC::SUCCESS;
+  // 1. parse FROM
+  std::vector<Table *> from_tables;  //表指针的数组
+  std::unordered_map<std::string, const Table *>
+      from_tables_map;  // 生成哈希表{表名,表指针}，必有{"",第一个表}
+  rc = PlanFrom(db, selects, from_tables, from_tables_map);
+  if (rc != RC::SUCCESS) return rc;
+  // 2. parse WHERE
+  std::vector<const AbstractExpression *> predicates;  //默认全是用AND连接的
+  rc = PlanWhere(db, selects, from_tables_map, out_exprs, predicates);
+  if (rc != RC::SUCCESS) return rc;
 
-    if (table_name == nullptr) {
-      //单表的tablename全部等于FROM的那个表
-      table_name = from_tables[0]->name();
-      // 输出列名时没有表名
-    } else {
-      // 输出："TableA."
-      out_str = std::string(table_name) + ".";
-    }
-    //找到对应的表
-    int idx = 0;
-    for (; idx < from_tables.size(); idx++) {
-      if (0 == strcmp(from_tables[idx]->name(), table_name)) {
-        break;
-      }
-    }
-    if (idx == from_tables.size()) {
-      LOG_ERROR("有空处理一下报错，没找到表");
-    }
-    const Table *current_table = from_tables[idx];
-    TupleSchema current_schema;
-    TupleSchema::from_table(current_table, current_schema);
-    if (0 == strcmp("*", attr_name)) {
-      // "*" 代表映射所有字段
-      for (int f = 0; f < current_schema.fields().size(); f++) {
-        const char *temp_attr_name = current_schema.field(f).field_name();
-        out_proj.push_back(
-            {out_str + temp_attr_name,
-             MakeColumnValueExpression(current_schema, 0, temp_attr_name,
-                                       allocated_expressions)});
-      }
-    } else {
-      out_proj.push_back({out_str + attr_name, MakeColumnValueExpression(
-                                                   current_schema, 0, attr_name,
-                                                   allocated_expressions)});
-    }
-  }
-
+  // 3. parse SELECT
+  std::vector<std::pair<std::string, const AbstractExpression *>> projections;
+  rc = PlanSelect(db, selects, from_tables, from_tables_map, out_exprs,
+                  projections);
+  if (rc != RC::SUCCESS) return rc;
   /**
    *
    * 1 table
    *
    */
-  TupleSchema scan_schema;
-  std::unique_ptr<AbstractPlanNode> scan_plan;
+  out_schemas.emplace_back(std::make_unique<TupleSchema>());
+  TupleSchema* scan_schema=out_schemas.back().get();
   Table *scan_table = from_tables[0];
-  // for (int i = 0; i < where_comp[scan_table->name()].size(); i++) {
-  //   Condition cond = where_comp[scan_table->name()][i];
-  //   void *col_name;
-  //   if (cond.left_is_attr == 0) {
-  //     col_name = cond.left_value.data;
-  //   } else {
-  //     col_name = cond.right_value.data;
-  //   }
-  //   if (select_proj[scan_table->name()].find((char *)col_name) ==
-  //       select_proj[scan_table->name()].end()) {
-  //     const AbstractExpression *col = MakeColumnValueExpression(
-  //         schema, 0, (char *)col_name, allocated_expressions);
-  //     exprs.emplace_back(std::make_pair<>((char *)col_name, col));
-  //   }
-  // }
-  // 找出仅与此表相关的过滤条件, 或者都是值的过滤条件
-  std::vector<DefaultConditionFilter *> condition_filters;
-  const Selects &selects = sql->sstr.selection;
-  const char *table_name = scan_table->name();
-  for (size_t i = 0; i < sql->sstr.selection.condition_num; i++) {
-    const Condition &condition = selects.conditions[i];
-    if ((condition.left_is_attr == 0 &&
-         condition.right_is_attr == 0) ||  // 两边都是值
-        (condition.left_is_attr == 1 && condition.right_is_attr == 0 &&
-         match_table(selects, condition.left_attr.relation_name,
-                     table_name)) ||  // 左边是属性右边是值
-        (condition.left_is_attr == 0 && condition.right_is_attr == 1 &&
-         match_table(selects, condition.right_attr.relation_name,
-                     table_name)) ||  // 左边是值，右边是属性名
-        (condition.left_is_attr == 1 && condition.right_is_attr == 1 &&
-         match_table(selects, condition.left_attr.relation_name, table_name) &&
-         match_table(selects, condition.right_attr.relation_name,
-                     table_name))  // 左右都是属性名，并且表名都符合
-    ) {
-      DefaultConditionFilter *condition_filter = new DefaultConditionFilter();
-      RC rc = condition_filter->init(*scan_table, condition);
-      if (rc != RC::SUCCESS) {
-        delete condition_filter;
-        for (DefaultConditionFilter *&filter : condition_filters) {
-          delete filter;
-        }
-        return rc;
-      }
-      condition_filters.push_back(condition_filter);
-    }
-  }
-  MakeOutputSchema(out_proj, scan_schema, scan_table->name());
-  scan_schema.print(ss, false);
-  scan_plan = std::make_unique<SeqScanPlanNode>(&scan_schema,
-                                                scan_table->name(), predicates);
 
+  MakeOutputSchema(projections, scan_schema, scan_table->name());
+  out_plans.emplace_back(std::make_unique<SeqScanPlanNode>(scan_schema,
+                                                scan_table->name(), predicates));
+  AbstractPlanNode* scan_plan=out_plans.back().get();
+  return RC::SUCCESS;
+}
+
+RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
+                                   SessionEvent *session_event) {
+  RC rc = RC::SUCCESS;
+  Session *session = session_event->get_client()->session;
+  Trx *trx = session->current_trx();
+  std::stringstream ss;
+
+  // build query plan
+  std::vector<std::unique_ptr<AbstractPlanNode>>
+      allocated_plans;  //储存计划树的所有节点（指针均指向堆）
+  std::vector<std::unique_ptr<AbstractExpression>>
+      allocated_expressions;  //储存所有表达式
+      std::vector<std::unique_ptr<TupleSchema>>
+      allocated_schemas;  //储存所有schema
+  rc = BuildQueryPlan(allocated_plans, allocated_expressions,allocated_schemas, db,
+                      sql->sstr.selection);
+  if (rc != RC::SUCCESS) {
+    end_trx_if_need(session, trx, false);
+    return rc;
+  }
+  allocated_plans[0]->OutputSchema()->print(ss, false);
   // execute plan
   ExecutorContext exec_ctx{trx, db};
-  auto executor = CreateExecutor(&exec_ctx, scan_plan.get());
+  auto executor = CreateExecutor(&exec_ctx, allocated_plans[0].get());
 
   executor->Init();
 

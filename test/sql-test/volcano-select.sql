@@ -12,3 +12,10 @@ select * from t;
 select * from t where id<3;
 select age from t where id>3;
 select * from t where id>3 and age<6.0;
+
+select t.icy from t;
+select icy from t;
+select * from icy;
+select * from t where icy.id<3;
+select * from t where t.icy<3;
+select * from t where icy<3; 
