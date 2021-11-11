@@ -17,20 +17,24 @@ class AggregateValueExpression : public AbstractExpression {
         is_group_by_term_{is_group_by_term},
         term_idx_{term_idx} {}
 
-  Value Evaluate(const Tuple *tuple, const Schema *schema) const override {
-    BUSTUB_ASSERT(false,
-                  "Aggregation should only refer to group-by and aggregates.");
+  const std::shared_ptr<TupleValue> Evaluate(
+      const Tuple *tuple, const TupleSchema *schema) const override {
+    assert(false &&
+           "Aggregation should only refer to group-by and aggregates.");
   }
 
-  Value EvaluateJoin(const Tuple *left_tuple, const Schema *left_schema,
-                     const Tuple *right_tuple,
-                     const Schema *right_schema) const override {
-    BUSTUB_ASSERT(false,
-                  "Aggregation should only refer to group-by and aggregates.");
+  const std::shared_ptr<TupleValue> EvaluateJoin(
+      const Tuple *left_tuple, const TupleSchema *left_schema,
+      const Tuple *right_tuple,
+      const TupleSchema *right_schema) const override {
+    assert(false &&
+           "Aggregation should only refer to group-by and aggregates.");
   }
 
-  Value EvaluateAggregate(const std::vector<Value> &group_bys,
-                          const std::vector<Value> &aggregates) const override {
+  const std::shared_ptr<TupleValue> EvaluateAggregate(
+      const std::vector<std::shared_ptr<TupleValue>> &group_bys,
+      const std::vector<std::shared_ptr<TupleValue>> &aggregates)
+      const override {
     return is_group_by_term_ ? group_bys[term_idx_] : aggregates[term_idx_];
   }
 

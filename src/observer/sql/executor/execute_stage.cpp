@@ -1316,7 +1316,7 @@ void MakeOutputSchema(
     std::string field_name =
         dot == std::string::npos ? input.first : input.first.substr(dot + 1);
     schema->add(TupleField{input.second->GetReturnType(), table_name,
-                          field_name.c_str(), input.second});
+                           field_name.c_str(), input.second});
   }
 }
 
@@ -1560,13 +1560,13 @@ RC BuildQueryPlan(std::vector<std::unique_ptr<AbstractPlanNode>> &out_plans,
    *
    */
   out_schemas.emplace_back(std::make_unique<TupleSchema>());
-  TupleSchema* scan_schema=out_schemas.back().get();
+  TupleSchema *scan_schema = out_schemas.back().get();
   Table *scan_table = from_tables[0];
 
   MakeOutputSchema(projections, scan_schema, scan_table->name());
-  out_plans.emplace_back(std::make_unique<SeqScanPlanNode>(scan_schema,
-                                                scan_table->name(), predicates));
-  AbstractPlanNode* scan_plan=out_plans.back().get();
+  out_plans.emplace_back(std::make_unique<SeqScanPlanNode>(
+      scan_schema, scan_table->name(), predicates));
+  AbstractPlanNode *scan_plan = out_plans.back().get();
   return RC::SUCCESS;
 }
 
@@ -1582,10 +1582,9 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
       allocated_plans;  //储存计划树的所有节点（指针均指向堆）
   std::vector<std::unique_ptr<AbstractExpression>>
       allocated_expressions;  //储存所有表达式
-      std::vector<std::unique_ptr<TupleSchema>>
-      allocated_schemas;  //储存所有schema
-  rc = BuildQueryPlan(allocated_plans, allocated_expressions,allocated_schemas, db,
-                      sql->sstr.selection);
+  std::vector<std::unique_ptr<TupleSchema>> allocated_schemas;  //储存所有schema
+  rc = BuildQueryPlan(allocated_plans, allocated_expressions, allocated_schemas,
+                      db, sql->sstr.selection);
   if (rc != RC::SUCCESS) {
     end_trx_if_need(session, trx, false);
     return rc;

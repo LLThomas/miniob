@@ -4,10 +4,7 @@
 #include <vector>
 
 #include "sql/executor/tuple.h"
-enum class PlanType { 
-  SeqScan, 
-  HashJoin
-};
+enum class PlanType { SeqScan, HashJoin, Aggregation };
 
 class AbstractPlanNode {
  public:

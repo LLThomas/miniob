@@ -3,11 +3,12 @@
 
 #include "sql/executor/plans/abstract_plan.h"
 #include "sql/executor/tuple.h"
+#include "storage/common/hash_util.h"
 /** AggregationType enumerates all the possible aggregation functions in our
  * system. */
 enum class AggregationType {
   CountAggregate,
-  SumAggregate,
+  AvgAggregate,
   MinAggregate,
   MaxAggregate
 };
@@ -29,8 +30,7 @@ class AggregationPlanNode : public AbstractPlanNode {
    * @param aggregates the expressions that we are aggregating
    * @param agg_types the types that we are aggregating
    */
-  AggregationPlanNode(const Schema *output_schema,
-                      const AbstractPlanNode *child,
+  AggregationPlanNode(TupleSchema *output_schema, const AbstractPlanNode *child,
                       const AbstractExpression *having,
                       std::vector<const AbstractExpression *> &&group_bys,
                       std::vector<const AbstractExpression *> &&aggregates,
@@ -45,8 +45,8 @@ class AggregationPlanNode : public AbstractPlanNode {
 
   /** @return the child of this aggregation plan node */
   const AbstractPlanNode *GetChildPlan() const {
-    BUSTUB_ASSERT(GetChildren().size() == 1,
-                  "Aggregation expected to only have one child.");
+    assert(GetChildren().size() == 1 &&
+           "Aggregation expected to only have one child.");
     return GetChildAt(0);
   }
 
@@ -86,7 +86,7 @@ class AggregationPlanNode : public AbstractPlanNode {
 };
 
 struct AggregateKey {
-  std::vector<Value> group_bys_;
+  std::vector<std::shared_ptr<TupleValue>> group_bys_;
 
   /**
    * Compares two aggregate keys for equality.
@@ -96,8 +96,7 @@ struct AggregateKey {
    */
   bool operator==(const AggregateKey &other) const {
     for (uint32_t i = 0; i < other.group_bys_.size(); i++) {
-      if (group_bys_[i].CompareEquals(other.group_bys_[i]) !=
-          CmpBool::CmpTrue) {
+      if (group_bys_[i]->compare(*other.group_bys_[i]) != 0) {
         return false;
       }
     }
@@ -106,9 +105,8 @@ struct AggregateKey {
 };
 
 struct AggregateValue {
-  std::vector<Value> aggregates_;
+  std::vector<std::shared_ptr<TupleValue>> aggregates_;
 };
-}  // namespace bustub
 
 namespace std {
 
@@ -116,15 +114,17 @@ namespace std {
  * Implements std::hash on AggregateKey.
  */
 template <>
-struct hash<bustub::AggregateKey> {
-  std::size_t operator()(const bustub::AggregateKey &agg_key) const {
+struct hash<AggregateKey> {
+  size_t operator()(const AggregateKey &agg_key) const {
     size_t curr_hash = 0;
     for (const auto &key : agg_key.group_bys_) {
-      if (!key.IsNull()) {
-        curr_hash = bustub::HashUtil::CombineHashes(
-            curr_hash, bustub::HashUtil::HashValue(&key));
-      }
+      curr_hash =
+          HashUtil::CombineHashes(curr_hash, HashUtil::HashValue(key.get()));
+      // if (!key.IsNull()) {
+
+      // }
     }
     return curr_hash;
   }
 };
+}  // namespace std
