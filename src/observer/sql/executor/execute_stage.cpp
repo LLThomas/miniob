@@ -839,8 +839,7 @@ RC create_selection_executor_v2(Trx *trx, const Selects &selects,
                                 const char *db, const char *table_name,
                                 SelectExeNode &select_node) {
   Table *table;
-  RC rc;
-  rc = check_select_node_meta(selects, db, table_name, table);
+  check_select_node_meta(selects, db, table_name, table);
   // 列出跟这张表关联的Attr
   TupleSchema schema;
 
@@ -1317,7 +1316,7 @@ void MakeOutputSchema(
         &exprs,
     TupleSchema *schema, const char *table_name) {
   for (const auto &input : exprs) {
-    int dot = input.first.find('.');
+    size_t dot = input.first.find('.');
     std::string field_name =
         dot == std::string::npos ? input.first : input.first.substr(dot + 1);
     schema->add(TupleField{input.second->GetReturnType(), table_name,
@@ -1419,7 +1418,7 @@ RC PlanSelect(
       out_str = std::string(table_name) + ".";
     }
     //找到对应的表
-    int idx = 0;
+    size_t idx = 0;
     for (; idx < tables.size(); idx++) {
       if (0 == strcmp(tables[idx]->name(), table_name)) {
         break;
@@ -1434,7 +1433,7 @@ RC PlanSelect(
     TupleSchema::from_table(current_table, current_schema);
     if (0 == strcmp("*", attr_name)) {
       // "*" 代表映射所有字段
-      for (int f = 0; f < current_schema.fields().size(); f++) {
+      for (size_t f = 0; f < current_schema.fields().size(); f++) {
         const char *temp_attr_name = current_schema.field(f).field_name();
         out_projections.push_back(
             {out_str + temp_attr_name,
@@ -1481,7 +1480,7 @@ RC PlanFrom(const char *db, const Selects &selects,
                      t2->table_meta().record_size();
             });
   // construct t -> index
-  for (int i = 0; i < out_tables.size(); i++) {
+  for (size_t i = 0; i < out_tables.size(); i++) {
     table_to_index[out_tables[i]->name()] = i;
   }
   return RC::SUCCESS;
@@ -1507,6 +1506,12 @@ RC PlanWhere(
         &table_to_on_col) {
   for (size_t i = 0; i < selects.condition_num; i++) {
     Condition con = selects.conditions[i];
+    std::string left_attr_table_name = con.left_attr.relation_name == nullptr
+                                           ? ""
+                                           : con.left_attr.relation_name;
+    std::string right_attr_table_name = con.right_attr.relation_name == nullptr
+                                            ? ""
+                                            : con.right_attr.relation_name;
     bool is_join = false;
     if (con.left_is_attr && con.right_is_attr) {
       is_join = true;
@@ -1514,24 +1519,20 @@ RC PlanWhere(
     // 对 DATE 类型进行特殊处理
     if (con.left_is_attr) {
       // condition table check
-      if (con.left_attr.relation_name != nullptr &&
+      if (left_attr_table_name != "" &&
           DefaultHandler::get_default().find_table(
-              db, con.left_attr.relation_name) == nullptr) {
-        LOG_WARN("No such table [%s] in db [%s]", con.left_attr.relation_name,
-                 db);
+              db, left_attr_table_name.c_str()) == nullptr) {
+        LOG_WARN("No such table [%s] in db [%s]", left_attr_table_name, db);
         return RC::SCHEMA_TABLE_NOT_EXIST;
       }
-      auto rel_name = con.left_attr.relation_name == nullptr
-                          ? ""
-                          : con.left_attr.relation_name;
       // condition attr check
-      if (tables_map[rel_name]->table_meta().field(
+      if (tables_map[left_attr_table_name]->table_meta().field(
               con.left_attr.attribute_name) == nullptr) {
-        LOG_WARN("No such field. %s.%s", con.left_attr.relation_name,
-                 con.left_attr.relation_name);
+        LOG_WARN("No such field. %s.%s", left_attr_table_name,
+                 left_attr_table_name);
         return RC::SCHEMA_FIELD_MISSING;
       }
-      AttrType left_type = tables_map[rel_name]
+      AttrType left_type = tables_map[left_attr_table_name]
                                ->table_meta()
                                .field(con.left_attr.attribute_name)
                                ->type();
@@ -1542,24 +1543,20 @@ RC PlanWhere(
     }
     if (con.right_is_attr) {
       // condition table check
-      if (con.right_attr.relation_name != nullptr &&
+      if (right_attr_table_name != "" &&
           DefaultHandler::get_default().find_table(
-              db, con.right_attr.relation_name) == nullptr) {
-        LOG_WARN("No such table [%s] in db [%s]", con.right_attr.relation_name,
-                 db);
+              db, right_attr_table_name.c_str()) == nullptr) {
+        LOG_WARN("No such table [%s] in db [%s]", right_attr_table_name, db);
         return RC::SCHEMA_TABLE_NOT_EXIST;
       }
-      auto rel_name = con.right_attr.relation_name == nullptr
-                          ? ""
-                          : con.right_attr.relation_name;
       // condition attr check
-      if (tables_map[rel_name]->table_meta().field(
+      if (tables_map[right_attr_table_name]->table_meta().field(
               con.right_attr.attribute_name) == nullptr) {
-        LOG_WARN("No such field. %s.%s", con.right_attr.relation_name,
-                 con.right_attr.relation_name);
+        LOG_WARN("No such field. %s.%s", right_attr_table_name,
+                 right_attr_table_name);
         return RC::SCHEMA_FIELD_MISSING;
       }
-      AttrType right_type = tables_map[rel_name]
+      AttrType right_type = tables_map[right_attr_table_name]
                                 ->table_meta()
                                 .field(con.right_attr.attribute_name)
                                 ->type();
@@ -1571,24 +1568,21 @@ RC PlanWhere(
     const AbstractExpression *lhs = nullptr;
     const AbstractExpression *rhs = nullptr;
     if (is_join) {
-      if (table_to_index[con.left_attr.relation_name] <
-          table_to_index[con.right_attr.relation_name]) {
+      if (table_to_index[left_attr_table_name] <
+          table_to_index[right_attr_table_name]) {
         lhs = ParseConditionToExpression(con.left_attr, con.left_value,
                                          con.left_is_attr, false, tables_map,
                                          out_exprs);
         rhs = ParseConditionToExpression(con.right_attr, con.right_value,
                                          con.right_is_attr, true, tables_map,
                                          out_exprs);
-        table_to_on_exp[con.left_attr.relation_name]
-                       [con.right_attr.relation_name]
-                           .push_back(lhs);
-        table_to_on_exp[con.left_attr.relation_name]
-                       [con.right_attr.relation_name]
-                           .push_back(rhs);
+        table_to_on_exp[left_attr_table_name][right_attr_table_name].push_back(
+            lhs);
+        table_to_on_exp[left_attr_table_name][right_attr_table_name].push_back(
+            rhs);
 
-        table_to_on_col[con.left_attr.relation_name]
-                       [con.right_attr.relation_name] =
-                           con.left_attr.attribute_name;
+        table_to_on_col[left_attr_table_name][right_attr_table_name] =
+            con.left_attr.attribute_name;
       } else {
         rhs = ParseConditionToExpression(con.left_attr, con.left_value,
                                          con.left_is_attr, true, tables_map,
@@ -1597,16 +1591,13 @@ RC PlanWhere(
                                          con.right_is_attr, false, tables_map,
                                          out_exprs);
 
-        table_to_on_exp[con.right_attr.relation_name]
-                       [con.left_attr.relation_name]
-                           .push_back(lhs);
-        table_to_on_exp[con.right_attr.relation_name]
-                       [con.left_attr.relation_name]
-                           .push_back(rhs);
+        table_to_on_exp[right_attr_table_name][left_attr_table_name].push_back(
+            lhs);
+        table_to_on_exp[right_attr_table_name][left_attr_table_name].push_back(
+            rhs);
 
-        table_to_on_col[con.right_attr.relation_name]
-                       [con.left_attr.relation_name] =
-                           con.right_attr.attribute_name;
+        table_to_on_col[right_attr_table_name][left_attr_table_name] =
+            con.right_attr.attribute_name;
       }
     } else {
       lhs = ParseConditionToExpression(con.left_attr, con.left_value,
@@ -1630,24 +1621,20 @@ RC PlanWhere(
     }
 
     if (is_join) {
-      table_to_proj[con.left_attr.relation_name].push_back(
-          {std::string(con.left_attr.relation_name) + "." +
-               con.left_attr.attribute_name,
-           lhs});
-      table_to_proj[con.right_attr.relation_name].push_back(
-          {std::string(con.right_attr.relation_name) + "." +
-               con.right_attr.attribute_name,
-           rhs});
+      table_to_proj[left_attr_table_name].push_back(
+          {left_attr_table_name + "." + con.left_attr.attribute_name, lhs});
+      table_to_proj[right_attr_table_name].push_back(
+          {right_attr_table_name + "." + con.right_attr.attribute_name, rhs});
     } else {
       const AbstractExpression *comp_exp =
           MakeComparisonExpression(lhs, rhs, con.comp, out_exprs);
       out_predicates.emplace_back(comp_exp);
 
       if (con.left_is_attr) {
-        table_to_exp[con.left_attr.relation_name].emplace_back(comp_exp);
+        table_to_exp[left_attr_table_name].emplace_back(comp_exp);
       }
       if (con.right_is_attr) {
-        table_to_exp[con.right_attr.relation_name].emplace_back(comp_exp);
+        table_to_exp[right_attr_table_name].emplace_back(comp_exp);
       }
     }
   }
@@ -1707,17 +1694,12 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
    *
    */
   out_schemas.emplace_back(std::make_unique<TupleSchema>());
-  TupleSchema *scan_schema = out_schemas.back().get();
-  Table *scan_table = from_tables[0];
 
-  MakeOutputSchema(projections, scan_schema, scan_table->name());
-  out_plans.emplace_back(std::make_unique<SeqScanPlanNode>(
-      scan_schema, scan_table->name(), predicates));
-  AbstractPlanNode *scan_plan = out_plans.back().get();
+  // AbstractPlanNode *scan_plan = out_plans.back().get();
   // ---------------Agg Plan---------------
   // 4. parse Agg()
-  rc = PlanAggregation();
-  if (rc != RC::SUCCESS) return rc;
+  // rc = PlanAggregation();
+  // if (rc != RC::SUCCESS) return rc;
   // 4. 1 table or join tables
   if (from_tables.size() == 1) {
     //    out_schemas.emplace_back(std::make_unique<TupleSchema>());
@@ -1767,7 +1749,7 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     //    std::unique_ptr<AbstractPlanNode> left_plan  = std::move(scan_plan_1);
     AbstractPlanNode *left_plan = scan_plan_1;
     // construct outher scan table and join them
-    for (int i = 1; i < from_tables.size(); i++) {
+    for (int i = 1; i < (int)from_tables.size(); i++) {
       // construct next scan table
       Table *scan_table_2 = from_tables[i];
       TupleSchema *scan_schema_2 = new TupleSchema;
@@ -1806,7 +1788,7 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
                          another_projections[scan_table_2->name()].end());
       }
       // from on
-      if (i != from_tables.size() - 1 &&
+      if (i != (int)from_tables.size() - 1 &&
           table_to_proj.find(scan_table_2->name()) != table_to_proj.end()) {
         join_proj.insert(join_proj.end(),
                          table_to_proj[scan_table_2->name()].begin(),

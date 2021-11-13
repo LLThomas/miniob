@@ -2,7 +2,11 @@
 AggregationExecutor::AggregationExecutor(
     ExecutorContext *exec_ctx, const AggregationPlanNode *plan,
     std::unique_ptr<AbstractExecutor> &&child)
-    : AbstractExecutor(exec_ctx) {}
+    : AbstractExecutor(exec_ctx),
+      plan_(plan),
+      child_(std::move(child)),
+      aht_(plan->GetAggregates(), plan->GetAggregateTypes()),
+      aht_iterator_(aht_.Begin()) {}
 
 const AbstractExecutor *AggregationExecutor::GetChildExecutor() const {
   return child_.get();

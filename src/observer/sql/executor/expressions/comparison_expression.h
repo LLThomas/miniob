@@ -45,8 +45,9 @@ class ComparisonExpression : public AbstractExpression {
   }
 
   const std::shared_ptr<TupleValue> EvaluateAggregate(
-      const std::vector<TupleValue> &group_bys,
-      const std::vector<TupleValue> &aggregates) const override {
+      const std::vector<std::shared_ptr<TupleValue>> &group_bys,
+      const std::vector<std::shared_ptr<TupleValue>> &aggregates)
+      const override {
     std::shared_ptr<TupleValue> lhs =
         GetChildAt(0)->EvaluateAggregate(group_bys, aggregates);
     std::shared_ptr<TupleValue> rhs =
