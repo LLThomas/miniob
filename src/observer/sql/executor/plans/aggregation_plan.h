@@ -30,7 +30,7 @@ class AggregationPlanNode : public AbstractPlanNode {
    * @param aggregates the expressions that we are aggregating
    * @param agg_types the types that we are aggregating
    */
-  AggregationPlanNode(TupleSchema *output_schema, const AbstractPlanNode *child,
+  AggregationPlanNode(TupleSchema *output_schema, AbstractPlanNode *child,
                       const AbstractExpression *having,
                       std::vector<const AbstractExpression *> &&group_bys,
                       std::vector<const AbstractExpression *> &&aggregates,
