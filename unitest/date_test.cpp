@@ -80,3 +80,8 @@ TEST_F(DateTest, date_compare_index) {
           "select * from t where a < '2000-01-03' and a >= '2000-01-03';"),
       "a\n");
 }
+
+TEST_F(DateTest, invalid_date) {
+  ASSERT_EQ(ExecuteSql("insert into t values ('2000-99-99');"), "FAILURE\n");
+  ASSERT_EQ(ExecuteSql("select * from t where a > '2000-99-99';"), "FAILURE\n");
+}

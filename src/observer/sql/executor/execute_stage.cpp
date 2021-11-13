@@ -1347,7 +1347,11 @@ const AbstractExpression *ParseConditionToExpression(
       }
       case AttrType::DATES: {
         uint16_t d;
-        serialize_date(&d, (const char *)val.data);
+        RC rc = serialize_date(&d, (const char *)val.data);
+        if (rc != SUCCESS) {
+          LOG_ERROR("Invalid date: %s", val.data);
+          return nullptr;
+        }
         return MakeConstantValueExpression(std::make_shared<DateValue>(d),
                                            expressions);
       }
@@ -1522,11 +1526,17 @@ RC PlanWhere(const char *db, const Selects &selects,
 
     const AbstractExpression *lhs = ParseConditionToExpression(
         con.left_attr, con.left_value, con.left_is_attr, tables_map, out_exprs);
+    if (lhs == nullptr) {
+      return RC::INVALID_ARGUMENT;
+    }
     const AbstractExpression *rhs = nullptr;
     if (con.comp != IS_LEFT_NULL && con.comp != IS_LEFT_NOT_NULL) {
       rhs =
           ParseConditionToExpression(con.right_attr, con.right_value,
                                      con.right_is_attr, tables_map, out_exprs);
+      if (rhs == nullptr) {
+        return RC::INVALID_ARGUMENT;
+      }
     }
     out_predicates.emplace_back(
         MakeComparisonExpression(lhs, rhs, con.comp, out_exprs));
