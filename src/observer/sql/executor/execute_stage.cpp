@@ -34,6 +34,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/executor/executors/hash_join_executor.h"
 #include "sql/executor/executors/seq_scan_executor.h"
 #include "sql/executor/expressions/abstract_expression.h"
+#include "sql/executor/expressions/aggregate_value_expression.h"
 #include "sql/executor/expressions/column_value_expression.h"
 #include "sql/executor/expressions/comparison_expression.h"
 #include "sql/executor/expressions/constant_value_expression.h"
@@ -1306,7 +1307,13 @@ const AbstractExpression *MakeComparisonExpression(
       std::make_unique<ComparisonExpression>(lhs, rhs, comp_type));
   return expressions.back().get();
 }
-
+const AbstractExpression *MakeAggregateValueExpression(
+    bool is_group_by_term, uint32_t term_idx,
+    std::vector<std::unique_ptr<AbstractExpression>> &expressions) {
+  expressions.emplace_back(std::make_unique<AggregateValueExpression>(
+      is_group_by_term, term_idx, AttrType::INTS));
+  return expressions.back().get();
+}
 void MakeOutputSchema(
     const std::vector<std::pair<std::string, const AbstractExpression *>>
         &exprs,
@@ -1538,6 +1545,7 @@ RC BuildQueryPlan(std::vector<std::unique_ptr<AbstractPlanNode>> &out_plans,
                   std::vector<std::unique_ptr<TupleSchema>> &out_schemas,
                   const char *db, const Selects &selects) {
   RC rc = RC::SUCCESS;
+  // ---------------Sec Scan Plan---------------
   // 1. parse FROM
   std::vector<Table *> from_tables;  //表指针的数组
   std::unordered_map<std::string, const Table *>
@@ -1554,6 +1562,7 @@ RC BuildQueryPlan(std::vector<std::unique_ptr<AbstractPlanNode>> &out_plans,
   rc = PlanSelect(db, selects, from_tables, from_tables_map, out_exprs,
                   projections);
   if (rc != RC::SUCCESS) return rc;
+
   /**
    *
    * 1 table
@@ -1567,6 +1576,10 @@ RC BuildQueryPlan(std::vector<std::unique_ptr<AbstractPlanNode>> &out_plans,
   out_plans.emplace_back(std::make_unique<SeqScanPlanNode>(
       scan_schema, scan_table->name(), predicates));
   AbstractPlanNode *scan_plan = out_plans.back().get();
+  // ---------------Agg Plan---------------
+  // 4. parse Agg()
+  rc = PlanAggregation();
+  if (rc != RC::SUCCESS) return rc;
   return RC::SUCCESS;
 }
 

@@ -35,7 +35,7 @@ class SimpleAggregationHashTable {
           break;
         case AggregationType::AvgAggregate:
           // Sum starts at zero.
-          values.emplace_back(std::make_shared<FloatValue>(0));
+          values.emplace_back(std::make_shared<IntValue>(0));
           break;
         case AggregationType::MinAggregate:
           // Min starts at INT_MAX.
@@ -208,7 +208,7 @@ class AggregationExecutor : public AbstractExecutor {
   /** The child executor whose tuples we are aggregating. */
   std::unique_ptr<AbstractExecutor> child_;
   /** Simple aggregation hash table. */
-  // Uncomment me! SimpleAggregationHashTable aht_;
+  SimpleAggregationHashTable aht_;
   /** Simple aggregation hash table iterator. */
-  // Uncomment me! SimpleAggregationHashTable::Iterator aht_iterator_;
+  SimpleAggregationHashTable::Iterator aht_iterator_;
 };

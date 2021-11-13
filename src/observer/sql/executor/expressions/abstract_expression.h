@@ -23,8 +23,8 @@ class AbstractExpression {
       const Tuple *right_tuple, const TupleSchema *right_schema) const = 0;
 
   virtual const std::shared_ptr<TupleValue> EvaluateAggregate(
-      const std::vector<TupleValue> &group_bys,
-      const std::vector<TupleValue> &aggregates) const = 0;
+      const std::vector<std::shared_ptr<TupleValue>> &group_bys,
+      const std::vector<std::shared_ptr<TupleValue>> &aggregates) const = 0;
 
   const AbstractExpression *GetChildAt(size_t child_idx) const {
     return children_[child_idx];

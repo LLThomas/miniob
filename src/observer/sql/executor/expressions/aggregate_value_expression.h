@@ -12,7 +12,7 @@ class AggregateValueExpression : public AbstractExpression {
    * @param ret_type the return type of the aggregate value expression
    */
   AggregateValueExpression(bool is_group_by_term, uint32_t term_idx,
-                           TypeId ret_type)
+                           AttrType ret_type)
       : AbstractExpression({}, ret_type),
         is_group_by_term_{is_group_by_term},
         term_idx_{term_idx} {}
