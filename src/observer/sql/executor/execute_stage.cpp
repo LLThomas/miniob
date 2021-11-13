@@ -1348,7 +1348,11 @@ const AbstractExpression *ParseConditionToExpression(
       }
       case AttrType::DATES: {
         uint16_t d;
-        serialize_date(&d, (const char *)val.data);
+        RC rc = serialize_date(&d, (const char *)val.data);
+        if (rc != SUCCESS) {
+          LOG_ERROR("Invalid date: %s", val.data);
+          return nullptr;
+        }
         return MakeConstantValueExpression(std::make_shared<DateValue>(d),
                                            expressions);
       }
@@ -1475,13 +1479,13 @@ RC PlanFrom(const char *db, const Selects &selects,
 RC PlanWhere(const char *db, const Selects &selects,
              std::unordered_map<std::string, const Table *> tables_map,
              std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
-             std::vector<const AbstractExpression *> &out_predicates, 
-             std::unordered_map<std::string, 
-             std::unordered_map<std::string, 
+             std::vector<const AbstractExpression *> &out_predicates,
+             std::unordered_map<std::string,
+             std::unordered_map<std::string,
              std::vector<const AbstractExpression *>>> &table_to_on_exp,
-             std::unordered_map<std::string, 
-             std::vector<const AbstractExpression *>> &table_to_exp, 
-             std::unordered_map<std::string, 
+             std::unordered_map<std::string,
+             std::vector<const AbstractExpression *>> &table_to_exp,
+             std::unordered_map<std::string,
              std::vector<std::pair<std::string, const AbstractExpression *>>> &table_to_proj,
              std::unordered_map<std::string, int> table_to_index,
              std::unordered_map<std::string, std::unordered_map<std::string, std::string>> &table_to_on_col) {
@@ -1551,7 +1555,7 @@ RC PlanWhere(const char *db, const Selects &selects,
     const AbstractExpression *lhs = nullptr;
     const AbstractExpression *rhs = nullptr;
     if (is_join) {
-      if (table_to_index[con.left_attr.relation_name] < 
+      if (table_to_index[con.left_attr.relation_name] <
               table_to_index[con.right_attr.relation_name]) {
 
         lhs = ParseConditionToExpression(
@@ -1592,6 +1596,10 @@ RC PlanWhere(const char *db, const Selects &selects,
       }
     }
 
+    if (lhs == nullptr || rhs == nullptr) {
+      return RC::INVALID_ARGUMENT;
+    }
+
     if (is_join) {
       table_to_proj[con.left_attr.relation_name].push_back({
         std::string(con.left_attr.relation_name) + "." + con.left_attr.attribute_name,
@@ -1604,7 +1612,7 @@ RC PlanWhere(const char *db, const Selects &selects,
     } else {
       const AbstractExpression *comp_exp = MakeComparisonExpression(lhs, rhs, con.comp, out_exprs);
       out_predicates.emplace_back(comp_exp);
-      
+
       if (con.left_is_attr) {
         table_to_exp[con.left_attr.relation_name].emplace_back(comp_exp);
       }
@@ -1630,7 +1638,7 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   if (rc != RC::SUCCESS) return rc;
   // 2. parse WHERE
   // t -> t -> <exp1, exp2> (for join)
-  std::unordered_map<std::string, 
+  std::unordered_map<std::string,
     std::unordered_map<std::string, std::vector< const AbstractExpression *>>> table_to_on_exp;
   // t -> exp (for comp)
   std::unordered_map<std::string, std::vector<const AbstractExpression *>> table_to_exp;
@@ -1639,7 +1647,7 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   // t -> t -> on_col_name
   std::unordered_map<std::string, std::unordered_map<std::string, std::string>> table_to_on_col;
   std::vector<const AbstractExpression *> predicates;  //默认全是用AND连接的
-  rc = PlanWhere(db, selects, from_tables_map, out_exprs, predicates, 
+  rc = PlanWhere(db, selects, from_tables_map, out_exprs, predicates,
       table_to_on_exp, table_to_exp, table_to_proj, table_to_index,
       table_to_on_col);
   if (rc != RC::SUCCESS) return rc;
