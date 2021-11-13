@@ -77,6 +77,8 @@ QUOTE            [\'\"]
 [Mm][Ii][Nn]                RETURN_TOKEN(AGGMIN);
 [Cc][Oo][Uu][Nn][Tt]                 RETURN_TOKEN(AGGCOUNT);
 [Aa][Vv][Gg]                RETURN_TOKEN(AGGAVG);
+[Ii][Nn][Nn][Ee][Rr]                RETURN_TOKEN(INNER);
+[Jj][Oo][Ii][Nn]                RETURN_TOKEN(JOIN);
 [Nn][Oo][Tt]                RETURN_TOKEN(NOT);
 [Ii][Ss]                    RETURN_TOKEN(IS);
 [Nn][Uu][Ll][Ll]            RETURN_TOKEN(NULL_TOK);

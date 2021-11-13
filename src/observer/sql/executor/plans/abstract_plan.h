@@ -9,7 +9,7 @@ enum class PlanType { SeqScan, HashJoin, Aggregation };
 class AbstractPlanNode {
  public:
   AbstractPlanNode(TupleSchema *output_schema,
-                   std::vector<const AbstractPlanNode *> &&children)
+                   std::vector<AbstractPlanNode *> &&children)
       : output_schema_(output_schema), children_(std::move(children)) {}
 
   virtual ~AbstractPlanNode() = default;
@@ -17,11 +17,10 @@ class AbstractPlanNode {
   TupleSchema *OutputSchema() const { return output_schema_; }
 
   AbstractPlanNode *GetChildAt(int child_idx) const {
-    // return children_[child_idx];
-    return nullptr;
+    return children_[child_idx];
   }
 
-  const std::vector<const AbstractPlanNode *> &GetChildren() const {
+  const std::vector<AbstractPlanNode *> &GetChildren() const {
     return children_;
   }
 
@@ -29,6 +28,6 @@ class AbstractPlanNode {
 
  private:
   TupleSchema *output_schema_;
-  std::vector<const AbstractPlanNode *> children_;
+  std::vector<AbstractPlanNode *> children_;
 };
 #endif

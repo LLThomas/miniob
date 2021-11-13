@@ -33,11 +33,24 @@ class HashJoinExecutor : public AbstractExecutor {
   /** @return The output schema for the join */
   TupleSchema *GetOutputSchema() override { return plan_->OutputSchema(); };
 
+  Tuple* GetNextTuple() {
+    if (last_tuples.size() <= 0) {
+      return nullptr;
+    }
+    Tuple *tuple = last_tuples.front();
+    last_tuples.erase(last_tuples.begin());
+    return tuple;
+  }
+
+  void SetLastTuples(std::vector<Tuple *> tuples) {
+    last_tuples = tuples;
+  }
+
  private:
   /** The hash join plan node. */
   HashJoinPlanNode *plan_;
   std::unique_ptr<AbstractExecutor> left_, right_;
-  Table *left_table;
-  Table *right_table;
+
+  std::vector<Tuple *> last_tuples;
 };
 #endif

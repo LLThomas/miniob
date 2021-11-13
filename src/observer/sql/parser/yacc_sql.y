@@ -116,6 +116,8 @@ ParserContext *get_context(yyscan_t scanner)
 		NULL_TOK
 		NULLABLE
 		IS
+		INNER
+		JOIN
 		
 %code requires { #include <stdbool.h> }
 
@@ -453,10 +455,14 @@ attr_list:
   	;
 
 rel_list:
-    /* empty */
-    | COMMA ID rel_list {	
-				selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
-		  }
+    	/* empty */
+    	| COMMA ID rel_list {
+			selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
+	}
+	| INNER JOIN ID ON condition condition_list rel_list
+	{
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+	}
     ;
 where:
     /* empty */ 
