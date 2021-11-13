@@ -217,6 +217,10 @@ RC Table::rollback_insert(Trx *trx, const RID &rid) {
 }
 
 RC Table::insert_record(Trx *trx, Record *record) {
+  if (!insert_valid_for_unique_indexes(record->data)) {
+    return RC::RECORD_DUPLICATE_KEY;
+  }
+
   RC rc = RC::SUCCESS;
 
   if (trx != nullptr) {
@@ -558,14 +562,22 @@ RC Table::scan_one_tuple(Record *record) {
 
 class IndexInserter {
  public:
-  explicit IndexInserter(Index *index) : index_(index) {}
+  explicit IndexInserter(Index *index, bool unique)
+      : index_(index), unique_(unique) {}
 
   RC insert_index(const Record *record) {
+    if (unique_) {
+      RID g_rid;
+      if (index_->get_entry(record->data, &g_rid) == SUCCESS) {
+        return RC::RECORD_DUPLICATE_KEY;
+      }
+    }
     return index_->insert_entry(record->data, &record->rid);
   }
 
  private:
   Index *index_;
+  bool unique_;
 };
 
 static RC insert_index_record_reader_adapter(Record *record, void *context) {
@@ -574,7 +586,7 @@ static RC insert_index_record_reader_adapter(Record *record, void *context) {
 }
 
 RC Table::create_index(Trx *trx, const char *index_name,
-                       const char *attribute_name) {
+                       const char *attribute_name, bool unique) {
   if (index_name == nullptr || common::is_blank(index_name) ||
       attribute_name == nullptr || common::is_blank(attribute_name)) {
     return RC::INVALID_ARGUMENT;
@@ -590,7 +602,7 @@ RC Table::create_index(Trx *trx, const char *index_name,
   }
 
   IndexMeta new_index_meta;
-  RC rc = new_index_meta.init(index_name, *field_meta);
+  RC rc = new_index_meta.init(index_name, *field_meta, unique);
   if (rc != RC::SUCCESS) {
     return rc;
   }
@@ -602,13 +614,14 @@ RC Table::create_index(Trx *trx, const char *index_name,
   rc = index->create(index_file.c_str(), new_index_meta, *field_meta);
   if (rc != RC::SUCCESS) {
     delete index;
+    remove(index_file.c_str());
     LOG_ERROR("Failed to create bplus tree index. file name=%s, rc=%d:%s",
               index_file.c_str(), rc, strrc(rc));
     return rc;
   }
 
   // 遍历当前的所有数据，插入这个索引
-  IndexInserter index_inserter(index);
+  IndexInserter index_inserter(index, unique);
   rc = scan_record(trx, nullptr, -1, &index_inserter,
                    insert_index_record_reader_adapter);
   if (rc != RC::SUCCESS) {
@@ -919,6 +932,18 @@ RC Table::insert_entry_of_indexes(const char *record, const RID &rid) {
     }
   }
   return rc;
+}
+
+bool Table::insert_valid_for_unique_indexes(const char *record) {
+  for (Index *index : indexes_) {
+    if (index->index_meta().unique()) {
+      RID g_rid;
+      if (index->get_entry(record, &g_rid) == SUCCESS) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 RC Table::delete_entry_of_indexes(const char *record, const RID &rid,

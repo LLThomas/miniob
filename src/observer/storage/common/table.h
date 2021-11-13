@@ -77,7 +77,8 @@ class Table {
   RC scan_record(Trx *trx, ConditionFilter *filter, int limit, void *context,
                  void (*record_reader)(const char *data, void *context));
 
-  RC create_index(Trx *trx, const char *index_name, const char *attribute_name);
+  RC create_index(Trx *trx, const char *index_name, const char *attribute_name,
+                  bool unique);
 
   RC scan_one_tuple_by_filter(Record *record, ConditionFilter *filter);
 
@@ -125,6 +126,8 @@ class Table {
   friend class RecordDeleter;
 
   RC insert_entry_of_indexes(const char *record, const RID &rid);
+
+  bool insert_valid_for_unique_indexes(const char *record);
 
   RC delete_entry_of_indexes(const char *record, const RID &rid,
                              bool error_on_not_exists);
