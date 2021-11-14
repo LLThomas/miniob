@@ -54,5 +54,6 @@ class HashJoinExecutor : public AbstractExecutor {
 
   std::vector<Tuple *> last_left_tuples;
   Tuple last_right_tuple;
+  std::unordered_map<std::string, std::vector<Tuple *>> hash_map;
 };
 #endif

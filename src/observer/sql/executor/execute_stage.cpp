@@ -1329,7 +1329,9 @@ void MakeOutputSchema(
     size_t dot = input.first.find('.');
     std::string field_name =
         dot == std::string::npos ? input.first : input.first.substr(dot + 1);
-    schema->add(TupleField{input.second->GetReturnType(), table_name,
+    std::string table_str =
+        dot == std::string::npos ? table_name : input.first.substr(0, dot);
+    schema->add(TupleField{input.second->GetReturnType(), table_str.c_str(),
                            field_name.c_str(), input.second});
   }
 }
@@ -1704,11 +1706,8 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   const char *last_scan_table_name = from_tables[0]->name();
   AbstractPlanNode *last_plan;
   if (from_tables.size() == 1) {
-    TupleSchema *scan_schema = new TupleSchema;
-    MakeOutputSchema(projections, scan_schema, from_tables[0]->name());
     last_plan =
-        new SeqScanPlanNode(scan_schema, from_tables[0]->name(), predicates);
-
+        new SeqScanPlanNode(nullptr, from_tables[0]->name(), predicates);
   } else
     last_plan = ConstructScanTable(last_scan_table_name, table_infos);
   // construct outher scan table and join them
@@ -1720,31 +1719,11 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
 
     // join
     std::vector<std::pair<std::string, const AbstractExpression *>> join_proj;
-    // from select
-    if (table_infos[current_scan_table_name].select_projs.empty() == false) {
-      join_proj.insert(
-          join_proj.end(),
-          table_infos[current_scan_table_name].select_projs.begin(),
-          table_infos[current_scan_table_name].select_projs.end());
-    }
-    // from on
-    if (i != (int)from_tables.size() - 1 &&
-        table_infos[current_scan_table_name].on_projs.empty() == false) {
-      join_proj.insert(join_proj.end(),
-                       table_infos[current_scan_table_name].on_projs.begin(),
-                       table_infos[current_scan_table_name].on_projs.end());
-    }
+    // 拼接左右SecScan的OutputSchema
     TupleSchema *join_schema = new TupleSchema;
-    //      std::unique_ptr<HashJoinPlanNode> join_plan;
+    join_schema->append(*last_plan->OutputSchema());
+    join_schema->append(*current_plan->OutputSchema());
     MakeOutputSchema(join_proj, join_schema, current_scan_table_name);
-    //      join_plan = std::make_unique<HashJoinPlanNode>(
-    //          join_schema, std::vector<AbstractPlanNode *>{left_plan.get(),
-    //          scan_plan_2.get()},
-    //          table_to_on_exp[scan_table_1_name][scan_table_2_name][0],
-    //          table_to_on_exp[scan_table_1_name][scan_table_2_name][1],
-    //          table_to_on_col[scan_table_1_name][scan_table_2_name],
-    //          table_to_on_col[scan_table_2_name][scan_table_1_name]
-    //      );
     HashJoinPlanNode *join_plan = new HashJoinPlanNode(
         join_schema, std::vector<AbstractPlanNode *>{last_plan, current_plan},
         table_infos[last_scan_table_name].on_exprs[current_scan_table_name][0],
@@ -1759,7 +1738,10 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   }
   //    out_plans.emplace_back(std::move(left_plan));
   out_plans.emplace_back(last_plan);
-
+  //最后修改root plan的投影
+  TupleSchema *out_schema = new TupleSchema;
+  MakeOutputSchema(projections, out_schema, from_tables[0]->name());
+  out_plans[0]->SetOutputSchema(out_schema);
   return RC::SUCCESS;
 }
 

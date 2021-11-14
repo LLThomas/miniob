@@ -15,7 +15,7 @@ class AbstractPlanNode {
   virtual ~AbstractPlanNode() = default;
 
   TupleSchema *OutputSchema() const { return output_schema_; }
-
+  void SetOutputSchema(TupleSchema *schema) { output_schema_ = schema; }
   AbstractPlanNode *GetChildAt(int child_idx) const {
     return children_[child_idx];
   }

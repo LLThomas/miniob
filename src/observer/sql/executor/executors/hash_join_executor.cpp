@@ -3,8 +3,6 @@
 #include <string>
 #include <unordered_map>
 
-std::unordered_map<std::string, std::vector<Tuple *>> hash_map;
-
 HashJoinExecutor::HashJoinExecutor(
     ExecutorContext *exec_ctx, HashJoinPlanNode *plan,
     std::unique_ptr<AbstractExecutor> &&left_child,

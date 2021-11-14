@@ -14,10 +14,12 @@ insert into B values(6,6.888);
 insert into B values(7,7.123);
 insert into B values(8,8.234);
 
-select B.id from A inner join B on A.id=B.id;
 select A.id from A inner join B on A.id=B.id;
+select B.id from A inner join B on A.id=B.id;
 select A.age from A inner join B on A.id=B.id;
 select B.age from A inner join B on A.id=B.id;
+select B.* from A inner join B on A.id=B.id;
+select A.* from A inner join B on A.id=B.id;
 
 select id,age from A;
 select A.id,age from A;
