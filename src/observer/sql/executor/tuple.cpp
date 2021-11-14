@@ -236,6 +236,7 @@ const std::vector<Tuple> &TupleSet::tuples() const { return tuples_; }
 /////////////////////////////////////////////////////////////////////////////
 TupleRecordConverter::TupleRecordConverter(Table *table, TupleSet &tuple_set)
     : table_(table), tuple_set_(tuple_set) {}
+
 void TupleRecordConverter::add_record(const char *record) {
   const TupleSchema &schema = tuple_set_.schema();
   Tuple tuple;
@@ -259,6 +260,15 @@ void TupleRecordConverter::add_record(const char *record) {
       case CHARS: {
         const char *s = record + field_meta->offset();  // 现在当做Cstring来处理
         tuple.add(s, strlen(s));
+      } break;
+      case TEXTS: {
+        int overflow_id = *(int *)(record + field_meta->offset());
+        FILE *overflow_file = table_->overflow_file();
+        fseek(overflow_file, overflow_id * 4096, SEEK_SET);
+        char *buf = new char[4097];
+        buf[4096] = 0;
+        fread(buf, 4096, 1, overflow_file);
+        tuple.add(buf, strlen(buf));
       } break;
       default: {
         LOG_PANIC("Unsupported field type. type=%d", field_meta->type());
@@ -299,6 +309,15 @@ void TupleRecordConverter::record_to_tuple(Tuple *tuple, Record *record) {
         const char *s =
             record->data + field_meta->offset();  // 现在当做Cstring来处理
         tuple->add(s, strlen(s));
+      } break;
+      case TEXTS: {
+        int overflow_id = *(int *)(record->data + field_meta->offset());
+        FILE *overflow_file = table_->overflow_file();
+        fseek(overflow_file, overflow_id * 4096, SEEK_SET);
+        char *buf = new char[4097];
+        buf[4096] = 0;
+        fread(buf, 4096, 1, overflow_file);
+        tuple->add(buf, strlen(buf));
       } break;
       default: {
         LOG_PANIC("Unsupported field type. type=%d", field_meta->type());

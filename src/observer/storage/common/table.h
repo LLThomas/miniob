@@ -84,6 +84,8 @@ class Table {
 
   RC scan_one_tuple(Record *record);
 
+  FILE* overflow_file();
+
  public:
   const char *name() const;
 
@@ -144,6 +146,7 @@ class Table {
   std::string base_dir_;
   TableMeta table_meta_;
   DiskBufferPool *data_buffer_pool_;  /// 数据文件关联的buffer pool
+  FILE* overflow_file_;
   int file_id_;
   RecordFileHandler *record_handler_;  /// 记录操作
   std::vector<Index *> indexes_;

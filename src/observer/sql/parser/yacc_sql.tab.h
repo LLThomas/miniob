@@ -44,7 +44,7 @@
 extern int yydebug;
 #endif
 /* "%code requires" blocks.  */
-#line 123 "yacc_sql.y"
+#line 124 "yacc_sql.y"
  #include <stdbool.h> 
 
 #line 51 "yacc_sql.tab.h"
@@ -77,43 +77,44 @@ extern int yydebug;
     DATE_T = 278,
     STRING_T = 279,
     FLOAT_T = 280,
-    HELP = 281,
-    EXIT = 282,
-    DOT = 283,
-    INTO = 284,
-    VALUES = 285,
-    FROM = 286,
-    WHERE = 287,
-    AND = 288,
-    SET = 289,
-    ON = 290,
-    LOAD = 291,
-    DATA = 292,
-    INFILE = 293,
-    EQ = 294,
-    LT = 295,
-    GT = 296,
-    LE = 297,
-    GE = 298,
-    NE = 299,
-    AGGMAX = 300,
-    AGGMIN = 301,
-    AGGCOUNT = 302,
-    AGGAVG = 303,
-    NOT = 304,
-    NULL_TOK = 305,
-    NULLABLE = 306,
-    IS = 307,
-    UNIQUE = 308,
-    INNER = 309,
-    JOIN = 310,
-    NUMBER = 311,
-    FLOAT = 312,
-    ID = 313,
-    PATH = 314,
-    SSS = 315,
-    STAR = 316,
-    STRING_V = 317
+    TEXT_T = 281,
+    HELP = 282,
+    EXIT = 283,
+    DOT = 284,
+    INTO = 285,
+    VALUES = 286,
+    FROM = 287,
+    WHERE = 288,
+    AND = 289,
+    SET = 290,
+    ON = 291,
+    LOAD = 292,
+    DATA = 293,
+    INFILE = 294,
+    EQ = 295,
+    LT = 296,
+    GT = 297,
+    LE = 298,
+    GE = 299,
+    NE = 300,
+    AGGMAX = 301,
+    AGGMIN = 302,
+    AGGCOUNT = 303,
+    AGGAVG = 304,
+    NOT = 305,
+    NULL_TOK = 306,
+    NULLABLE = 307,
+    IS = 308,
+    UNIQUE = 309,
+    INNER = 310,
+    JOIN = 311,
+    NUMBER = 312,
+    FLOAT = 313,
+    ID = 314,
+    PATH = 315,
+    SSS = 316,
+    STAR = 317,
+    STRING_V = 318
   };
 #endif
 
@@ -121,7 +122,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 125 "yacc_sql.y"
+#line 126 "yacc_sql.y"
 
   struct _Attr *attr;
   struct _Condition *condition1;
@@ -132,7 +133,7 @@ union YYSTYPE
   char *position;
   bool *bools;
 
-#line 136 "yacc_sql.tab.h"
+#line 137 "yacc_sql.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

@@ -69,6 +69,7 @@ RC DefaultConditionFilter::init(const ConDesc &left, const ConDesc &right,
 
 RC DefaultConditionFilter::init(Table &table, const Condition &condition) {
   const TableMeta &table_meta = table.table_meta();
+  overflow_file_ = table.overflow_file();
   ConDesc left;
   ConDesc right;
 
@@ -122,6 +123,7 @@ RC DefaultConditionFilter::init(Table &table, const Condition &condition) {
     right.attr_offset = 0;
   }
 
+  // 对 DATE 进行处理
   if (!right.is_attr && type_right == CHARS && left.is_attr &&
       type_left == DATES) {
     type_right = DATES;
@@ -156,10 +158,15 @@ RC DefaultConditionFilter::init(Table &table, const Condition &condition) {
   // 但是选手们还是要实现。这个功能在预选赛中会出现
   if (type_left != type_right && condition.comp != IS_LEFT_NULL &&
       condition.comp != IS_LEFT_NOT_NULL && type_left != NULLS &&
-      type_right != NULLS) {
+      type_right != NULLS &&
+      !(!right.is_attr && type_right == CHARS && left.is_attr &&
+        type_left == TEXTS) &&
+      !(!left.is_attr && type_left == CHARS && right.is_attr &&
+        type_right == TEXTS)) {
     return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
 
+  if (type_left == CHARS && type_right == TEXTS) type_left = TEXTS;
   return init(left, right, type_left, condition.comp);
 }
 
@@ -168,21 +175,37 @@ bool DefaultConditionFilter::filter(const Record &rec) const {
   char *right_value = nullptr;
 
   if (left_.is_attr) {  // value
-    left_value = (char *)(rec.data + left_.attr_offset);
+    if (attr_type_ == TEXTS) {
+      int overflow_id = *(int *)(rec.data + left_.attr_offset);
+      left_value = new char[4097];
+      left_value[4096] = 0;
+      fseek(overflow_file_, overflow_id * 4096, SEEK_SET);
+      fread(left_value, 4096, 1, overflow_file_);
+    } else {
+      left_value = (char *)(rec.data + left_.attr_offset);
+    }
   } else {
     left_value = (char *)left_.value;
   }
 
   if (right_.is_attr) {
-    right_value = (char *)(rec.data + right_.attr_offset);
+    if (attr_type_ == TEXTS) {
+      int overflow_id = *(int *)(rec.data + right_.attr_offset);
+      right_value = new char[4097];
+      right_value[4096] = 0;
+      fseek(overflow_file_, overflow_id * 4096, SEEK_SET);
+      fread(right_value, 4096, 1, overflow_file_);
+    } else {
+      right_value = (char *)(rec.data + right_.attr_offset);
+    }
   } else {
     right_value = (char *)right_.value;
   }
 
   int cmp_result = 0;
   switch (attr_type_) {
-    case CHARS: {  // 字符串都是定长的，直接比较
-      // 按照C字符串风格来定
+    case CHARS:
+    case TEXTS: {  // 字符串都是定长的，直接比较 按照C字符串风格来定
       cmp_result = strcmp(left_value, right_value);
     } break;
     case INTS: {

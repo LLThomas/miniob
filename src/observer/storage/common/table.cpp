@@ -34,7 +34,10 @@ See the Mulan PSL v2 for more details. */
 #include "storage/trx/trx.h"
 
 Table::Table()
-    : data_buffer_pool_(nullptr), file_id_(-1), record_handler_(nullptr) {}
+    : data_buffer_pool_(nullptr),
+      file_id_(-1),
+      record_handler_(nullptr),
+      overflow_file_(nullptr) {}
 
 Table::~Table() {
   delete record_handler_;
@@ -43,6 +46,10 @@ Table::~Table() {
   if (data_buffer_pool_ != nullptr && file_id_ >= 0) {
     data_buffer_pool_->close_file(file_id_);
     data_buffer_pool_ = nullptr;
+  }
+
+  if (overflow_file_ != nullptr) {
+    fclose(overflow_file_);
   }
 
   LOG_INFO("Table has been closed: %s", name());
@@ -64,12 +71,12 @@ RC Table::create(const char *name, const char *base_dir, int attribute_count,
   }
 
   RC rc = RC::SUCCESS;
+  int fd;
 
   // 使用 table_name.table记录一个表的元数据
   // 判断表文件是否已经存在
   std::string meta_file = table_meta_file(base_dir, name);
-  int fd =
-      ::open(meta_file.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+  fd = ::open(meta_file.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
   if (-1 == fd) {
     if (EEXIST == errno) {
       LOG_ERROR(
@@ -81,7 +88,23 @@ RC Table::create(const char *name, const char *base_dir, int attribute_count,
               meta_file.c_str(), errno, strerror(errno));
     return RC::IOERR;
   }
+  close(fd);
 
+  // 使用 table_name.overflow 记录一个表的溢出数据，目前不支持缓冲和释放空间
+  std::string overflow_file = table_overflow_file(base_dir, name);
+  fd = ::open(overflow_file.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC,
+              0600);
+  if (-1 == fd) {
+    if (EEXIST == errno) {
+      LOG_ERROR(
+          "Failed to create table file, it has been created. %s, EEXIST, %s",
+          overflow_file.c_str(), strerror(errno));
+      return RC::SCHEMA_TABLE_EXIST;
+    }
+    LOG_ERROR("Create table file failed. filename=%s, errmsg=%d:%s",
+              overflow_file.c_str(), errno, strerror(errno));
+    return RC::IOERR;
+  }
   close(fd);
 
   // 创建文件
@@ -115,6 +138,7 @@ RC Table::create(const char *name, const char *base_dir, int attribute_count,
   rc = init_record_handler(base_dir);
 
   base_dir_ = base_dir;
+  overflow_file_ = fopen(overflow_file.c_str(), "rb+");
   LOG_INFO("Successfully create table %s:%s", base_dir, name);
   return rc;
 }
@@ -124,8 +148,10 @@ RC Table::drop(const char *name) {
 
   std::string meta_file = table_meta_file(base_dir_.c_str(), name);
   std::string data_file = table_data_file(base_dir_.c_str(), name);
+  std::string overflow_file = table_overflow_file(base_dir_.c_str(), name);
   remove(meta_file.c_str());
   remove(data_file.c_str());
+  remove(overflow_file.c_str());
 
   // Delete all index files
   std::string index_file_pattern = index_data_file_pattern(name);
@@ -343,6 +369,14 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out) {
         return rc;
       }
       memcpy(record + field->offset(), &date, field->len());
+    } else if (field->type() == TEXTS && value.type == CHARS) {
+      fseek(overflow_file_, 0, SEEK_END);
+      int overflow_id = ftell(overflow_file_) / 4096;
+      char buf[4096];
+      memset(buf, 0, sizeof(buf));
+      strncpy(buf, (const char *)value.data, sizeof(buf));
+      fwrite(buf, sizeof(buf), 1, overflow_file_);
+      memcpy(record + field->offset(), &overflow_id, field->len());
     } else if (field->type() == value.type) {
       memcpy(record + field->offset(), value.data, field->len());
     } else {
@@ -539,6 +573,8 @@ RC Table::scan_one_tuple_by_filter(Record *record, ConditionFilter *filter) {
   return rc;
 }
 
+FILE *Table::overflow_file() { return overflow_file_; }
+
 RC Table::scan_one_tuple(Record *record) {
   RC rc = RC::SUCCESS;
 
@@ -707,14 +743,7 @@ class RecordUpdater {
       }
     }
     RC rc = SUCCESS;
-    if (table_.table_meta_.field(num)->type() != DATES) {
-      // wrong attr type
-      if (value->type != table_.table_meta_.field(num)->type()) {
-        return INVALID_ARGUMENT;
-      }
-      memcpy(record->data + table_.table_meta_.field(num)->offset(),
-             value->data, table_.table_meta_.field(num)->len());
-    } else {
+    if (table_.table_meta_.field(num)->type() == DATES) {
       if (value->type != CHARS) {
         return INVALID_ARGUMENT;
       }
@@ -724,6 +753,23 @@ class RecordUpdater {
         return rc;
       }
       memcpy(record->data + table_.table_meta_.field(num)->offset(), &t, 2);
+    } else if (table_.table_meta_.field(num)->type() == TEXTS) {
+      FILE *overflow_file = table_.overflow_file();
+      fseek(overflow_file, 0, SEEK_END);
+      int overflow_id = ftell(overflow_file) / 4096;
+      char buf[4096];
+      memset(buf, 0, sizeof(buf));
+      strncpy(buf, (const char *)value->data, sizeof(buf));
+      fwrite(buf, sizeof(buf), 1, overflow_file);
+      memcpy(record->data + table_.table_meta_.field(num)->offset(),
+             &overflow_id, sizeof(overflow_id));
+    } else {
+      // wrong attr type
+      if (value->type != table_.table_meta_.field(num)->type()) {
+        return INVALID_ARGUMENT;
+      }
+      memcpy(record->data + table_.table_meta_.field(num)->offset(),
+             value->data, table_.table_meta_.field(num)->len());
     }
 
     return rc;

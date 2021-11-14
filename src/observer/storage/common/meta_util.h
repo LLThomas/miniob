@@ -18,11 +18,14 @@ See the Mulan PSL v2 for more details. */
 static const char *TABLE_META_SUFFIX = ".table";
 static const char *TABLE_META_FILE_PATTERN = ".*\\.table$";
 static const char *TABLE_DATA_SUFFIX = ".data";
+static const char *TABLE_OVERFLOW_SUFFIX = ".overflow";
 static const char *TABLE_INDEX_SUFFIX = ".index";
 
 std::string table_meta_file(const char *base_dir, const char *table_name);
 
 std::string table_data_file(const char *base_dir, const char *table_name);
+
+std::string table_overflow_file(const char *base_dir, const char *table_name);
 
 std::string index_data_file(const char *base_dir, const char *table_name,
                             const char *index_name);

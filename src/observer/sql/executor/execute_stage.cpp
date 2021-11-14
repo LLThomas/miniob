@@ -1249,7 +1249,8 @@ std::unique_ptr<AbstractExecutor> CreateExecutor(ExecutorContext *exec_ctx,
       auto hash_join_plan = dynamic_cast<HashJoinPlanNode *>(plan);
       auto left = CreateExecutor(exec_ctx, hash_join_plan->GetLeftPlan());
       auto right = CreateExecutor(exec_ctx, hash_join_plan->GetRightPlan());
-      return std::make_unique<HashJoinExecutor>(exec_ctx, hash_join_plan, std::move(left), std::move(right));
+      return std::make_unique<HashJoinExecutor>(
+          exec_ctx, hash_join_plan, std::move(left), std::move(right));
     }
       // Create a new aggregation executor.
       // case PlanType::Aggregation: {
@@ -1332,7 +1333,7 @@ const AbstractExpression *ParseConditionToExpression(
     TupleSchema::from_table(from_tables_map[table_name], schema);
     if (is_right) {
       return MakeColumnValueExpression(schema, 1, rel.attribute_name,
-                                     expressions);
+                                       expressions);
     }
     return MakeColumnValueExpression(schema, 0, rel.attribute_name,
                                      expressions);
@@ -1371,14 +1372,16 @@ const AbstractExpression *ParseConditionToExpression(
   }
 }
 
-RC PlanSelect(const char *db, const Selects &selects,
-              std::vector<Table *> tables,
-              std::unordered_map<std::string, const Table *> tables_map,
-              std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
-              std::vector<std::pair<std::string, const AbstractExpression *>>
-                  &out_projections,
-              std::unordered_map<std::string,
-              std::vector<std::pair<std::string,const AbstractExpression *>>> &another_projections) {
+RC PlanSelect(
+    const char *db, const Selects &selects, std::vector<Table *> tables,
+    std::unordered_map<std::string, const Table *> tables_map,
+    std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
+    std::vector<std::pair<std::string, const AbstractExpression *>>
+        &out_projections,
+    std::unordered_map<
+        std::string,
+        std::vector<std::pair<std::string, const AbstractExpression *>>>
+        &another_projections) {
   for (int i = selects.attr_num - 1; i >= 0; i--) {
     RelAttr ra;
     ra = selects.attributes[i];
@@ -1476,19 +1479,25 @@ RC PlanFrom(const char *db, const Selects &selects,
   }
   return RC::SUCCESS;
 }
-RC PlanWhere(const char *db, const Selects &selects,
-             std::unordered_map<std::string, const Table *> tables_map,
-             std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
-             std::vector<const AbstractExpression *> &out_predicates,
-             std::unordered_map<std::string,
-             std::unordered_map<std::string,
-             std::vector<const AbstractExpression *>>> &table_to_on_exp,
-             std::unordered_map<std::string,
-             std::vector<const AbstractExpression *>> &table_to_exp,
-             std::unordered_map<std::string,
-             std::vector<std::pair<std::string, const AbstractExpression *>>> &table_to_proj,
-             std::unordered_map<std::string, int> table_to_index,
-             std::unordered_map<std::string, std::unordered_map<std::string, std::string>> &table_to_on_col) {
+RC PlanWhere(
+    const char *db, const Selects &selects,
+    std::unordered_map<std::string, const Table *> tables_map,
+    std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
+    std::vector<const AbstractExpression *> &out_predicates,
+    std::unordered_map<
+        std::string, std::unordered_map<
+                         std::string, std::vector<const AbstractExpression *>>>
+        &table_to_on_exp,
+    std::unordered_map<std::string, std::vector<const AbstractExpression *>>
+        &table_to_exp,
+    std::unordered_map<
+        std::string,
+        std::vector<std::pair<std::string, const AbstractExpression *>>>
+        &table_to_proj,
+    std::unordered_map<std::string, int> table_to_index,
+    std::unordered_map<std::string,
+                       std::unordered_map<std::string, std::string>>
+        &table_to_on_col) {
   for (size_t i = 0; i < selects.condition_num; i++) {
     Condition con = selects.conditions[i];
     bool is_join = false;
@@ -1556,42 +1565,55 @@ RC PlanWhere(const char *db, const Selects &selects,
     const AbstractExpression *rhs = nullptr;
     if (is_join) {
       if (table_to_index[con.left_attr.relation_name] <
-              table_to_index[con.right_attr.relation_name]) {
+          table_to_index[con.right_attr.relation_name]) {
+        lhs = ParseConditionToExpression(con.left_attr, con.left_value,
+                                         con.left_is_attr, false, tables_map,
+                                         out_exprs);
+        rhs = ParseConditionToExpression(con.right_attr, con.right_value,
+                                         con.right_is_attr, true, tables_map,
+                                         out_exprs);
+        table_to_on_exp[con.left_attr.relation_name]
+                       [con.right_attr.relation_name]
+                           .push_back(lhs);
+        table_to_on_exp[con.left_attr.relation_name]
+                       [con.right_attr.relation_name]
+                           .push_back(rhs);
 
-        lhs = ParseConditionToExpression(
-            con.left_attr, con.left_value, con.left_is_attr, false, tables_map, out_exprs);
-        rhs =
-          ParseConditionToExpression(con.right_attr, con.right_value,
-                                     con.right_is_attr, true, tables_map, out_exprs);
-        table_to_on_exp[con.left_attr.relation_name][con.right_attr.relation_name].push_back(lhs);
-        table_to_on_exp[con.left_attr.relation_name][con.right_attr.relation_name].push_back(rhs);
-
-        table_to_on_col[con.left_attr.relation_name][con.right_attr.relation_name] = con.left_attr.attribute_name;
+        table_to_on_col[con.left_attr.relation_name]
+                       [con.right_attr.relation_name] =
+                           con.left_attr.attribute_name;
       } else {
+        rhs = ParseConditionToExpression(con.left_attr, con.left_value,
+                                         con.left_is_attr, true, tables_map,
+                                         out_exprs);
+        lhs = ParseConditionToExpression(con.right_attr, con.right_value,
+                                         con.right_is_attr, false, tables_map,
+                                         out_exprs);
 
-        rhs = ParseConditionToExpression(
-            con.left_attr, con.left_value, con.left_is_attr, true, tables_map, out_exprs);
-        lhs =
-          ParseConditionToExpression(con.right_attr, con.right_value,
-                                     con.right_is_attr, false, tables_map, out_exprs);
+        table_to_on_exp[con.right_attr.relation_name]
+                       [con.left_attr.relation_name]
+                           .push_back(lhs);
+        table_to_on_exp[con.right_attr.relation_name]
+                       [con.left_attr.relation_name]
+                           .push_back(rhs);
 
-        table_to_on_exp[con.right_attr.relation_name][con.left_attr.relation_name].push_back(lhs);
-        table_to_on_exp[con.right_attr.relation_name][con.left_attr.relation_name].push_back(rhs);
-
-        table_to_on_col[con.right_attr.relation_name][con.left_attr.relation_name] = con.right_attr.attribute_name;
+        table_to_on_col[con.right_attr.relation_name]
+                       [con.left_attr.relation_name] =
+                           con.right_attr.attribute_name;
       }
     } else {
-      lhs = ParseConditionToExpression(
-        con.left_attr, con.left_value, con.left_is_attr, false, tables_map, out_exprs);
+      lhs = ParseConditionToExpression(con.left_attr, con.left_value,
+                                       con.left_is_attr, false, tables_map,
+                                       out_exprs);
       if (con.comp != IS_LEFT_NULL && con.comp != IS_LEFT_NOT_NULL) {
         if (is_join) {
-          rhs =
-            ParseConditionToExpression(con.right_attr, con.right_value,
-                                      con.right_is_attr, true, tables_map, out_exprs);
+          rhs = ParseConditionToExpression(con.right_attr, con.right_value,
+                                           con.right_is_attr, true, tables_map,
+                                           out_exprs);
         } else {
-          rhs =
-            ParseConditionToExpression(con.right_attr, con.right_value,
-                                      con.right_is_attr, false, tables_map, out_exprs);
+          rhs = ParseConditionToExpression(con.right_attr, con.right_value,
+                                           con.right_is_attr, false, tables_map,
+                                           out_exprs);
         }
       }
     }
@@ -1601,23 +1623,30 @@ RC PlanWhere(const char *db, const Selects &selects,
     }
 
     if (is_join) {
-      table_to_proj[con.left_attr.relation_name].push_back({
-        std::string(con.left_attr.relation_name) + "." + con.left_attr.attribute_name,
-        lhs
-      });
-      table_to_proj[con.right_attr.relation_name].push_back({
-        std::string(con.right_attr.relation_name) + "." +con.right_attr.attribute_name,
-        rhs
-      });
+      table_to_proj[con.left_attr.relation_name].push_back(
+          {std::string(con.left_attr.relation_name) + "." +
+               con.left_attr.attribute_name,
+           lhs});
+      table_to_proj[con.right_attr.relation_name].push_back(
+          {std::string(con.right_attr.relation_name) + "." +
+               con.right_attr.attribute_name,
+           rhs});
     } else {
-      const AbstractExpression *comp_exp = MakeComparisonExpression(lhs, rhs, con.comp, out_exprs);
+      const AbstractExpression *comp_exp =
+          MakeComparisonExpression(lhs, rhs, con.comp, out_exprs);
       out_predicates.emplace_back(comp_exp);
 
       if (con.left_is_attr) {
-        table_to_exp[con.left_attr.relation_name].emplace_back(comp_exp);
+        table_to_exp[con.left_attr.relation_name == nullptr
+                         ? ""
+                         : con.left_attr.relation_name]
+            .emplace_back(comp_exp);
       }
       if (con.right_is_attr) {
-        table_to_exp[con.right_attr.relation_name].emplace_back(comp_exp);
+        table_to_exp[con.right_attr.relation_name == nullptr
+                         ? ""
+                         : con.right_attr.relation_name]
+            .emplace_back(comp_exp);
       }
     }
   }
@@ -1638,23 +1667,33 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   if (rc != RC::SUCCESS) return rc;
   // 2. parse WHERE
   // t -> t -> <exp1, exp2> (for join)
-  std::unordered_map<std::string,
-    std::unordered_map<std::string, std::vector< const AbstractExpression *>>> table_to_on_exp;
+  std::unordered_map<
+      std::string,
+      std::unordered_map<std::string, std::vector<const AbstractExpression *>>>
+      table_to_on_exp;
   // t -> exp (for comp)
-  std::unordered_map<std::string, std::vector<const AbstractExpression *>> table_to_exp;
+  std::unordered_map<std::string, std::vector<const AbstractExpression *>>
+      table_to_exp;
   // t -> proj ( select + on in 1 table)
-  std::unordered_map<std::string, std::vector<std::pair<std::string, const AbstractExpression *>>> table_to_proj;
+  std::unordered_map<
+      std::string,
+      std::vector<std::pair<std::string, const AbstractExpression *>>>
+      table_to_proj;
   // t -> t -> on_col_name
-  std::unordered_map<std::string, std::unordered_map<std::string, std::string>> table_to_on_col;
+  std::unordered_map<std::string, std::unordered_map<std::string, std::string>>
+      table_to_on_col;
   std::vector<const AbstractExpression *> predicates;  //默认全是用AND连接的
   rc = PlanWhere(db, selects, from_tables_map, out_exprs, predicates,
-      table_to_on_exp, table_to_exp, table_to_proj, table_to_index,
-      table_to_on_col);
+                 table_to_on_exp, table_to_exp, table_to_proj, table_to_index,
+                 table_to_on_col);
   if (rc != RC::SUCCESS) return rc;
 
   // 3. parse SELECT
   // t -> proj_pair
-  std::unordered_map<std::string, std::vector<std::pair<std::string, const AbstractExpression *>>> another_projections;
+  std::unordered_map<
+      std::string,
+      std::vector<std::pair<std::string, const AbstractExpression *>>>
+      another_projections;
   std::vector<std::pair<std::string, const AbstractExpression *>> projections;
   rc = PlanSelect(db, selects, from_tables, from_tables_map, out_exprs,
                   projections, another_projections);
@@ -1662,113 +1701,122 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
 
   // 4. 1 table or join tables
   if (from_tables.size() == 1) {
-//    out_schemas.emplace_back(std::make_unique<TupleSchema>());
-//    TupleSchema *scan_schema = out_schemas.back().get();
-//    Table *scan_table = from_tables[0];
-//
-//    MakeOutputSchema(projections, scan_schema, scan_table->name());
-//    out_plans.emplace_back(std::make_unique<SeqScanPlanNode>(
-//        scan_schema, scan_table->name(), predicates));
-//    AbstractPlanNode *scan_plan = out_plans.back().get();
+    //    out_schemas.emplace_back(std::make_unique<TupleSchema>());
+    //    TupleSchema *scan_schema = out_schemas.back().get();
+    //    Table *scan_table = from_tables[0];
+    //
+    //    MakeOutputSchema(projections, scan_schema, scan_table->name());
+    //    out_plans.emplace_back(std::make_unique<SeqScanPlanNode>(
+    //        scan_schema, scan_table->name(), predicates));
+    //    AbstractPlanNode *scan_plan = out_plans.back().get();
     TupleSchema *scan_schema = new TupleSchema;
     Table *scan_table = from_tables[0];
     MakeOutputSchema(projections, scan_schema, scan_table->name());
-    SeqScanPlanNode *scan_plan = new SeqScanPlanNode(
-        scan_schema, scan_table->name(), predicates
-        );
+    SeqScanPlanNode *scan_plan =
+        new SeqScanPlanNode(scan_schema, scan_table->name(), predicates);
     out_plans.emplace_back(scan_plan);
     return RC::SUCCESS;
   } else {
     // construct first scan table
     Table *scan_table_1 = from_tables[0];
     TupleSchema *scan_schema_1 = new TupleSchema;
-//    std::unique_ptr<SeqScanPlanNode> scan_plan_1;
+    //    std::unique_ptr<SeqScanPlanNode> scan_plan_1;
     std::vector<std::pair<std::string, const AbstractExpression *>> scan_proj_1;
     // from select
-    if (another_projections.find(scan_table_1->name()) != another_projections.end()) {
+    if (another_projections.find(scan_table_1->name()) !=
+        another_projections.end()) {
       scan_proj_1.insert(scan_proj_1.end(),
                          another_projections[scan_table_1->name()].begin(),
                          another_projections[scan_table_1->name()].end());
     }
     // from on
     if (table_to_proj.find(scan_table_1->name()) != table_to_proj.end()) {
-      scan_proj_1.insert(scan_proj_1.end(), table_to_proj[scan_table_1->name()].begin(),
-          table_to_proj[scan_table_1->name()].end());
+      scan_proj_1.insert(scan_proj_1.end(),
+                         table_to_proj[scan_table_1->name()].begin(),
+                         table_to_proj[scan_table_1->name()].end());
     }
 
     MakeOutputSchema(scan_proj_1, scan_schema_1, scan_table_1->name());
-//    scan_plan_1 = std::make_unique<SeqScanPlanNode>(
-//        scan_schema_1, scan_table_1->name(), table_to_exp[scan_table_1->name()]
-//    );
-    SeqScanPlanNode *scan_plan_1 = new SeqScanPlanNode(
-        scan_schema_1, scan_table_1->name(), table_to_exp[scan_table_1->name()]
-        );
+    //    scan_plan_1 = std::make_unique<SeqScanPlanNode>(
+    //        scan_schema_1, scan_table_1->name(),
+    //        table_to_exp[scan_table_1->name()]
+    //    );
+    SeqScanPlanNode *scan_plan_1 =
+        new SeqScanPlanNode(scan_schema_1, scan_table_1->name(),
+                            table_to_exp[scan_table_1->name()]);
 
-//    std::unique_ptr<AbstractPlanNode> left_plan  = std::move(scan_plan_1);
+    //    std::unique_ptr<AbstractPlanNode> left_plan  = std::move(scan_plan_1);
     AbstractPlanNode *left_plan = scan_plan_1;
     // construct outher scan table and join them
     for (int i = 1; i < from_tables.size(); i++) {
       // construct next scan table
       Table *scan_table_2 = from_tables[i];
       TupleSchema *scan_schema_2 = new TupleSchema;
-//      std::unique_ptr<SeqScanPlanNode> scan_plan_2;
-      std::vector<std::pair<std::string, const AbstractExpression *>> scan_proj_2;
+      //      std::unique_ptr<SeqScanPlanNode> scan_plan_2;
+      std::vector<std::pair<std::string, const AbstractExpression *>>
+          scan_proj_2;
       // from select
-      if (another_projections.find(scan_table_2->name()) != another_projections.end()) {
+      if (another_projections.find(scan_table_2->name()) !=
+          another_projections.end()) {
         scan_proj_2.insert(scan_proj_2.end(),
                            another_projections[scan_table_2->name()].begin(),
                            another_projections[scan_table_2->name()].end());
       }
       // from on
       if (table_to_proj.find(scan_table_2->name()) != table_to_proj.end()) {
-        scan_proj_2.insert(scan_proj_2.end(), table_to_proj[scan_table_2->name()].begin(),
-            table_to_proj[scan_table_2->name()].end());
+        scan_proj_2.insert(scan_proj_2.end(),
+                           table_to_proj[scan_table_2->name()].begin(),
+                           table_to_proj[scan_table_2->name()].end());
       }
       MakeOutputSchema(scan_proj_2, scan_schema_2, scan_table_2->name());
-//      scan_plan_2 = std::make_unique<SeqScanPlanNode>(
-//          scan_schema_2, scan_table_2->name(), table_to_exp[scan_table_2->name()]
-//      );
-      SeqScanPlanNode *scan_plan_2 = new SeqScanPlanNode(
-          scan_schema_2, scan_table_2->name(), table_to_exp[scan_table_2->name()]
-          );
+      //      scan_plan_2 = std::make_unique<SeqScanPlanNode>(
+      //          scan_schema_2, scan_table_2->name(),
+      //          table_to_exp[scan_table_2->name()]
+      //      );
+      SeqScanPlanNode *scan_plan_2 =
+          new SeqScanPlanNode(scan_schema_2, scan_table_2->name(),
+                              table_to_exp[scan_table_2->name()]);
 
       // join
       std::vector<std::pair<std::string, const AbstractExpression *>> join_proj;
       // from select
-      if (another_projections.find(scan_table_2->name()) != another_projections.end()) {
+      if (another_projections.find(scan_table_2->name()) !=
+          another_projections.end()) {
         join_proj.insert(join_proj.end(),
-                           another_projections[scan_table_2->name()].begin(),
-                           another_projections[scan_table_2->name()].end());
+                         another_projections[scan_table_2->name()].begin(),
+                         another_projections[scan_table_2->name()].end());
       }
       // from on
-      if (i != from_tables.size()-1 && table_to_proj.find(scan_table_2->name()) != table_to_proj.end()) {
-        join_proj.insert(join_proj.end(), table_to_proj[scan_table_2->name()].begin(),
-            table_to_proj[scan_table_2->name()].end());
+      if (i != from_tables.size() - 1 &&
+          table_to_proj.find(scan_table_2->name()) != table_to_proj.end()) {
+        join_proj.insert(join_proj.end(),
+                         table_to_proj[scan_table_2->name()].begin(),
+                         table_to_proj[scan_table_2->name()].end());
       }
       TupleSchema *join_schema = new TupleSchema;
-//      std::unique_ptr<HashJoinPlanNode> join_plan;
+      //      std::unique_ptr<HashJoinPlanNode> join_plan;
       MakeOutputSchema(join_proj, join_schema, scan_table_2->name());
-//      join_plan = std::make_unique<HashJoinPlanNode>(
-//          join_schema, std::vector<AbstractPlanNode *>{left_plan.get(), scan_plan_2.get()},
-//          table_to_on_exp[scan_table_1->name()][scan_table_2->name()][0],
-//          table_to_on_exp[scan_table_1->name()][scan_table_2->name()][1],
-//          table_to_on_col[scan_table_1->name()][scan_table_2->name()],
-//          table_to_on_col[scan_table_2->name()][scan_table_1->name()]
-//      );
+      //      join_plan = std::make_unique<HashJoinPlanNode>(
+      //          join_schema, std::vector<AbstractPlanNode *>{left_plan.get(),
+      //          scan_plan_2.get()},
+      //          table_to_on_exp[scan_table_1->name()][scan_table_2->name()][0],
+      //          table_to_on_exp[scan_table_1->name()][scan_table_2->name()][1],
+      //          table_to_on_col[scan_table_1->name()][scan_table_2->name()],
+      //          table_to_on_col[scan_table_2->name()][scan_table_1->name()]
+      //      );
       HashJoinPlanNode *join_plan = new HashJoinPlanNode(
           join_schema, std::vector<AbstractPlanNode *>{left_plan, scan_plan_2},
           table_to_on_exp[scan_table_1->name()][scan_table_2->name()][0],
           table_to_on_exp[scan_table_1->name()][scan_table_2->name()][1],
           table_to_on_col[scan_table_1->name()][scan_table_2->name()],
-          table_to_on_col[scan_table_2->name()][scan_table_1->name()]
-          );
+          table_to_on_col[scan_table_2->name()][scan_table_1->name()]);
 
       // update scan_table_1
       scan_table_1 = scan_table_2;
-//      left_plan = std::move(join_plan);
+      //      left_plan = std::move(join_plan);
       left_plan = join_plan;
     }
-//    out_plans.emplace_back(std::move(left_plan));
+    //    out_plans.emplace_back(std::move(left_plan));
     out_plans.emplace_back(left_plan);
   }
 
@@ -1783,8 +1831,8 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   std::stringstream ss;
 
   // build query plan
-//  std::vector<std::unique_ptr<AbstractPlanNode>>
-//      allocated_plans;  //储存计划树的所有节点（指针均指向堆）
+  //  std::vector<std::unique_ptr<AbstractPlanNode>>
+  //      allocated_plans;  //储存计划树的所有节点（指针均指向堆）
   std::vector<AbstractPlanNode *> allocated_plans;
   std::vector<std::unique_ptr<AbstractExpression>>
       allocated_expressions;  //储存所有表达式
@@ -1798,10 +1846,12 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   allocated_plans[0]->OutputSchema()->print(ss, false);
   // execute plan
   ExecutorContext exec_ctx{trx, db};
-//  auto executor = CreateExecutor(&exec_ctx, allocated_plans[0].get());
+  //  auto executor = CreateExecutor(&exec_ctx, allocated_plans[0].get());
   auto executor = CreateExecutor(&exec_ctx, allocated_plans[0]);
 
-  std::cout<<"executor: "<<executor->GetOutputSchema()->fields()[0].field_name()<<std::endl;
+  std::cout << "executor: "
+            << executor->GetOutputSchema()->fields()[0].field_name()
+            << std::endl;
 
   executor->Init();
 

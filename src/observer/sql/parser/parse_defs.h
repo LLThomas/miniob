@@ -49,7 +49,7 @@ typedef enum {
 } FuncName;
 
 //属性值类型
-typedef enum { UNDEFINED, CHARS, INTS, DATES, FLOATS, NULLS } AttrType;
+typedef enum { UNDEFINED, CHARS, INTS, DATES, FLOATS, TEXTS, NULLS } AttrType;
 
 //属性值
 typedef struct _Value {
