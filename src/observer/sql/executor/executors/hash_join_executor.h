@@ -13,11 +13,14 @@ class HashJoinExecutor : public AbstractExecutor {
    * Construct a new HashJoinExecutor instance.
    * @param exec_ctx The executor context
    * @param plan The HashJoin join plan to be executed
-   * @param left_child The child executor that produces tuples for the left side of join
-   * @param right_child The child executor that produces tuples for the right side of join
+   * @param left_child The child executor that produces tuples for the left side
+   * of join
+   * @param right_child The child executor that produces tuples for the right
+   * side of join
    */
   HashJoinExecutor(ExecutorContext *exec_ctx, HashJoinPlanNode *plan,
-                   std::unique_ptr<AbstractExecutor> &&left_child, std::unique_ptr<AbstractExecutor> &&right_child);
+                   std::unique_ptr<AbstractExecutor> &&left_child,
+                   std::unique_ptr<AbstractExecutor> &&right_child);
 
   /** Initialize the join */
   void Init() override;
@@ -33,24 +36,23 @@ class HashJoinExecutor : public AbstractExecutor {
   /** @return The output schema for the join */
   TupleSchema *GetOutputSchema() override { return plan_->OutputSchema(); };
 
-  Tuple* GetNextTuple() {
-    if (last_tuples.size() <= 0) {
+  Tuple *GetNextTuple() {
+    if (last_left_tuples.empty()) {
       return nullptr;
     }
-    Tuple *tuple = last_tuples.front();
-    last_tuples.erase(last_tuples.begin());
+    Tuple *tuple = last_left_tuples.front();
+    last_left_tuples.erase(last_left_tuples.begin());
     return tuple;
   }
 
-  void SetLastTuples(std::vector<Tuple *> tuples) {
-    last_tuples = tuples;
-  }
+  void SetLastTuples(std::vector<Tuple *> tuples) { last_left_tuples = tuples; }
 
  private:
   /** The hash join plan node. */
   HashJoinPlanNode *plan_;
   std::unique_ptr<AbstractExecutor> left_, right_;
 
-  std::vector<Tuple *> last_tuples;
+  std::vector<Tuple *> last_left_tuples;
+  Tuple last_right_tuple;
 };
 #endif
