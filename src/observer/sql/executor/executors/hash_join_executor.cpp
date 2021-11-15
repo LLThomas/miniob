@@ -17,19 +17,19 @@ void HashJoinExecutor::Init() {
   // 1. build
   std::string on_col_name = plan_->GetLeftColName();
   int col_index = left_->GetOutputSchema()->GetColIdx(on_col_name);
-  Tuple *tuple = new Tuple();
+  Tuple temp_tuple;
   RID rid;
   rid.page_num = 1;
   rid.slot_num = -1;
-  while (left_->Next(tuple, &rid) == RC::SUCCESS) {
+  while (left_->Next(&temp_tuple, &rid) == RC::SUCCESS) {
     std::stringstream ss;
-    tuple->get(col_index).to_string(ss);
+    temp_tuple.get(col_index).to_string(ss);
     std::string s;
     ss >> s;
 
     std::cout << "build: " << s << std::endl;
 
-    hash_map[s].emplace_back(tuple);
+    hash_map[s].emplace_back(new Tuple(std::move(temp_tuple)));
   }
   LOG_ERROR("break\n");
   right_->Init();
@@ -83,8 +83,15 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
       for (int i = 0; i < last_right_tuple.size(); i++) {
         big_tuple.add(last_right_tuple.get_pointer(i));
       }
+      //投影
+      //投影操作
+      Tuple projection_tuple;
+      for (auto &f : plan_->OutputSchema()->fields()) {
+        projection_tuple.add(
+            f.expr()->Evaluate(&big_tuple, plan_->OutputSchema()));
+      }
       // //输出
-      tuple->operator=(std::move(big_tuple));
+      tuple->operator=(std::move(projection_tuple));
       tuple->print(std::cout);  // debug
 
       return RC::SUCCESS;

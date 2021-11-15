@@ -34,9 +34,7 @@ Tuple &Tuple::operator=(Tuple &&other)
     return *this;
   }
 
-  values_.
-
-      clear();
+  values_.clear();
 
   values_.swap(other.values_);
   return *this;
@@ -172,6 +170,17 @@ size_t TupleSchema::GetColIdx(const std::string &col_name) const {
     }
   }
 }
+
+size_t TupleSchema::GetFieldIdx(const std::string &field_name) const {
+  for (size_t i = 0; i < fields_.size(); ++i) {
+    if (std::string{fields_[i].table_name()} + "." +
+            std::string{fields_[i].field_name()} ==
+        field_name) {
+      return i;
+    }
+  }
+}
+
 /////////////////////////////////////////////////////////////////////////////
 TupleSet::TupleSet(TupleSet &&other)
     : tuples_(std::move(other.tuples_)), schema_(other.schema_) {

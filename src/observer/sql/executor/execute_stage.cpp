@@ -1290,9 +1290,9 @@ std::unique_ptr<AbstractExecutor> CreateExecutor(ExecutorContext *exec_ctx,
   }
 }
 const AbstractExpression *MakeColumnValueExpression(
-    const TupleSchema &schema, size_t tuple_idx, const std::string &col_name,
+    const TupleSchema &schema, size_t tuple_idx, const std::string &field_name,
     std::vector<std::unique_ptr<AbstractExpression>> &expressions) {
-  size_t col_idx = schema.GetColIdx(col_name);
+  size_t col_idx = schema.GetFieldIdx(field_name);
   auto col_type = schema.field(col_idx).type();
   expressions.emplace_back(
       std::make_unique<ColumnValueExpression>(tuple_idx, col_idx, col_type));
@@ -1324,13 +1324,14 @@ const AbstractExpression *MakeAggregateValueExpression(
 void MakeOutputSchema(
     const std::vector<std::pair<std::string, const AbstractExpression *>>
         &exprs,
-    TupleSchema *schema, const char *table_name) {
+    TupleSchema *schema, const char *default_table_name) {
   for (const auto &input : exprs) {
     size_t dot = input.first.find('.');
     std::string field_name =
         dot == std::string::npos ? input.first : input.first.substr(dot + 1);
-    std::string table_str =
-        dot == std::string::npos ? table_name : input.first.substr(0, dot);
+    std::string table_str = dot == std::string::npos
+                                ? default_table_name
+                                : input.first.substr(0, dot);
     schema->add(TupleField{input.second->GetReturnType(), table_str.c_str(),
                            field_name.c_str(), input.second});
   }
@@ -1350,11 +1351,11 @@ const AbstractExpression *ParseConditionToExpression(
     TupleSchema schema;
     TupleSchema::from_table(table_infos[table_name].pointer, schema);
     if (is_right) {
-      return MakeColumnValueExpression(schema, 1, rel.attribute_name,
-                                       expressions);
+      return MakeColumnValueExpression(
+          schema, 1, table_name + "." + rel.attribute_name, expressions);
     }
-    return MakeColumnValueExpression(schema, 0, rel.attribute_name,
-                                     expressions);
+    return MakeColumnValueExpression(
+        schema, 0, table_name + "." + rel.attribute_name, expressions);
   } else {
     switch (val.type) {
       case AttrType::INTS: {
@@ -1393,73 +1394,46 @@ const AbstractExpression *ParseConditionToExpression(
 RC PlanSelect(const char *db, const Selects &selects,
               std::vector<Table *> tables,
               std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
-              std::vector<std::pair<std::string, const AbstractExpression *>>
-                  &out_projections,
+              std::vector<std::string> &out_projections,
               std::unordered_map<std::string, TableInfo> &table_infos) {
   for (int i = selects.attr_num - 1; i >= 0; i--) {
     RelAttr ra;
     ra = selects.attributes[i];
-    const char *table_name = ra.relation_name;
-    const char *attr_name = ra.attribute_name;
+    std::string table_name =
+        ra.relation_name == nullptr ? tables[0]->name() : ra.relation_name;
+    std::string attr_name = ra.attribute_name;
     // select table check
-    if (table_name != nullptr &&
-        DefaultHandler::get_default().find_table(db, table_name) == nullptr) {
+    Table *current_table =
+        DefaultHandler::get_default().find_table(db, table_name.c_str());
+    if (current_table == nullptr) {
       LOG_WARN("No such table [%s] in db [%s]", table_name, db);
       return RC::SCHEMA_TABLE_NOT_EXIST;
     }
     // select attr check
-    if (strcmp(attr_name, "*") != 0 &&
-        table_infos[table_name == nullptr ? "" : table_name]
-                .pointer->table_meta()
-                .field(attr_name) == nullptr) {
+    if (attr_name != "*" &&
+        current_table->table_meta().field(attr_name.c_str()) == nullptr) {
       LOG_WARN("No such field. %s.%s", table_name, attr_name);
       return RC::SCHEMA_FIELD_MISSING;
     }
-    //生成字段的输出格式
-    std::string out_str;
 
-    if (table_name == nullptr) {
-      //单表的tablename全部等于FROM的那个表
-      table_name = tables[0]->name();
-      // 输出列名时没有表名
-    } else {
-      // 输出："TableA."
-      out_str = std::string(table_name) + ".";
-    }
-    //找到对应的表
-    size_t idx = 0;
-    for (; idx < tables.size(); idx++) {
-      if (0 == strcmp(tables[idx]->name(), table_name)) {
-        break;
-      }
-    }
-    if (idx == tables.size()) {
-      LOG_ERROR("有空处理一下报错，没找到表");
-    }
-
-    const Table *current_table = tables[idx];
     TupleSchema current_schema;
     TupleSchema::from_table(current_table, current_schema);
-    if (0 == strcmp("*", attr_name)) {
+    if (attr_name == "*") {
       // "*" 代表映射所有字段
       for (size_t f = 0; f < current_schema.fields().size(); f++) {
         const char *temp_attr_name = current_schema.field(f).field_name();
-        out_projections.push_back(
-            {out_str + temp_attr_name,
-             MakeColumnValueExpression(current_schema, 0, temp_attr_name,
-                                       out_exprs)});
+        std::string field_name = table_name + "." + temp_attr_name;
+        out_projections.push_back(field_name);
         table_infos[table_name].select_projs.push_back(
-            {out_str + temp_attr_name,
-             MakeColumnValueExpression(current_schema, 0, temp_attr_name,
-                                       out_exprs)});
+            {field_name, MakeColumnValueExpression(current_schema, 0,
+                                                   field_name, out_exprs)});
       }
     } else {
-      out_projections.push_back(
-          {out_str + attr_name,
-           MakeColumnValueExpression(current_schema, 0, attr_name, out_exprs)});
+      std::string field_name = table_name + "." + attr_name;
+      out_projections.push_back(field_name);
       table_infos[table_name].select_projs.push_back(
-          {out_str + attr_name,
-           MakeColumnValueExpression(current_schema, 0, attr_name, out_exprs)});
+          {field_name, MakeColumnValueExpression(current_schema, 0, field_name,
+                                                 out_exprs)});
     }
   }
   return RC::SUCCESS;
@@ -1577,8 +1551,6 @@ RC PlanWhere(const char *db, const Selects &selects,
             .on_exprs[right_attr_table_name]
             .push_back(rhs);
 
-        table_infos[left_attr_table_name].on_cols[right_attr_table_name] =
-            con.left_attr.attribute_name;
       } else {
         rhs = ParseConditionToExpression(con.left_attr, con.left_value,
                                          con.left_is_attr, true, table_infos,
@@ -1593,10 +1565,11 @@ RC PlanWhere(const char *db, const Selects &selects,
         table_infos[right_attr_table_name]
             .on_exprs[left_attr_table_name]
             .push_back(rhs);
-
-        table_infos[right_attr_table_name].on_cols[left_attr_table_name] =
-            con.right_attr.attribute_name;
       }
+      table_infos[left_attr_table_name].on_cols[right_attr_table_name] =
+          con.left_attr.attribute_name;
+      table_infos[right_attr_table_name].on_cols[left_attr_table_name] =
+          con.right_attr.attribute_name;
     } else {
       lhs = ParseConditionToExpression(con.left_attr, con.left_value,
                                        con.left_is_attr, false, table_infos,
@@ -1690,9 +1663,9 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   if (rc != RC::SUCCESS) return rc;
 
   // 3. parse SELECT
-  std::vector<std::pair<std::string, const AbstractExpression *>> projections;
-  rc =
-      PlanSelect(db, selects, from_tables, out_exprs, projections, table_infos);
+  std::vector<std::string> projections_str;
+  rc = PlanSelect(db, selects, from_tables, out_exprs, projections_str,
+                  table_infos);
   if (rc != RC::SUCCESS) return rc;
 
   // AbstractPlanNode *scan_plan = out_plans.back().get();
@@ -1706,8 +1679,10 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   const char *last_scan_table_name = from_tables[0]->name();
   AbstractPlanNode *last_plan;
   if (from_tables.size() == 1) {
+    TupleSchema *table_schema = new TupleSchema();
+    TupleSchema::from_table(from_tables[0], *table_schema);
     last_plan =
-        new SeqScanPlanNode(nullptr, from_tables[0]->name(), predicates);
+        new SeqScanPlanNode(table_schema, last_scan_table_name, predicates);
   } else
     last_plan = ConstructScanTable(last_scan_table_name, table_infos);
   // construct outher scan table and join them
@@ -1718,12 +1693,10 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
         ConstructScanTable(current_scan_table_name, table_infos);
 
     // join
-    std::vector<std::pair<std::string, const AbstractExpression *>> join_proj;
     // 拼接左右SecScan的OutputSchema
     TupleSchema *join_schema = new TupleSchema;
     join_schema->append(*last_plan->OutputSchema());
     join_schema->append(*current_plan->OutputSchema());
-    MakeOutputSchema(join_proj, join_schema, current_scan_table_name);
     HashJoinPlanNode *join_plan = new HashJoinPlanNode(
         join_schema, std::vector<AbstractPlanNode *>{last_plan, current_plan},
         table_infos[last_scan_table_name].on_exprs[current_scan_table_name][0],
@@ -1740,6 +1713,12 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   out_plans.emplace_back(last_plan);
   //最后修改root plan的投影
   TupleSchema *out_schema = new TupleSchema;
+  TupleSchema *old_schema = out_plans[0]->OutputSchema();
+  std::vector<std::pair<std::string, const AbstractExpression *>> projections;
+  for (auto s : projections_str) {
+    projections.push_back(
+        {s, MakeColumnValueExpression(*old_schema, 0, s, out_exprs)});
+  }
   MakeOutputSchema(projections, out_schema, from_tables[0]->name());
   out_plans[0]->SetOutputSchema(out_schema);
   return RC::SUCCESS;
@@ -1755,7 +1734,7 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   // build query plan
   //  std::vector<std::unique_ptr<AbstractPlanNode>>
   //      allocated_plans;  //储存计划树的所有节点（指针均指向堆）
-  std::vector<AbstractPlanNode *> allocated_plans;
+  std::vector<AbstractPlanNode *> allocated_plans;  //储存所有表达式
   std::vector<std::unique_ptr<AbstractExpression>>
       allocated_expressions;  //储存所有表达式
   std::vector<std::unique_ptr<TupleSchema>> allocated_schemas;  //储存所有schema
