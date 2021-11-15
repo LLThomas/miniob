@@ -413,7 +413,7 @@ RC PlanSelect(const char *db, Selects &selects, std::vector<Table *> tables,
       if (attr_name != "*" &&
           current_table->table_meta().field(attr_name.c_str()) == nullptr) {
         LOG_WARN("No such field. %s.%s", table_name, attr_name);
-        return RC::SCHEMA_FIELD_MISSING;
+        // return RC::SCHEMA_FIELD_MISSING;
       }
     }
     TupleSchema current_schema;
