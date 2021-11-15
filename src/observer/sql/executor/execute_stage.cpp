@@ -702,7 +702,7 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     join_schema->append(*last_plan->OutputSchema());
     join_schema->append(*current_plan->OutputSchema());
     //要从以前所有的name里找，可以构建出来的name
-    HashJoinPlanNode *join_plan;
+    HashJoinPlanNode *join_plan = nullptr;
     for (auto &str : last_scan_table_names) {
       if (table_infos[str].on_exprs.count(current_scan_table_name) > 0 &&
           table_infos[str].on_cols.count(current_scan_table_name) > 0 &&
@@ -716,6 +716,12 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
             table_infos[current_scan_table_name].on_cols[str]);
         break;
       }
+    }
+    //全连接
+    if (join_plan == nullptr) {
+      join_plan = new HashJoinPlanNode(
+          join_schema, std::vector<AbstractPlanNode *>{last_plan, current_plan},
+          nullptr, nullptr, "", "");
     }
 
     // update scan_table_1

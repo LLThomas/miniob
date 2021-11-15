@@ -15,23 +15,28 @@ HashJoinExecutor::HashJoinExecutor(
 void HashJoinExecutor::Init() {
   left_->Init();
   // 1. build
-  std::string on_col_name = plan_->GetLeftColName();
-  int col_index = left_->GetOutputSchema()->GetColIdx(on_col_name);
+  std::string left_hashkey = plan_->GetLeftColName();
+  int col_index = left_hashkey == ""
+                      ? -1
+                      : left_->GetOutputSchema()->GetColIdx(left_hashkey);
   Tuple temp_tuple;
   RID rid;
   rid.page_num = 1;
   rid.slot_num = -1;
   while (left_->Next(&temp_tuple, &rid) == RC::SUCCESS) {
-    std::stringstream ss;
-    temp_tuple.get(col_index).to_string(ss);
-    std::string s;
-    ss >> s;
+    std::string s = "";
+    if (col_index != -1) {
+      std::stringstream ss;
+      temp_tuple.get(col_index).to_string(ss);
+      ss >> s;
+    }
 
     std::cout << "build: " << s << std::endl;
 
     hash_map[s].emplace_back(new Tuple(std::move(temp_tuple)));
   }
   LOG_ERROR("break\n");
+
   right_->Init();
 }
 
@@ -62,15 +67,19 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
   }
 
   // 2. probe
-  int col_index =
-      right_->GetOutputSchema()->GetColIdx(plan_->GetRightColName());
+  std::string right_hashkey = plan_->GetRightColName();
+  int col_index = right_hashkey == ""
+                      ? -1
+                      : right_->GetOutputSchema()->GetColIdx(right_hashkey);
   while (right_->Next(&last_right_tuple, rid) == RC::SUCCESS) {
-    std::stringstream ss;
-    last_right_tuple.get(col_index).to_string(ss);
-    std::string s;
-    ss >> s;
+    std::string s = "";
+    if (col_index != -1) {
+      std::stringstream ss;
+      last_right_tuple.get(col_index).to_string(ss);
+      ss >> s;
 
-    std::cout << "probe: " << s << std::endl;
+      std::cout << "probe: " << s << std::endl;
+    }
 
     if (hash_map.count(s) > 0) {
       SetLastTuples(hash_map[s]);
