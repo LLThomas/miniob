@@ -50,7 +50,7 @@ RC SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
     converter.record_to_tuple(tuple, &record);
     //候选操作
     passed = true;
-    for (int i = 0; i < plan_->GetPredicates().size(); i++) {
+    for (size_t i = 0; i < plan_->GetPredicates().size(); i++) {
       const std::shared_ptr<TupleValue> comp_val =
           plan_->GetPredicates()[i]->Evaluate(tuple, plan_->OutputSchema());
       if (comp_val->compare(IntValue(true)) != 0) {  // comp_val!=true
