@@ -209,11 +209,27 @@ void DefaultStorageStage::handle_event(StageEvent *event) {
     } break;
     case SCF_CREATE_INDEX: {
       const CreateIndex &create_index = sql->sstr.create_index;
-      rc = handler_->create_index(
-          current_trx, current_db, create_index.relation_name,
-          create_index.index_name, create_index.attribute_name, create_index.unique);
-      snprintf(response, sizeof(response), "%s\n",
-               rc == RC::SUCCESS ? "SUCCESS" : "FAILURE");
+      if (create_index.attr_count == 1) {
+        rc = handler_->create_index(
+            current_trx, current_db, create_index.relation_name,
+            create_index.index_name, create_index.attribute_name[0], create_index.unique);
+        snprintf(response, sizeof(response), "%s\n",
+                 rc == RC::SUCCESS ? "SUCCESS" : "FAILURE");
+      } else {
+        for (int i = 0; i < create_index.attr_count; i++) {
+          std::string attr_name =  create_index.attribute_name[i];
+          std::string index_name = create_index.index_name;
+          index_name = index_name + "_" + attr_name;
+          rc = handler_->create_index(
+              current_trx, current_db, create_index.relation_name,
+              index_name.c_str(), create_index.attribute_name[i], create_index.unique);
+          if (rc != RC::SUCCESS) {
+            break;
+          }
+        }
+        snprintf(response, sizeof(response), "%s\n",
+                 rc == RC::SUCCESS ? "SUCCESS" : "FAILURE");
+      }
     } break;
 
     case SCF_SHOW_TABLES: {
