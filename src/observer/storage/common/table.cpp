@@ -622,13 +622,14 @@ static RC insert_index_record_reader_adapter(Record *record, void *context) {
 }
 
 RC Table::create_index(Trx *trx, const char *index_name,
-                       const char *attribute_name, bool unique) {
+                       const char *attribute_name, bool unique,
+                       bool multi) {
   if (index_name == nullptr || common::is_blank(index_name) ||
       attribute_name == nullptr || common::is_blank(attribute_name)) {
     return RC::INVALID_ARGUMENT;
   }
   if (table_meta_.index(index_name) != nullptr ||
-      table_meta_.find_index_by_field((attribute_name))) {
+      table_meta_.find_index_by_field((attribute_name)) || !multi) {
     return RC::SCHEMA_INDEX_EXIST;
   }
 

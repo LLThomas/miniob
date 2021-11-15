@@ -134,12 +134,17 @@ RC DefaultHandler::drop_table(const char *dbname, const char *relation_name) {
 RC DefaultHandler::create_index(Trx *trx, const char *dbname,
                                 const char *relation_name,
                                 const char *index_name,
-                                const char *attribute_name, bool unique) {
+                                const char *attribute_name, bool unique,
+                                bool multi) {
   Table *table = find_table(dbname, relation_name);
+
   if (nullptr == table) {
+
+    std::cout<<"table is null"<<std::endl;
+
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
-  return table->create_index(trx, index_name, attribute_name, unique);
+  return table->create_index(trx, index_name, attribute_name, unique, multi);
 }
 
 RC DefaultHandler::drop_index(Trx *trx, const char *dbname,
