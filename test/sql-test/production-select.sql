@@ -8,10 +8,11 @@ insert into pr2 values (2, 5.456);
 insert into pr2 values (3, 7.567);
 insert into pr3 values (3, 1.678);
 insert into pr3 values (4, 2.789);
+
+select pr1.id from pr1,pr2;
 select * from pr1,pr2;
 select * from pr1,pr2 where pr1.id=pr2.id;
 select * from pr1,pr2 where pr1.id=pr2.id and pr2.price > 6.0;
-select pr1.id from pr1,pr2;
 select pr1.id,pr2.price from pr1,pr2;
 select pr1.id,pr2.price,pr1.price from pr1,pr2;
 select pr2.*,pr1.price from pr1,pr2;

@@ -63,6 +63,7 @@ void Tuple::add(float value) { add(new FloatValue(value)); }
 
 void Tuple::add(const char *s, int len) { add(new StringValue(s, len)); }
 void Tuple::print(std::ostream &os) {
+  if (values_.empty()) return;
   for (std::vector<std::shared_ptr<TupleValue>>::const_iterator
            iter = values_.begin(),
            end = --values_.end();
