@@ -140,7 +140,7 @@ void ExecuteStage::handle_request(common::StageEvent *event) {
       RC rc = volcano_do_select(current_db, sql,
                                 exe_event->sql_event()->session_event());
       if (rc != RC::SUCCESS) {
-        session_event->set_response("FAILURE:" + std::to_string(rc) + "\n");
+        session_event->set_response("FAILURE:\n");
       }
       exe_event->done_immediate();
     } break;
@@ -392,7 +392,7 @@ RC PlanSelect(const char *db, Selects &selects, std::vector<Table *> tables,
       selects.attributes[tables.size() - i - 1].relation_name =
           (char *)tables[i]->name();
       selects.attributes[tables.size() - i - 1].attribute_name =
-          (char *)std::string("*").c_str();
+          (char *)(new std::string("*"))->c_str();
     }
     selects.attr_num = tables.size();
   }
@@ -413,7 +413,7 @@ RC PlanSelect(const char *db, Selects &selects, std::vector<Table *> tables,
       if (attr_name != "*" &&
           current_table->table_meta().field(attr_name.c_str()) == nullptr) {
         LOG_WARN("No such field. %s.%s", table_name, attr_name);
-        // return RC::SCHEMA_FIELD_MISSING;
+        return RC::SCHEMA_FIELD_MISSING;
       }
     }
     TupleSchema current_schema;
