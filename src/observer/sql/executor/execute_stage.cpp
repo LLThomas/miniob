@@ -555,18 +555,16 @@ RC PlanWhere(const char *db, const Selects &selects,
                                          con.right_is_attr, false, table_infos,
                                          out_exprs);
       }
-      table_infos[left_attr_table_name]
-          .on_exprs[right_attr_table_name]
-          .push_back(lhs);
-      table_infos[left_attr_table_name]
-          .on_exprs[right_attr_table_name]
-          .push_back(rhs);
+
+      const AbstractExpression *on_condition =
+          MakeComparisonExpression(lhs, rhs, con.comp, out_exprs);
+
       table_infos[right_attr_table_name]
           .on_exprs[left_attr_table_name]
-          .push_back(lhs);
-      table_infos[right_attr_table_name]
-          .on_exprs[left_attr_table_name]
-          .push_back(rhs);
+          .push_back(on_condition);
+      table_infos[left_attr_table_name]
+          .on_exprs[right_attr_table_name]
+          .push_back(on_condition);
       table_infos[left_attr_table_name].on_cols[right_attr_table_name] =
           left_attr_table_name + "." + con.left_attr.attribute_name;
       table_infos[right_attr_table_name].on_cols[left_attr_table_name] =
@@ -712,7 +710,6 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
             join_schema,
             std::vector<AbstractPlanNode *>{last_plan, current_plan},
             table_infos[str].on_exprs[current_scan_table_name][0],
-            table_infos[str].on_exprs[current_scan_table_name][1],
             table_infos[str].on_cols[current_scan_table_name],
             table_infos[current_scan_table_name].on_cols[str]);
         break;
@@ -722,7 +719,7 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     if (join_plan == nullptr) {
       join_plan = new HashJoinPlanNode(
           join_schema, std::vector<AbstractPlanNode *>{last_plan, current_plan},
-          nullptr, nullptr, "", "");
+          nullptr, "", "");
     }
 
     // update scan_table_1

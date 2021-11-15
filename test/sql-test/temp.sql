@@ -1,11 +1,11 @@
-create table SELECT_TABLES_1(ID int,AGE int, U_NAME char);
-create table SELECT_TABLES_2(ID int,AGE int, U_NAME char);
-create table SELECT_TABLES_3(ID int,RES int, U_NAME char);
-insert into SELECT_TABLES_1 values (1, 18,'A');
-insert into SELECT_TABLES_1 values (2, 15,'B');
-insert into SELECT_TABLES_2 values (2, 21,'C');
-insert into SELECT_TABLES_2 values (1, 20,'A');
-insert into SELECT_TABLES_3 values (1, 35,'A');
-insert into SELECT_TABLES_3 values (2, 37,'A');
+create table SELECT_TABLES_4(ID int,AGE int, U_NAME char);
+create table SELECT_TABLES_5(ID int,AGE int, U_NAME char);
+insert into SELECT_TABLES_4 values (1, 2,'A');
+insert into SELECT_TABLES_4 values (1, 3,'B');
+insert into SELECT_TABLES_4 values (2, 2,'C');
+insert into SELECT_TABLES_4 values (2, 4,'D');
+insert into SELECT_TABLES_5 values (1, 10,'G');
+insert into SELECT_TABLES_5 values (1, 11,'F');
+insert into SELECT_TABLES_5 values (2, 12,'C');
 
-SELECT SELECT_TABLES_1.ID,SELECT_TABLES_2.U_NAME,SELECT_TABLES_3.RES FROM SELECT_TABLES_1,SELECT_TABLES_2,SELECT_TABLES_3;
+SELECT * FROM SELECT_TABLES_4, SELECT_TABLES_5 WHERE SELECT_TABLES_4.ID >= SELECT_TABLES_5.ID;

@@ -3,6 +3,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "sql/executor/expressions/comparison_expression.h"
+
 HashJoinExecutor::HashJoinExecutor(
     ExecutorContext *exec_ctx, HashJoinPlanNode *plan,
     std::unique_ptr<AbstractExecutor> &&left_child,
@@ -73,6 +75,7 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
                       : right_->GetOutputSchema()->GetFieldIdx(right_hashkey);
   while (right_->Next(&last_right_tuple, rid) == RC::SUCCESS) {
     std::string s = "";
+
     if (col_index != -1) {
       std::stringstream ss;
       last_right_tuple.get(col_index).to_string(ss);
@@ -80,7 +83,7 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
 
       std::cout << "probe: " << s << std::endl;
     }
-
+    // TODO:等值连接才使用hash表
     if (hash_map.count(s) > 0) {
       SetLastTuples(hash_map[s]);
       Tuple *left_tuple = GetNextTuple();
