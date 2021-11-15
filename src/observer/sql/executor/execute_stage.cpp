@@ -688,6 +688,7 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
         new SeqScanPlanNode(table_schema, last_scan_table_name, predicates);
   } else
     last_plan = ConstructScanTable(last_scan_table_name, table_infos);
+  std::vector<std::string> last_scan_table_names{last_scan_table_name};
   // construct outher scan table and join them
   for (int i = 1; i < (int)from_tables.size(); i++) {
     // construct next scan table
@@ -700,15 +701,25 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     TupleSchema *join_schema = new TupleSchema;
     join_schema->append(*last_plan->OutputSchema());
     join_schema->append(*current_plan->OutputSchema());
-    HashJoinPlanNode *join_plan = new HashJoinPlanNode(
-        join_schema, std::vector<AbstractPlanNode *>{last_plan, current_plan},
-        table_infos[last_scan_table_name].on_exprs[current_scan_table_name][0],
-        table_infos[last_scan_table_name].on_exprs[current_scan_table_name][1],
-        table_infos[last_scan_table_name].on_cols[current_scan_table_name],
-        table_infos[current_scan_table_name].on_cols[last_scan_table_name]);
+    //要从以前所有的name里找，可以构建出来的name
+    HashJoinPlanNode *join_plan;
+    for (auto &str : last_scan_table_names) {
+      if (table_infos[str].on_exprs.count(current_scan_table_name) > 0 &&
+          table_infos[str].on_cols.count(current_scan_table_name) > 0 &&
+          table_infos[current_scan_table_name].on_cols.count(str) > 0) {
+        join_plan = new HashJoinPlanNode(
+            join_schema,
+            std::vector<AbstractPlanNode *>{last_plan, current_plan},
+            table_infos[str].on_exprs[current_scan_table_name][0],
+            table_infos[str].on_exprs[current_scan_table_name][1],
+            table_infos[str].on_cols[current_scan_table_name],
+            table_infos[current_scan_table_name].on_cols[str]);
+        break;
+      }
+    }
 
     // update scan_table_1
-    // last_scan_table_name = current_scan_table_name;
+    last_scan_table_names.emplace_back(current_scan_table_name);
     //      left_plan = std::move(join_plan);
     last_plan = join_plan;
   }
