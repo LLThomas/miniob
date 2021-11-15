@@ -16,7 +16,7 @@ insert into C values(4,6.678,'fff');
 insert into C values(7,7.789,'ggg');
 insert into C values(8,8.201,'hhh');
 
-SELECT * FROM A INNER JOIN B ON A.id=B.id INNER JOIN C ON B.id=C.id;
+SELECT * FROM A INNER JOIN B ON A.id=B.id INNER JOIN C ON A.id=C.id;
 SELECT * FROM A INNER JOIN B ON A.id=B.id;
 SELECT A.name FROM A INNER JOIN B ON A.id=B.id;
 SELECT B.age FROM A INNER JOIN B ON A.id=B.id;

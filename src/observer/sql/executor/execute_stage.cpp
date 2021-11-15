@@ -708,7 +708,7 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
         table_infos[current_scan_table_name].on_cols[last_scan_table_name]);
 
     // update scan_table_1
-    last_scan_table_name = current_scan_table_name;
+    // last_scan_table_name = current_scan_table_name;
     //      left_plan = std::move(join_plan);
     last_plan = join_plan;
   }
