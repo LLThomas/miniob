@@ -904,7 +904,6 @@ RC BplusTreeHandler::get_entry(const char *pkey, RID *rid) {
     return RC::NOMEM;
   }
   memcpy(key, pkey, file_header_.attr_length);
-  memcpy(key + file_header_.attr_length, rid, sizeof(RID));
 
   rc = find_leaf(key, &leaf_page);
   if (rc != SUCCESS) {
@@ -925,8 +924,8 @@ RC BplusTreeHandler::get_entry(const char *pkey, RID *rid) {
 
   leaf = get_index_node(pdata);
   for (i = 0; i < leaf->key_num; i++) {
-    if (CmpKey(file_header_.attr_type, file_header_.attr_length, key,
-               leaf->keys + (i * file_header_.key_length)) == 0) {
+    if (CompareKey(key, leaf->keys + (i * file_header_.key_length),
+                   file_header_.attr_type, file_header_.attr_length) == 0) {
       memcpy(rid, leaf->rids + i, sizeof(RID));
       free(key);
       return SUCCESS;

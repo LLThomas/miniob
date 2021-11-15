@@ -89,6 +89,7 @@ ParserContext *get_context(yyscan_t scanner)
         DATE_T
         STRING_T
         FLOAT_T
+        TEXT_T
         HELP
         EXIT
         DOT //QUOTE
@@ -116,9 +117,10 @@ ParserContext *get_context(yyscan_t scanner)
 		NULL_TOK
 		NULLABLE
 		IS
+		UNIQUE
 		INNER
 		JOIN
-		
+
 %code requires { #include <stdbool.h> }
 
 %union {
@@ -231,8 +233,13 @@ create_index:		/*create index 语句的语法解析树*/
     CREATE INDEX ID ON ID LBRACE ID RBRACE SEMICOLON 
 		{
 			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
-			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, $7);
+			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, $7, false);
 		}
+    | CREATE UNIQUE INDEX ID ON ID LBRACE ID RBRACE SEMICOLON
+    		{
+			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
+			create_index_init(&CONTEXT->ssql->sstr.create_index, $4, $6, $8, true);
+    		}
     ;
 
 drop_index:			/*drop index 语句的语法解析树*/
@@ -288,6 +295,7 @@ type:
        | DATE_T { $$=DATES; }
        | STRING_T { $$=CHARS; }
        | FLOAT_T { $$=FLOATS; }
+       | TEXT_T { $$=TEXTS; }
        ;
 ID_get:
 	ID 

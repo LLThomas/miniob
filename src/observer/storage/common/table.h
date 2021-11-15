@@ -77,11 +77,14 @@ class Table {
   RC scan_record(Trx *trx, ConditionFilter *filter, int limit, void *context,
                  void (*record_reader)(const char *data, void *context));
 
-  RC create_index(Trx *trx, const char *index_name, const char *attribute_name);
+  RC create_index(Trx *trx, const char *index_name, const char *attribute_name,
+                  bool unique);
 
   RC scan_one_tuple_by_filter(Record *record, ConditionFilter *filter);
 
   RC scan_one_tuple(Record *record);
+
+  FILE* overflow_file();
 
  public:
   const char *name() const;
@@ -126,6 +129,8 @@ class Table {
 
   RC insert_entry_of_indexes(const char *record, const RID &rid);
 
+  bool insert_valid_for_unique_indexes(const char *record);
+
   RC delete_entry_of_indexes(const char *record, const RID &rid,
                              bool error_on_not_exists);
 
@@ -141,6 +146,7 @@ class Table {
   std::string base_dir_;
   TableMeta table_meta_;
   DiskBufferPool *data_buffer_pool_;  /// 数据文件关联的buffer pool
+  FILE* overflow_file_;
   int file_id_;
   RecordFileHandler *record_handler_;  /// 记录操作
   std::vector<Index *> indexes_;

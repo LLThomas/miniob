@@ -22,7 +22,7 @@ See the Mulan PSL v2 for more details. */
 #define PORT "PORT"
 #define PORT_DEFAULT 16880
 
-#define SOCKET_BUFFER_SIZE 8192
+#define SOCKET_BUFFER_SIZE 81920
 
 #define SESSION_STAGE_NAME "SessionStage"
 #endif  //__SRC_OBSERVER_INI_SETTING_H__

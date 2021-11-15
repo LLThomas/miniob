@@ -1598,18 +1598,14 @@ RC PlanWhere(const char *db, const Selects &selects,
           {right_attr_table_name + "." + con.right_attr.attribute_name, rhs});
     } else {
       const AbstractExpression *comp_exp =
-          MakeComparisonExpression(lhs, rhs, con.comp, out_exprs);
-      out_predicates.emplace_back(comp_exp);
-
-      if (con.left_is_attr) {
-        table_infos[left_attr_table_name].exprs.emplace_back(comp_exp);
-      }
-      if (con.right_is_attr) {
-        table_infos[right_attr_table_name].exprs.emplace_back(comp_exp);
-      }
+          out_predicates.emplace_back(comp_exp);
+    }
+    if (con.right_is_attr) {
+      table_infos[right_attr_table_name].exprs.emplace_back(comp_exp);
     }
   }
-  return RC::SUCCESS;
+}
+return RC::SUCCESS;
 }
 SeqScanPlanNode *ConstructScanTable(
     const char *scan_table_name,

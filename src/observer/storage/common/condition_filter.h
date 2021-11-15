@@ -14,6 +14,8 @@ See the Mulan PSL v2 for more details. */
 #ifndef __OBSERVER_STORAGE_COMMON_CONDITION_FILTER_H_
 #define __OBSERVER_STORAGE_COMMON_CONDITION_FILTER_H_
 
+#include <cstdio>
+
 #include "rc.h"
 #include "sql/parser/parse.h"
 
@@ -87,6 +89,7 @@ class DefaultConditionFilter : public ConditionFilter {
  private:
   ConDesc left_;
   ConDesc right_;
+  FILE* overflow_file_;
   bool left_value_delete = false;
   bool right_value_delete = false;
   AttrType attr_type_ = UNDEFINED;
