@@ -121,11 +121,12 @@ void TupleSchema::add_if_not_exists(AttrType type, const char *table_name,
 
 void TupleSchema::append(const TupleSchema &other) {
   size_t delta = fields_.size();
+  size_t idx = 0;
   fields_.reserve(delta + other.fields_.size());
   for (const auto &field : other.fields_) {
     ColumnValueExpression *old_col = (ColumnValueExpression *)(field.expr());
     ColumnValueExpression *temp_col = new ColumnValueExpression{
-        old_col->GetTupleIdx(), old_col->GetColIdx(), old_col->GetReturnType()};
+        old_col->GetTupleIdx(), idx++, old_col->GetReturnType()};
     TupleField *temp_field = new TupleField(field.type(), field.table_name(),
                                             field.field_name(), temp_col);
     auto col_expr = (ColumnValueExpression *)(temp_field->expr());
@@ -172,6 +173,27 @@ void TupleSchema::print(std::ostream &os, bool multi_table) const {
     os << fields_.back().table_name() << ".";
   }
   os << fields_.back().field_name() << std::endl;
+}
+void TupleSchema::printExprs(std::ostream &os) const {
+  if (fields_.empty()) {
+    os << "No schema";
+    return;
+  }
+
+  // 判断有多张表还是只有一张表
+  std::set<std::string> table_names;
+  for (const auto &field : fields_) {
+    table_names.insert(field.table_name());
+  }
+
+  for (std::vector<TupleField>::const_iterator iter = fields_.begin(),
+                                               end = --fields_.end();
+       iter != end; ++iter) {
+    os << ((ColumnValueExpression *)iter->expr())->GetColIdx() << " @ ";
+  }
+
+  os << ((ColumnValueExpression *)fields_.back().expr())->GetColIdx()
+     << std::endl;
 }
 size_t TupleSchema::GetColIdx(const std::string &col_name) const {
   for (size_t i = 0; i < fields_.size(); ++i) {

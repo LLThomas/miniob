@@ -700,6 +700,8 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     TupleSchema *join_schema = new TupleSchema;
     join_schema->append(*last_plan->OutputSchema());
     join_schema->append(*current_plan->OutputSchema());
+    join_schema->print(std::cout, true);
+    join_schema->printExprs(std::cout);
     //要从以前所有的name里找，可以构建出来的name
     HashJoinPlanNode *join_plan = nullptr;
     for (auto &str : last_scan_table_names) {

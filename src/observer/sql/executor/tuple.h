@@ -127,6 +127,7 @@ class TupleSchema {
   void clear() { fields_.clear(); }
 
   void print(std::ostream &os, bool multi_table) const;
+  void printExprs(std::ostream &os) const;
   size_t GetColIdx(const std::string &col_name) const;
   size_t GetFieldIdx(const std::string &field_name) const;
 
