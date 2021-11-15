@@ -1474,18 +1474,17 @@ RC PlanWhere(const char *db, const Selects &selects,
              std::unordered_map<std::string, TableInfo> &table_infos) {
   for (size_t i = 0; i < selects.condition_num; i++) {
     Condition con = selects.conditions[i];
-    std::string left_attr_table_name = con.left_attr.relation_name == nullptr
-                                           ? ""
-                                           : con.left_attr.relation_name;
-    std::string right_attr_table_name = con.right_attr.relation_name == nullptr
-                                            ? ""
-                                            : con.right_attr.relation_name;
+    std::string left_attr_table_name = "";
+    std::string right_attr_table_name = "";
     bool is_join = false;
     if (con.left_is_attr && con.right_is_attr) {
       is_join = true;
     }
     // 对 DATE 类型进行特殊处理
     if (con.left_is_attr) {
+      left_attr_table_name = con.left_attr.relation_name == nullptr
+                                 ? ""
+                                 : con.left_attr.relation_name;
       // condition table check
       if (left_attr_table_name != "" &&
           DefaultHandler::get_default().find_table(
@@ -1510,6 +1509,9 @@ RC PlanWhere(const char *db, const Selects &selects,
         con.right_value.type = DATES;
     }
     if (con.right_is_attr) {
+      right_attr_table_name = con.right_attr.relation_name == nullptr
+                                  ? ""
+                                  : con.right_attr.relation_name;
       // condition table check
       if (right_attr_table_name != "" &&
           DefaultHandler::get_default().find_table(
@@ -1598,7 +1600,8 @@ RC PlanWhere(const char *db, const Selects &selects,
           {right_attr_table_name + "." + con.right_attr.attribute_name, rhs});
     } else {
       const AbstractExpression *comp_exp =
-          out_predicates.emplace_back(comp_exp);
+          MakeComparisonExpression(lhs, rhs, con.comp, out_exprs);
+      out_predicates.emplace_back(comp_exp);
       if (con.left_is_attr) {
         table_infos[left_attr_table_name].exprs.emplace_back(comp_exp);
       }

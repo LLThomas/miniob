@@ -14,18 +14,18 @@ insert into B values(6,6.888);
 insert into B values(7,7.123);
 insert into B values(8,8.234);
 
+select * from A where aid>3 and age<6.0;
+select * from A where aid<3;
+select aid,age from A;
+select * from A;
+select age from A where aid>3;
+
 select A.age from A inner join B on A.aid=B.bid;
 select A.* from A inner join B on A.aid=B.bid;
 select A.aid from A inner join B on A.aid=B.bid;
 select B.bid from A inner join B on A.aid=B.bid;
 select B.age from A inner join B on A.aid=B.bid;
 select B.* from A inner join B on A.aid=B.bid;
-
-select aid,age from A;
-select * from A;
-select * from A where aid<3;
-select age from A where aid>3;
-select * from A where aid>3 and age<6.0;
 
 select A.icy from A;
 select icy from A;
