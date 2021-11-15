@@ -49,8 +49,14 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
     for (int i = 0; i < last_right_tuple.size(); i++) {
       big_tuple.add(last_right_tuple.get_pointer(i));
     }
+    //投影操作
+    Tuple projection_tuple;
+    for (auto &f : plan_->OutputSchema()->fields()) {
+      projection_tuple.add(
+          f.expr()->Evaluate(&big_tuple, plan_->OutputSchema()));
+    }
     // //输出
-    tuple->operator=(std::move(big_tuple));
+    tuple->operator=(std::move(projection_tuple));
     tuple->print(std::cout);  // debug
     return RC::SUCCESS;
   }
@@ -69,6 +75,10 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
     if (hash_map.count(s) > 0) {
       SetLastTuples(hash_map[s]);
       Tuple *left_tuple = GetNextTuple();
+      std::cout << "[DEBUG] 左元组: ";
+      left_tuple->print(std::cout);
+      std::cout << "[DEBUG] 右元组: ";
+      last_right_tuple.print(std::cout);
       //投影操作
       // Tuple projection_tuple;
       // for (auto &f : plan_->OutputSchema()->fields()) {
@@ -83,6 +93,8 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
       for (int i = 0; i < last_right_tuple.size(); i++) {
         big_tuple.add(last_right_tuple.get_pointer(i));
       }
+      std::cout << "[DEBUG] 组合元组: ";
+      big_tuple.print(std::cout);
       //投影
       //投影操作
       Tuple projection_tuple;
@@ -90,9 +102,12 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
         projection_tuple.add(
             f.expr()->Evaluate(&big_tuple, plan_->OutputSchema()));
       }
+      std::cout << "[DEBUG] 投影schema: ";
+      plan_->OutputSchema()->print(std::cout, true);
+      std::cout << "[DEBUG] 投影后元组: ";
+      projection_tuple.print(std::cout);
       // //输出
       tuple->operator=(std::move(projection_tuple));
-      tuple->print(std::cout);  // debug
 
       return RC::SUCCESS;
     }

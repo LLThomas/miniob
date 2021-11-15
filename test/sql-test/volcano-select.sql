@@ -20,13 +20,6 @@ select aid,age from A;
 select * from A;
 select age from A where aid>3;
 
-select A.age from A inner join B on A.aid=B.bid;
-select A.* from A inner join B on A.aid=B.bid;
-select A.aid from A inner join B on A.aid=B.bid;
-select B.bid from A inner join B on A.aid=B.bid;
-select B.age from A inner join B on A.aid=B.bid;
-select B.* from A inner join B on A.aid=B.bid;
-
 select A.icy from A;
 select icy from A;
 select * from icy;

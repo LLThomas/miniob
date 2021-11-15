@@ -116,6 +116,7 @@ class TupleSchema {
 
   // void merge(const TupleSchema &other);
   void append(const TupleSchema &other);
+  void append(const TupleSchema &other, TupleSchema &out_schema);
 
   const std::vector<TupleField> &fields() const { return fields_; }
 

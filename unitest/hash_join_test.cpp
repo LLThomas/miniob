@@ -1,6 +1,6 @@
 //
 // Created by huaouo on 10/23/21.
-//  \\n"\n"
+//
 
 #include <include/sql_test.h>
 
@@ -8,50 +8,61 @@
 class HashJoinTest : public SQLTest {
   // 在每个 TEST_F 之前执行的内容
   void BeforeCase() override {
-    ExecuteSql("create table A(aid int,age float);");
-    ExecuteSql("insert into A values(1,1.111);");
-    ExecuteSql("insert into A values(2,2.222);");
-    ExecuteSql("insert into A values(3,3.333);");
-    ExecuteSql("insert into A values(4,4.444);");
-    ExecuteSql("insert into A values(5,5.555);");
-    ExecuteSql("insert into A values(6,6.666);");
-    ExecuteSql("create table B(bid int,age float);");
-    ExecuteSql("insert into B values(3,3.555);");
-    ExecuteSql("insert into B values(4,4.666);");
-    ExecuteSql("insert into B values(5,5.777);");
-    ExecuteSql("insert into B values(6,6.888);");
-    ExecuteSql("insert into B values(7,7.123);");
-    ExecuteSql("insert into B values(8,8.234);");
+    ExecuteSql("create table A(id int,age float,name char);");
+    ExecuteSql("insert into A values(1,1.111,'a');");
+    ExecuteSql("insert into A values(2,2.222,'b');");
+    ExecuteSql("insert into A values(3,3.333,'a');");
+    ExecuteSql("insert into A values(4,4.444,'b');");
+    ExecuteSql("insert into A values(3,3.333,'b');");
+    ExecuteSql("insert into A values(4,4.444,'a');");
+    ExecuteSql("create table B(id int,age float,name char);");
+    ExecuteSql("insert into B values(3,3.555,'cc');");
+    ExecuteSql("insert into B values(4,4.666,'dd');");
+    ExecuteSql("insert into B values(4,5.777,'ee');");
+    ExecuteSql("insert into B values(6,6.888,'ff');");
+    ExecuteSql("create table C(id int,age float,name char);");
+    ExecuteSql("insert into C values(5,5.567,'eee');");
+    ExecuteSql("insert into C values(6,6.678,'fff');");
+    ExecuteSql("insert into C values(7,7.789,'ggg');");
+    ExecuteSql("insert into C values(8,8.201,'hhh');");
   }
 
   // 在每个 TEST_F 之后执行的内容
   void AfterCase() override {
     ExecuteSql("drop table A;");
     ExecuteSql("drop table B;");
+    ExecuteSql("drop table C;");
   }
 };
 
 // 不对 TEST_F 的执行顺序提供保证
 TEST_F(HashJoinTest, hash_join) {
-  ASSERT_EQ(ExecuteSql("select A.age from A inner join B on A.aid=B.bid;"),
-            "A.age\n"
-            "3.33\n"
-            "4.44\n"
-            "5.55\n"
-            "6.67\n");
-  ASSERT_EQ(ExecuteSql("select A.* from A inner join B on A.aid=B.bid;"),
-            "A.aid | A.age\n"
-            "3 | 3.33\n"
-            "4 | 4.44\n"
-            "5 | 5.55\n"
-            "6 | 6.67\n");
-  ASSERT_EQ(ExecuteSql("select A.aid from A inner join B on A.aid=B.bid;"),
-            "A.aid\n"
-            "3\n"
-            "4\n"
-            "5\n"
-            "6\n");
-  ASSERT_EQ(ExecuteSql("select B.bid from A inner join B on A.aid=B.bid;"),
+  ASSERT_EQ(ExecuteSql("SELECT * FROM A INNER JOIN B ON A.id=B.id;"),
+            "A.id | A.age | A.name | B.id | B.age | B.name\n"
+            "3 | 3.33 | a | 3 | 3.56 | cc\n"
+            "3 | 3.33 | b | 3 | 3.56 | cc\n"
+            "4 | 4.44 | b | 4 | 4.67 | dd\n"
+            "4 | 4.44 | a | 4 | 4.67 | dd\n"
+            "4 | 4.44 | b | 4 | 5.78 | ee\n"
+            "4 | 4.44 | a | 4 | 5.78 | ee\n");
+  ASSERT_EQ(ExecuteSql("SELECT A.name FROM A INNER JOIN B ON A.id=B.id;"),
+            "A.name\n"
+            "a\n"
+            "b\n"
+            "b\n"
+            "a\n"
+            "b\n"
+            "a\n");
+  ASSERT_EQ(ExecuteSql("SELECT B.age FROM A INNER JOIN B ON A.id=B.id;"),
+            "B.age\n"
+            "3.56\n"
+            "3.56\n"
+            "4.67\n"
+            "4.67\n"
+            "5.78\n"
+            "5.78\n");
+  ASSERT_EQ(ExecuteSql("SELECT * FROM A INNER JOIN B ON A.id=B.id INNER JOIN C "
+                       "ON A.id=C.id;"),
             "B.bid\n"
             "3\n"
             "4\n"

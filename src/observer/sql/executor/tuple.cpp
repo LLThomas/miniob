@@ -14,6 +14,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/executor/tuple.h"
 
 #include "common/log/log.h"
+#include "sql/executor/expressions/column_value_expression.h"
 #include "storage/common/record_manager.h"
 #include "storage/common/table.h"
 
@@ -118,9 +119,17 @@ void TupleSchema::add_if_not_exists(AttrType type, const char *table_name,
 }
 
 void TupleSchema::append(const TupleSchema &other) {
-  fields_.reserve(fields_.size() + other.fields_.size());
+  size_t delta = fields_.size();
+  fields_.reserve(delta + other.fields_.size());
   for (const auto &field : other.fields_) {
-    fields_.emplace_back(field);
+    ColumnValueExpression *old_col = (ColumnValueExpression *)(field.expr());
+    ColumnValueExpression *temp_col = new ColumnValueExpression{
+        old_col->GetTupleIdx(), old_col->GetColIdx(), old_col->GetReturnType()};
+    TupleField *temp_field = new TupleField(field.type(), field.table_name(),
+                                            field.field_name(), temp_col);
+    auto col_expr = (ColumnValueExpression *)(temp_field->expr());
+    col_expr->AppendColIdx(delta);
+    fields_.emplace_back(*temp_field);
   }
 }
 

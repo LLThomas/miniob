@@ -1,6 +1,3 @@
-drop table pr1;
-drop table pr2;
-drop table pr3;
 create table pr1(id int, price float);
 create table pr2(id int, price float);
 create table pr3(id int, price float);

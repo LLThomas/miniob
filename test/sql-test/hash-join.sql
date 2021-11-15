@@ -1,0 +1,25 @@
+create table A(id int,age float,name char);
+insert into A values(1,1.111,'a');
+insert into A values(2,2.222,'b');
+insert into A values(3,3.333,'a');
+insert into A values(3,3.333,'b');
+insert into A values(4,4.444,'a');
+insert into A values(4,4.444,'b');
+create table B(id int,age float,name char);
+insert into B values(3,3.555,'cc');
+insert into B values(4,4.666,'dd');
+insert into B values(4,5.777,'ee');
+insert into B values(6,6.888,'ff');
+create table C(id int,age float,name char);
+insert into C values(3,5.567,'eee');
+insert into C values(4,6.678,'fff');
+insert into C values(7,7.789,'ggg');
+insert into C values(8,8.201,'hhh');
+
+SELECT * FROM A INNER JOIN B ON A.id=B.id INNER JOIN C ON B.id=C.id;
+SELECT * FROM A INNER JOIN B ON A.id=B.id;
+SELECT A.name FROM A INNER JOIN B ON A.id=B.id;
+SELECT B.age FROM A INNER JOIN B ON A.id=B.id;
+Select * from A inner join B on A.id=B.id and B.age>4.0 where A.name='b';
+Select * from A inner join B on A.id=B.id and B.age>4.0 where A.name='a';
+Select * from A inner join B on A.id=B.id and B.age>5.0 where A.name='b';

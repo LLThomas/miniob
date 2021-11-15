@@ -41,6 +41,7 @@ class ColumnValueExpression : public AbstractExpression {
 
   size_t GetTupleIdx() const { return tuple_idx_; }
   size_t GetColIdx() const { return col_idx_; }
+  void AppendColIdx(size_t delta) { col_idx_ += delta; }
 
  private:
   /** Tuple index 0 = left side of join, tuple index 1 = right side of join */
