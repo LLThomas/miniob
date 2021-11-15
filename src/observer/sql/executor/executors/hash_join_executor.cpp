@@ -18,7 +18,7 @@ void HashJoinExecutor::Init() {
   std::string left_hashkey = plan_->GetLeftColName();
   int col_index = left_hashkey == ""
                       ? -1
-                      : left_->GetOutputSchema()->GetColIdx(left_hashkey);
+                      : left_->GetOutputSchema()->GetFieldIdx(left_hashkey);
   Tuple temp_tuple;
   RID rid;
   rid.page_num = 1;
@@ -70,7 +70,7 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
   std::string right_hashkey = plan_->GetRightColName();
   int col_index = right_hashkey == ""
                       ? -1
-                      : right_->GetOutputSchema()->GetColIdx(right_hashkey);
+                      : right_->GetOutputSchema()->GetFieldIdx(right_hashkey);
   while (right_->Next(&last_right_tuple, rid) == RC::SUCCESS) {
     std::string s = "";
     if (col_index != -1) {

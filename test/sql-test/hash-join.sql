@@ -15,11 +15,11 @@ insert into C values(3,5.567,'eee');
 insert into C values(4,6.678,'fff');
 insert into C values(7,7.789,'ggg');
 insert into C values(8,8.201,'hhh');
-create table C(id int,age float,name char);
-insert into C values(3,12.34,'z');
-insert into C values(4,23.45,'x');
-insert into C values(7,7.789,'zz');
-insert into C values(8,8.201,'xx');
+create table D(id int,age float,name char);
+insert into D values(3,12.34,'z');
+insert into D values(4,23.45,'x');
+insert into D values(7,7.789,'zz');
+insert into D values(8,8.201,'xx');
 
 SELECT * FROM A INNER JOIN B ON A.id=B.id INNER JOIN C ON 1=1 INNER JOIN D ON C.id=D.id;
 SELECT * FROM A INNER JOIN B ON A.id=B.id INNER JOIN C ON A.id=C.id;

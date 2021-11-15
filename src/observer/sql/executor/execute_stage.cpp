@@ -546,12 +546,6 @@ RC PlanWhere(const char *db, const Selects &selects,
         rhs = ParseConditionToExpression(con.right_attr, con.right_value,
                                          con.right_is_attr, true, table_infos,
                                          out_exprs);
-        table_infos[left_attr_table_name]
-            .on_exprs[right_attr_table_name]
-            .push_back(lhs);
-        table_infos[left_attr_table_name]
-            .on_exprs[right_attr_table_name]
-            .push_back(rhs);
 
       } else {
         rhs = ParseConditionToExpression(con.left_attr, con.left_value,
@@ -560,18 +554,23 @@ RC PlanWhere(const char *db, const Selects &selects,
         lhs = ParseConditionToExpression(con.right_attr, con.right_value,
                                          con.right_is_attr, false, table_infos,
                                          out_exprs);
-
-        table_infos[right_attr_table_name]
-            .on_exprs[left_attr_table_name]
-            .push_back(lhs);
-        table_infos[right_attr_table_name]
-            .on_exprs[left_attr_table_name]
-            .push_back(rhs);
       }
+      table_infos[left_attr_table_name]
+          .on_exprs[right_attr_table_name]
+          .push_back(lhs);
+      table_infos[left_attr_table_name]
+          .on_exprs[right_attr_table_name]
+          .push_back(rhs);
+      table_infos[right_attr_table_name]
+          .on_exprs[left_attr_table_name]
+          .push_back(lhs);
+      table_infos[right_attr_table_name]
+          .on_exprs[left_attr_table_name]
+          .push_back(rhs);
       table_infos[left_attr_table_name].on_cols[right_attr_table_name] =
-          con.left_attr.attribute_name;
+          left_attr_table_name + "." + con.left_attr.attribute_name;
       table_infos[right_attr_table_name].on_cols[left_attr_table_name] =
-          con.right_attr.attribute_name;
+          right_attr_table_name + "." + con.right_attr.attribute_name;
     } else {
       lhs = ParseConditionToExpression(con.left_attr, con.left_value,
                                        con.left_is_attr, false, table_infos,
