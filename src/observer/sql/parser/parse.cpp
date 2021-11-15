@@ -284,8 +284,12 @@ void create_index_init(CreateIndex *create_index, const char *index_name,
                        bool unique) {
   create_index->index_name = strdup(index_name);
   create_index->relation_name = strdup(relation_name);
-  create_index->attribute_name = strdup(attr_name);
+  create_index->attribute_name[create_index->attr_count++] = strdup(attr_name);
   create_index->unique = unique;
+}
+
+void append_index(CreateIndex *create_index, const char *attr_name) {
+  create_index->attribute_name[create_index->attr_count++] = strdup(attr_name);
 }
 
 void create_index_destroy(CreateIndex *create_index) {
@@ -295,7 +299,9 @@ void create_index_destroy(CreateIndex *create_index) {
 
   create_index->index_name = nullptr;
   create_index->relation_name = nullptr;
-  create_index->attribute_name = nullptr;
+  for (int i = 0; i < MAX_NUM; i++) {
+    create_index->attribute_name[i] = nullptr;
+  }
 }
 
 void drop_index_init(DropIndex *drop_index, const char *index_name) {
