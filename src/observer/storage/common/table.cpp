@@ -629,13 +629,17 @@ RC Table::create_index(Trx *trx, const char *index_name,
     return RC::INVALID_ARGUMENT;
   }
   if (table_meta_.index(index_name) != nullptr ||
-      table_meta_.find_index_by_field((attribute_name)) || !multi) {
+      table_meta_.find_index_by_field((attribute_name))) {
     return RC::SCHEMA_INDEX_EXIST;
   }
 
   const FieldMeta *field_meta = table_meta_.field(attribute_name);
   if (!field_meta) {
     return RC::SCHEMA_FIELD_MISSING;
+  }
+
+  if (multi) {
+    return RC::SUCCESS;
   }
 
   IndexMeta new_index_meta;

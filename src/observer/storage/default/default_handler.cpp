@@ -139,9 +139,6 @@ RC DefaultHandler::create_index(Trx *trx, const char *dbname,
   Table *table = find_table(dbname, relation_name);
 
   if (nullptr == table) {
-
-    std::cout<<"table is null"<<std::endl;
-
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
   return table->create_index(trx, index_name, attribute_name, unique, multi);
