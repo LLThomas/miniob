@@ -90,6 +90,8 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr,
     } else {
       condition->right_value = *right_value;
     }
+  } else {
+    condition->right_is_attr = false;
   }
 }
 

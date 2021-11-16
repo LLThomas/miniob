@@ -578,19 +578,21 @@ RC PlanWhere(const char *db, const Selects &selects,
                                        con.left_is_attr, false, table_infos,
                                        out_exprs);
       if (con.comp != IS_LEFT_NULL && con.comp != IS_LEFT_NOT_NULL) {
-        if (is_join) {
-          rhs = ParseConditionToExpression(con.right_attr, con.right_value,
-                                           con.right_is_attr, true, table_infos,
-                                           out_exprs);
-        } else {
-          rhs = ParseConditionToExpression(con.right_attr, con.right_value,
-                                           con.right_is_attr, false,
-                                           table_infos, out_exprs);
-        }
+        //        if (is_join) {
+        //          rhs = ParseConditionToExpression(con.right_attr,
+        //          con.right_value,
+        //                                           con.right_is_attr, true,
+        //                                           table_infos, out_exprs);
+        //        } else {
+        rhs = ParseConditionToExpression(con.right_attr, con.right_value,
+                                         con.right_is_attr, false, table_infos,
+                                         out_exprs);
+        //        }
       }
     }
 
-    if (lhs == nullptr || rhs == nullptr) {
+    if (lhs == nullptr || (con.comp != IS_LEFT_NULL &&
+                           con.comp != IS_LEFT_NOT_NULL && rhs == nullptr)) {
       return RC::INVALID_ARGUMENT;
     }
 
