@@ -38,6 +38,7 @@ TEST_F(NullTest, single_table) {
 TEST_F(NullTest, multi_table) {
   ASSERT_EQ(ExecuteSql("insert into a values (null, null);"), "SUCCESS\n");
   ASSERT_EQ(ExecuteSql("insert into a values (1, 2);"), "SUCCESS\n");
+  ASSERT_EQ(ExecuteSql("insert into b values (null, null);"), "SUCCESS\n");
   ASSERT_EQ(ExecuteSql("insert into b values (1, 3);"), "SUCCESS\n");
   ASSERT_EQ(ExecuteSql("select a.g from a, b where a.f=b.f;"), "a.g\n2\n");
 }

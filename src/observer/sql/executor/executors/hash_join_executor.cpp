@@ -26,10 +26,14 @@ void HashJoinExecutor::Init() {
   rid.page_num = 1;
   rid.slot_num = -1;
   while (left_->Next(&temp_tuple, &rid) == RC::SUCCESS) {
-    std::string s = "";
+    std::string s;
     if (col_index != -1) {
+      const TupleValue *tuple_value = &temp_tuple.get(col_index);
+      if (dynamic_cast<const NullValue *>(tuple_value)) {
+        continue;
+      }
       std::stringstream ss;
-      temp_tuple.get(col_index).to_string(ss);
+      tuple_value->to_string(ss);
       ss >> s;
     }
 
