@@ -12,6 +12,19 @@ const AbstractExecutor *AggregationExecutor::GetChildExecutor() const {
   return child_.get();
 }
 
-void AggregationExecutor::Init() {}
+void AggregationExecutor::Init() {
+  child_->Init();
+  RID rid;
+  rid.page_num = 1;
+  rid.slot_num = -1;
+  Tuple tuple;
+  while (child_->Next(&tuple, &rid) == RC::SUCCESS) {
+    aht_.InsertCombine(MakeKey(&tuple), MakeVal(&tuple));
+  }
+  aht_iterator_ = aht_.Begin();
+}
 
-RC AggregationExecutor::Next(Tuple *tuple, RID *rid) { return RC::SUCCESS; }
+RC AggregationExecutor::Next(Tuple *tuple, RID *rid) {
+
+  return RC::SUCCESS;
+}

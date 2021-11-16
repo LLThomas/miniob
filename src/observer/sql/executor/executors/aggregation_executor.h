@@ -24,7 +24,7 @@ class SimpleAggregationHashTable {
       const std::vector<AggregationType> &agg_types)
       : agg_exprs_{agg_exprs}, agg_types_{agg_types} {}
 
-  /** @return the initial aggregrate value for this aggregation executor */
+  /** @return the initial aggregate value for this aggregation executor */
   AggregateValue GenerateInitialAggregateValue() {
     std::vector<std::shared_ptr<TupleValue>> values;
     for (const auto &agg_type : agg_types_) {

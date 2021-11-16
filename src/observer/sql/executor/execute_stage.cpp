@@ -13,6 +13,9 @@ See the Mulan PSL v2 for more details. */
 
 #include "execute_stage.h"
 
+#include <sql/executor/executors/aggregation_executor.h>
+#include <sql/executor/plans/aggregation_plan.h>
+
 #include <algorithm>
 #include <set>
 #include <sstream>
@@ -252,27 +255,14 @@ std::unique_ptr<AbstractExecutor> CreateExecutor(ExecutorContext *exec_ctx,
       return std::make_unique<HashJoinExecutor>(
           exec_ctx, hash_join_plan, std::move(left), std::move(right));
     }
-      // Create a new aggregation executor.
-      // case PlanType::Aggregation: {
-      //   auto agg_plan = dynamic_cast<const AggregationPlanNode *>(plan);
-      //   auto child_executor =
-      //       ExecutorFactory::CreateExecutor(exec_ctx,
-      //       agg_plan->GetChildPlan());
-      //   return std::make_unique<AggregationExecutor>(exec_ctx, agg_plan,
-      //                                                std::move(child_executor));
-      // }
 
-      // case PlanType::NestedLoopJoin: {
-      //   auto nested_loop_join_plan =
-      //       dynamic_cast<const NestedLoopJoinPlanNode *>(plan);
-      //   auto left =
-      //       CreateExecutor(exec_ctx, nested_loop_join_plan->GetLeftPlan());
-      //   auto right =
-      //       CreateExecutor(exec_ctx, nested_loop_join_plan->GetRightPlan());
-      //   return std::make_unique<NestedLoopJoinExecutor>(
-      //       exec_ctx, nested_loop_join_plan, std::move(left),
-      //       std::move(right));
-      // }
+    // Create a new aggregation executor.
+    case PlanType::Aggregation: {
+      auto agg_plan = dynamic_cast<const AggregationPlanNode *>(plan);
+      auto child_executor = CreateExecutor(exec_ctx, agg_plan->GetChildPlan());
+      return std::make_unique<AggregationExecutor>(exec_ctx, agg_plan,
+                                                  std::move(child_executor));
+    }
 
     default: {
       assert(false && "No Plan Type");
@@ -386,7 +376,7 @@ RC PlanSelect(const char *db, Selects &selects, std::vector<Table *> tables,
               std::vector<std::string> &out_projections,
               std::unordered_map<std::string, TableInfo> &table_infos) {
   //特殊情况：只有一个*
-  if (std::string(selects.attributes[0].attribute_name) == "*" &&
+  if (selects.attr_num > 0 && std::string(selects.attributes[0].attribute_name) == "*" &&
       selects.attributes[0].relation_name == nullptr) {
     for (size_t i = 0; i < tables.size(); i++) {
       selects.attributes[tables.size() - i - 1].relation_name =
@@ -676,6 +666,68 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
 
   // AbstractPlanNode *scan_plan = out_plans.back().get();
   // ---------------Agg Plan---------------
+  if (selects.aggregation_num > 0) {
+    // table
+    Table *scan_table = from_tables[0];
+    // table info
+    TableInfo scan_table_info = table_infos[scan_table->name()];
+    // enum -> name
+    std::unordered_map<int, std::string> agg_to_name;
+    agg_to_name[0] = "max";
+    agg_to_name[1] = "min";
+    agg_to_name[2] = "count";
+    agg_to_name[3] = "avg";
+    // col -> agg type
+    std::unordered_map<std::string, std::vector<int>> col_to_agg;
+    for (int i = 0; i < selects.aggregation_num; i++) {
+      Aggregation agg = selects.aggregations[i];
+      col_to_agg[agg.attribute.attribute_name].push_back(agg.func_name);
+    }
+
+    // 1. scan plan node
+    TupleSchema *scan_schema = new TupleSchema();
+    TupleSchema::from_table(scan_table, *scan_schema);
+    SeqScanPlanNode *scan_plan =
+        new SeqScanPlanNode(scan_schema, scan_table->name(), predicates);
+
+    // 2. agg plan node and combine
+    TupleSchema *agg_schema = new TupleSchema();
+    // col exp, agg exp -> schema
+    std::vector<std::unique_ptr<AbstractExpression>> col_exp;
+    std::vector<const AbstractExpression *> col_exps;
+    std::vector<std::unique_ptr<AbstractExpression>> agg_exp;
+    std::vector<std::pair<std::string, const AbstractExpression *>> agg_exps;
+    std::vector<AggregationType> agg_types;
+    for (int i = 0; i < selects.aggregation_num; i++) {
+      Aggregation agg = selects.aggregations[i];
+      col_exps.insert(col_exps.begin(),
+                      MakeColumnValueExpression(*scan_schema, 0,
+                                                agg.attribute.attribute_name, col_exp));
+      agg_exps.insert(
+          agg_exps.begin(),
+          {agg_to_name[agg.func_name]+ "(" + agg.attribute.attribute_name + ")",
+          MakeAggregateValueExpression(false,
+                                       scan_schema->GetFieldIdx(agg.attribute.attribute_name),
+                                       agg_exp)});
+      if (agg.func_name == 0) {
+        agg_types.push_back(AggregationType::MaxAggregate);
+      } else if (agg.func_name == 1) {
+        agg_types.push_back(AggregationType::MinAggregate);
+      } else if (agg.func_name == 2) {
+        agg_types.push_back(AggregationType::CountAggregate);
+      } else {
+        agg_types.push_back(AggregationType::AvgAggregate);
+      }
+    }
+    MakeOutputSchema(agg_exps, agg_schema, scan_table->name());
+    // agg plan
+    AggregationPlanNode *agg_plan = new AggregationPlanNode(
+        agg_schema, scan_plan, nullptr, std::vector<const AbstractExpression *>{},
+        std::move(col_exps), std::move(agg_types));
+
+    out_plans.emplace_back(agg_plan);
+    return RC::SUCCESS;
+  }
   // 4. parse Agg()
   // rc = PlanAggregation();
   // if (rc != RC::SUCCESS) return rc;

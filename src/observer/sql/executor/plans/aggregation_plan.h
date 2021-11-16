@@ -7,10 +7,10 @@
 /** AggregationType enumerates all the possible aggregation functions in our
  * system. */
 enum class AggregationType {
-  CountAggregate,
-  AvgAggregate,
+  MaxAggregate,
   MinAggregate,
-  MaxAggregate
+  CountAggregate,
+  AvgAggregate
 };
 
 /**
@@ -44,7 +44,7 @@ class AggregationPlanNode : public AbstractPlanNode {
   PlanType GetType() const override { return PlanType::Aggregation; }
 
   /** @return the child of this aggregation plan node */
-  const AbstractPlanNode *GetChildPlan() const {
+   AbstractPlanNode *GetChildPlan() const {
     assert(GetChildren().size() == 1 &&
            "Aggregation expected to only have one child.");
     return GetChildAt(0);
