@@ -556,19 +556,23 @@ RC PlanWhere(const char *db, const Selects &selects,
                                          out_exprs);
       }
 
-      const AbstractExpression *on_condition =
-          MakeComparisonExpression(lhs, rhs, con.comp, out_exprs);
+      if (con.comp == CompOp::EQUAL_TO) {
+        table_infos[left_attr_table_name].on_cols[right_attr_table_name] =
+            left_attr_table_name + "." + con.left_attr.attribute_name;
+        table_infos[right_attr_table_name].on_cols[left_attr_table_name] =
+            right_attr_table_name + "." + con.right_attr.attribute_name;
+      } else {
+        const AbstractExpression *on_condition =
+            MakeComparisonExpression(lhs, rhs, con.comp, out_exprs);
 
-      table_infos[right_attr_table_name]
-          .on_exprs[left_attr_table_name]
-          .push_back(on_condition);
-      table_infos[left_attr_table_name]
-          .on_exprs[right_attr_table_name]
-          .push_back(on_condition);
-      table_infos[left_attr_table_name].on_cols[right_attr_table_name] =
-          left_attr_table_name + "." + con.left_attr.attribute_name;
-      table_infos[right_attr_table_name].on_cols[left_attr_table_name] =
-          right_attr_table_name + "." + con.right_attr.attribute_name;
+        table_infos[right_attr_table_name]
+            .on_exprs[left_attr_table_name]
+            .push_back(on_condition);
+        table_infos[left_attr_table_name]
+            .on_exprs[right_attr_table_name]
+            .push_back(on_condition);
+      }
+
     } else {
       lhs = ParseConditionToExpression(con.left_attr, con.left_value,
                                        con.left_is_attr, false, table_infos,
@@ -703,13 +707,11 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     //要从以前所有的name里找，可以构建出来的name
     HashJoinPlanNode *join_plan = nullptr;
     for (auto &str : last_scan_table_names) {
-      if (table_infos[str].on_exprs.count(current_scan_table_name) > 0 &&
-          table_infos[str].on_cols.count(current_scan_table_name) > 0 &&
+      if (table_infos[str].on_cols.count(current_scan_table_name) > 0 &&
           table_infos[current_scan_table_name].on_cols.count(str) > 0) {
         join_plan = new HashJoinPlanNode(
             join_schema,
-            std::vector<AbstractPlanNode *>{last_plan, current_plan},
-            table_infos[str].on_exprs[current_scan_table_name][0],
+            std::vector<AbstractPlanNode *>{last_plan, current_plan}, {},
             table_infos[str].on_cols[current_scan_table_name],
             table_infos[current_scan_table_name].on_cols[str]);
         break;
@@ -717,9 +719,19 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     }
     //全连接
     if (join_plan == nullptr) {
+      //添加exprs
+      std::vector<const AbstractExpression *> predicates;
+      for (auto &str : last_scan_table_names) {
+        if (table_infos[str].on_exprs.count(current_scan_table_name) > 0) {
+          predicates.insert(
+              predicates.end(),
+              table_infos[str].on_exprs[current_scan_table_name].begin(),
+              table_infos[str].on_exprs[current_scan_table_name].end());
+        }
+      }
       join_plan = new HashJoinPlanNode(
           join_schema, std::vector<AbstractPlanNode *>{last_plan, current_plan},
-          nullptr, "", "");
+          predicates, "", "");
     }
 
     // update scan_table_1

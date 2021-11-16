@@ -17,7 +17,7 @@ class HashJoinPlanNode : public AbstractPlanNode {
    */
   HashJoinPlanNode(TupleSchema *output_schema,
                    std::vector<AbstractPlanNode *> &&children,
-                   const AbstractExpression *key_expression,
+                   std::vector<const AbstractExpression *> key_expression,
                    std::string left_col_name, std::string right_col_name)
       : AbstractPlanNode(output_schema, std::move(children)),
         key_expression_{key_expression},
@@ -28,7 +28,7 @@ class HashJoinPlanNode : public AbstractPlanNode {
   PlanType GetType() const override { return PlanType::HashJoin; }
 
   /** @return The expression to compute the right join key */
-  const AbstractExpression *JoinKeyExpression() const {
+  std::vector<const AbstractExpression *> JoinKeyExpression() const {
     return key_expression_;
   }
 
@@ -51,7 +51,7 @@ class HashJoinPlanNode : public AbstractPlanNode {
   const std::string GetRightColName() { return right_col_name; }
 
  private:
-  const AbstractExpression *key_expression_;
+  std::vector<const AbstractExpression *> key_expression_;
 
   std::string left_col_name;
   std::string right_col_name;

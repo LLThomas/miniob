@@ -46,8 +46,28 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
   LOG_ERROR("right Next\n");
 
   // check last_tuples first
-  Tuple *next_tuple = GetNextTuple();
-  if (next_tuple != nullptr) {
+  Tuple *next_tuple;
+  bool is_matched = false;
+  while (!is_matched) {
+    //这个while如果没有JoinExpression，只做一次，相当于笔直向下走和原来是一样的
+    //但是如果出现不匹配的元组，就会一直想方设法获取下一个匹配的
+    next_tuple = GetNextTuple();
+    if (next_tuple == nullptr) break;
+    is_matched = true;
+    for (auto &p : plan_->JoinKeyExpression()) {
+      if (p->EvaluateJoin(next_tuple, plan_->GetChildAt(0)->OutputSchema(),
+                          &last_right_tuple,
+                          plan_->GetChildAt(1)->OutputSchema())
+              ->compare(IntValue(true)) != 0) {
+        is_matched = false;
+        break;
+      }
+    }
+  }
+  if (!is_matched) {
+    //说明是nullptr跳出来的
+  } else {
+    //说明是匹配成功了
     //组合
     Tuple big_tuple;
     for (int i = 0; i < next_tuple->size(); i++) {
@@ -83,14 +103,31 @@ RC HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
 
       std::cout << "probe: " << s << std::endl;
     }
-    // TODO:等值连接才使用hash表
     if (hash_map.count(s) > 0) {
+      // std::cout << "[DEBUG] 左元组: ";
+      // left_tuple->print(std::cout);
+      // std::cout << "[DEBUG] 右元组: ";
+      // last_right_tuple.print(std::cout);
       SetLastTuples(hash_map[s]);
-      Tuple *left_tuple = GetNextTuple();
-      std::cout << "[DEBUG] 左元组: ";
-      left_tuple->print(std::cout);
-      std::cout << "[DEBUG] 右元组: ";
-      last_right_tuple.print(std::cout);
+      Tuple *left_tuple;
+      bool is_matched = false;
+      while (!is_matched) {
+        //这个while如果没有JoinExpression，只做一次，相当于笔直向下走和原来是一样的
+        //但是如果出现不匹配的元组，就会一直想方设法获取下一个匹配的
+        left_tuple = GetNextTuple();
+        if (left_tuple == nullptr) return RC::RECORD_EOF;
+        is_matched = true;
+        for (auto &p : plan_->JoinKeyExpression()) {
+          if (p->EvaluateJoin(left_tuple, plan_->GetChildAt(0)->OutputSchema(),
+                              &last_right_tuple,
+                              plan_->GetChildAt(1)->OutputSchema())
+                  ->compare(IntValue(true)) != 0) {
+            is_matched = false;
+            break;
+          }
+        }
+      }
+
       //投影操作
       // Tuple projection_tuple;
       // for (auto &f : plan_->OutputSchema()->fields()) {
