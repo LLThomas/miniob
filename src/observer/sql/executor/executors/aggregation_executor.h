@@ -184,7 +184,7 @@ class SimpleAggregationHashTable {
   /** The types of aggregations that we have. */
   const std::vector<AggregationType> &agg_types_;
   // AVG={SUM,COUNT}
-  std::unordered_map<int, std::pair<float, int>> avg_map_;
+  std::unordered_map<uint32_t, std::pair<float, int>> avg_map_;
 };
 
 /**
