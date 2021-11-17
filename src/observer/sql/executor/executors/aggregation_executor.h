@@ -41,11 +41,11 @@ class SimpleAggregationHashTable {
           break;
         case AggregationType::MinAggregate:
           // Min starts at INT_MAX.
-          values.emplace_back(std::make_shared<IntValue>(INT_MAX));
+          values.emplace_back(std::make_shared<NullValue>());
           break;
         case AggregationType::MaxAggregate:
           // Max starts at INT_MIN.
-          values.emplace_back(std::make_shared<IntValue>(INT_MIN));
+          values.emplace_back(std::make_shared<NullValue>());
           break;
       }
     }
@@ -92,15 +92,23 @@ class SimpleAggregationHashTable {
         }
 
         case AggregationType::MinAggregate: {
-          result_ptr->set_value(input_ptr.get()->compare(*result_ptr) < 0
-                                    ? *input_ptr
-                                    : *result_ptr);
+          if (result_ptr->get_type() == AttrType::NULLS) {
+            result->aggregates_[i] = input_ptr->copy();
+          } else {
+            result_ptr->set_value(input_ptr.get()->compare(*result_ptr) < 0
+                                      ? *input_ptr
+                                      : *result_ptr);
+          }
           break;
         }
         case AggregationType::MaxAggregate: {
-          result_ptr->set_value(input_ptr.get()->compare(*result_ptr) > 0
-                                    ? *input_ptr
-                                    : *result_ptr);
+          if (result_ptr->get_type() == AttrType::NULLS) {
+            result->aggregates_[i] = input_ptr->copy();
+          } else {
+            result_ptr->set_value(input_ptr.get()->compare(*result_ptr) > 0
+                                      ? *input_ptr
+                                      : *result_ptr);
+          }
           break;
         }
       }

@@ -35,6 +35,7 @@ class TupleValue {
   virtual int compare(const TupleValue &other) const = 0;
   virtual void set_value(const TupleValue &other) = 0;
   virtual AttrType get_type() const = 0;
+  virtual std::shared_ptr<TupleValue> copy() const = 0;
 
  private:
 };
@@ -56,6 +57,9 @@ class IntValue : public TupleValue {
   void set_value(const TupleValue &other) override {
     const IntValue &int_other = (const IntValue &)other;
     value_ = int_other.value_;
+  }
+  std::shared_ptr<TupleValue> copy() const override {
+    return std::make_shared<IntValue>(value_);
   }
 
  private:
@@ -85,6 +89,9 @@ class DateValue : public TupleValue {
   void set_value(const TupleValue &other) override {
     const DateValue &date_other = (const DateValue &)other;
     value_ = date_other.value_;
+  }
+  std::shared_ptr<TupleValue> copy() const override {
+    return std::make_shared<DateValue>(value_);
   }
 
  private:
@@ -130,6 +137,9 @@ class FloatValue : public TupleValue {
     const FloatValue &float_other = (const FloatValue &)other;
     value_ = float_other.value_;
   }
+  std::shared_ptr<TupleValue> copy() const override {
+    return std::make_shared<FloatValue>(value_);
+  }
 
  private:
   float value_;
@@ -153,6 +163,9 @@ class StringValue : public TupleValue {
     const StringValue &string_other = (const StringValue &)other;
     value_ = string_other.value_;
   }
+  std::shared_ptr<TupleValue> copy() const override {
+    return std::make_shared<StringValue>(value_.c_str());
+  }
 
  private:
   std::string value_;
@@ -166,6 +179,9 @@ class NullValue : public TupleValue {
 
   virtual AttrType get_type() const override { return NULLS; }
   virtual void set_value(const TupleValue &other) { assert(false && "gg"); }
+  std::shared_ptr<TupleValue> copy() const override {
+    return std::make_shared<NullValue>();
+  }
 };
 
 #endif  //__OBSERVER_SQL_EXECUTOR_VALUE_H_
