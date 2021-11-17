@@ -1,3 +1,5 @@
+#ifndef __OBSERVER_SQL_AGGREGATION_PLAN_H__
+#define __OBSERVER_SQL_AGGREGATION_PLAN_H__
 #include <utility>
 #include <vector>
 
@@ -44,7 +46,7 @@ class AggregationPlanNode : public AbstractPlanNode {
   PlanType GetType() const override { return PlanType::Aggregation; }
 
   /** @return the child of this aggregation plan node */
-   AbstractPlanNode *GetChildPlan() const {
+  AbstractPlanNode *GetChildPlan() const {
     assert(GetChildren().size() == 1 &&
            "Aggregation expected to only have one child.");
     return GetChildAt(0);
@@ -128,3 +130,4 @@ struct hash<AggregateKey> {
   }
 };
 }  // namespace std
+#endif

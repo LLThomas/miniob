@@ -261,7 +261,7 @@ std::unique_ptr<AbstractExecutor> CreateExecutor(ExecutorContext *exec_ctx,
       auto agg_plan = dynamic_cast<const AggregationPlanNode *>(plan);
       auto child_executor = CreateExecutor(exec_ctx, agg_plan->GetChildPlan());
       return std::make_unique<AggregationExecutor>(exec_ctx, agg_plan,
-                                                  std::move(child_executor));
+                                                   std::move(child_executor));
     }
 
     default: {
@@ -376,7 +376,8 @@ RC PlanSelect(const char *db, Selects &selects, std::vector<Table *> tables,
               std::vector<std::string> &out_projections,
               std::unordered_map<std::string, TableInfo> &table_infos) {
   //特殊情况：只有一个*
-  if (selects.attr_num > 0 && std::string(selects.attributes[0].attribute_name) == "*" &&
+  if (selects.attr_num > 0 &&
+      std::string(selects.attributes[0].attribute_name) == "*" &&
       selects.attributes[0].relation_name == nullptr) {
     for (size_t i = 0; i < tables.size(); i++) {
       selects.attributes[tables.size() - i - 1].relation_name =
@@ -641,6 +642,66 @@ SeqScanPlanNode *ConstructScanTable(
   return new SeqScanPlanNode(scan_schema, scan_table_name,
                              table_infos[scan_table_name].exprs);
 }
+
+RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
+                   const char *table_name, const TupleSchema &table_schema,
+                   std::unordered_map<std::string, TableInfo> &table_infos,
+                   std::vector<AbstractPlanNode *> &out_plans) {
+  // table info
+  TableInfo scan_table_info = table_infos[table_name];
+  // enum -> name
+  std::unordered_map<int, std::string> agg_to_name;
+  agg_to_name[0] = "max";
+  agg_to_name[1] = "min";
+  agg_to_name[2] = "count";
+  agg_to_name[3] = "avg";
+  // col -> agg type
+  std::unordered_map<std::string, std::vector<int>> col_to_agg;
+  for (int i = 0; i < selects.aggregation_num; i++) {
+    Aggregation agg = selects.aggregations[i];
+    col_to_agg[agg.attribute.attribute_name].push_back(agg.func_name);
+  }
+
+  // 1.agg plan node and combine
+  TupleSchema *agg_schema = new TupleSchema();
+  // col exp, agg exp -> schema
+  std::vector<std::unique_ptr<AbstractExpression>> col_exp;
+  std::vector<const AbstractExpression *> col_exps;
+  std::vector<std::unique_ptr<AbstractExpression>> agg_exp;
+  std::vector<std::pair<std::string, const AbstractExpression *>> agg_exps;
+  std::vector<AggregationType> agg_types;
+  for (int i = 0; i < selects.aggregation_num; i++) {
+    Aggregation agg = selects.aggregations[i];
+    col_exps.insert(
+        col_exps.begin(),
+        MakeColumnValueExpression(table_schema, 0, agg.attribute.attribute_name,
+                                  col_exp));
+    agg_exps.insert(
+        agg_exps.begin(),
+        {agg_to_name[agg.func_name] + "(" + agg.attribute.attribute_name + ")",
+         MakeAggregateValueExpression(
+             false, table_schema.GetFieldIdx(agg.attribute.attribute_name),
+             agg_exp)});
+    if (agg.func_name == 0) {
+      agg_types.push_back(AggregationType::MaxAggregate);
+    } else if (agg.func_name == 1) {
+      agg_types.push_back(AggregationType::MinAggregate);
+    } else if (agg.func_name == 2) {
+      agg_types.push_back(AggregationType::CountAggregate);
+    } else {
+      agg_types.push_back(AggregationType::AvgAggregate);
+    }
+  }
+  MakeOutputSchema(agg_exps, agg_schema, table_name);
+  // agg plan
+  AggregationPlanNode *agg_plan =
+      new AggregationPlanNode(agg_schema, table_plan, nullptr,
+                              std::vector<const AbstractExpression *>{},
+                              std::move(col_exps), std::move(agg_types));
+
+  out_plans.emplace_back(agg_plan);
+  return RC::SUCCESS;
+}
 RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
                   std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
                   const char *db, const Selects &selects) {
@@ -663,77 +724,7 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   rc = PlanSelect(db, (Selects &)selects, from_tables, out_exprs,
                   projections_str, table_infos);
   if (rc != RC::SUCCESS) return rc;
-
-  // AbstractPlanNode *scan_plan = out_plans.back().get();
-  // ---------------Agg Plan---------------
-  if (selects.aggregation_num > 0) {
-    // table
-    Table *scan_table = from_tables[0];
-    // table info
-    TableInfo scan_table_info = table_infos[scan_table->name()];
-    // enum -> name
-    std::unordered_map<int, std::string> agg_to_name;
-    agg_to_name[0] = "max";
-    agg_to_name[1] = "min";
-    agg_to_name[2] = "count";
-    agg_to_name[3] = "avg";
-    // col -> agg type
-    std::unordered_map<std::string, std::vector<int>> col_to_agg;
-    for (int i = 0; i < selects.aggregation_num; i++) {
-      Aggregation agg = selects.aggregations[i];
-      col_to_agg[agg.attribute.attribute_name].push_back(agg.func_name);
-    }
-
-    // 1. scan plan node
-    TupleSchema *scan_schema = new TupleSchema();
-    TupleSchema::from_table(scan_table, *scan_schema);
-    SeqScanPlanNode *scan_plan =
-        new SeqScanPlanNode(scan_schema, scan_table->name(), predicates);
-
-    // 2. agg plan node and combine
-    TupleSchema *agg_schema = new TupleSchema();
-    // col exp, agg exp -> schema
-    std::vector<std::unique_ptr<AbstractExpression>> col_exp;
-    std::vector<const AbstractExpression *> col_exps;
-    std::vector<std::unique_ptr<AbstractExpression>> agg_exp;
-    std::vector<std::pair<std::string, const AbstractExpression *>> agg_exps;
-    std::vector<AggregationType> agg_types;
-    for (int i = 0; i < selects.aggregation_num; i++) {
-      Aggregation agg = selects.aggregations[i];
-      col_exps.insert(col_exps.begin(),
-                      MakeColumnValueExpression(*scan_schema, 0,
-                                                agg.attribute.attribute_name, col_exp));
-      agg_exps.insert(
-          agg_exps.begin(),
-          {agg_to_name[agg.func_name]+ "(" + agg.attribute.attribute_name + ")",
-          MakeAggregateValueExpression(false,
-                                       scan_schema->GetFieldIdx(agg.attribute.attribute_name),
-                                       agg_exp)});
-      if (agg.func_name == 0) {
-        agg_types.push_back(AggregationType::MaxAggregate);
-      } else if (agg.func_name == 1) {
-        agg_types.push_back(AggregationType::MinAggregate);
-      } else if (agg.func_name == 2) {
-        agg_types.push_back(AggregationType::CountAggregate);
-      } else {
-        agg_types.push_back(AggregationType::AvgAggregate);
-      }
-    }
-    MakeOutputSchema(agg_exps, agg_schema, scan_table->name());
-    // agg plan
-    AggregationPlanNode *agg_plan = new AggregationPlanNode(
-        agg_schema, scan_plan, nullptr, std::vector<const AbstractExpression *>{},
-        std::move(col_exps), std::move(agg_types));
-
-    out_plans.emplace_back(agg_plan);
-    return RC::SUCCESS;
-  }
-  // 4. parse Agg()
-  // rc = PlanAggregation();
-  // if (rc != RC::SUCCESS) return rc;
-  // 4. 1 table or join tables
-  // construct first scan table
-  //    std::unique_ptr<AbstractPlanNode> left_plan  = std::move(scan_plan_1);
+  //-----------------------------------
   const char *last_scan_table_name = from_tables[0]->name();
   AbstractPlanNode *last_plan;
   if (from_tables.size() == 1) {
@@ -741,6 +732,9 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     TupleSchema::from_table(from_tables[0], *table_schema);
     last_plan =
         new SeqScanPlanNode(table_schema, last_scan_table_name, predicates);
+    if (selects.aggregation_num > 0)
+      return PlanAggregation(selects, last_plan, from_tables[0]->name(),
+                             *table_schema, table_infos, out_plans);
   } else
     last_plan = ConstructScanTable(last_scan_table_name, table_infos);
   std::vector<std::string> last_scan_table_names{last_scan_table_name};
