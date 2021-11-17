@@ -67,6 +67,7 @@ class SimpleAggregationHashTable {
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
       std::shared_ptr<TupleValue> result_ptr = result->aggregates_[i];
       std::shared_ptr<TupleValue> input_ptr = input.aggregates_[i];
+      if (input_ptr->get_type() == AttrType::NULLS) continue;
       switch (agg_types_[i]) {
         case AggregationType::CountAggregate: {  // Count increases by one.
           int old_cnt = ((IntValue *)result_ptr.get())->get_value();
