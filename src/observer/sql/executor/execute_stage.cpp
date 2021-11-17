@@ -691,7 +691,7 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
     std::string attr_name = agg.attribute.attribute_name;
     if (attr_name == "*") {
       if (agg.func_name != FuncName::AGG_COUNT) {
-        return RC::INVALID_ARGUMENT;
+        return RC::FORMAT;
       }
       attr_name = table_schema.field(0).field_name();
     }
