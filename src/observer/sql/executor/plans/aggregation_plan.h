@@ -39,9 +39,9 @@ class AggregationPlanNode : public AbstractPlanNode {
                       std::vector<AggregationType> &&agg_types)
       : AbstractPlanNode(output_schema, {child}),
         having_(having),
-        group_bys_(std::move(group_bys)),
-        aggregates_(std::move(aggregates)),
-        agg_types_(std::move(agg_types)) {}
+        group_bys_{group_bys},
+        aggregates_{aggregates},
+        agg_types_{agg_types} {}
 
   PlanType GetType() const override { return PlanType::Aggregation; }
 

@@ -32,9 +32,8 @@ class ColumnValueExpression : public AbstractExpression {
   }
 
   const std::shared_ptr<TupleValue> EvaluateAggregate(
-      const std::vector<std::shared_ptr<TupleValue>> &group_bys,
-      const std::vector<std::shared_ptr<TupleValue>> &aggregates)
-      const override {
+      std::vector<std::shared_ptr<TupleValue>> &group_bys,
+      std::vector<std::shared_ptr<TupleValue>> &aggregates) const override {
     assert(false &&
            "Aggregation should only refer to group-by and aggregates.");
   }

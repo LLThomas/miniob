@@ -6,6 +6,8 @@
 #include "sql/executor/executor_context.h"
 #include "sql/executor/executors/abstract_executor.h"
 #include "sql/executor/expressions/abstract_expression.h"
+#include "sql/executor/expressions/aggregate_value_expression.h"
+#include "sql/executor/expressions/column_value_expression.h"
 #include "sql/executor/plans/aggregation_plan.h"
 #include "storage/common/hash_util.h"
 /**
@@ -186,18 +188,30 @@ class AggregationExecutor : public AbstractExecutor {
 
   /** @return the tuple as an AggregateKey */
   AggregateKey MakeKey(const Tuple *tuple) {
-    std::vector<std::shared_ptr<TupleValue>> keys;
-    for (const auto &expr : plan_->GetGroupBys()) {
-      keys.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
-    }
-    return {keys};
+    // std::vector<std::shared_ptr<TupleValue>> keys;
+    // for (const auto &expr : plan_->GetGroupBys()) {
+    //   keys.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
+    // }
+    // return {keys};
+    return {{}};
   }
 
   /** @return the tuple as an AggregateValue */
   AggregateValue MakeVal(const Tuple *tuple) {
     std::vector<std::shared_ptr<TupleValue>> vals;
     for (const auto &expr : plan_->GetAggregates()) {
-      vals.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
+      // std::vector<std::shared_ptr<TupleValue>> null_group_by;
+      // tuple->print(std::cout);  // debug
+      // auto e = dynamic_cast<const AggregateValueExpression *>(expr);
+      // std::cout << e->GetIsGroupBy() << " " << e->GetTermIdx() << std::endl;
+      // auto vals = tuple->values();
+      // auto a = tuple->values()[0];
+      // a->to_string(std::cout);
+      // std::cout.flush();
+      // auto v = ;
+      // auto e = dynamic_cast<const ColumnValueExpression *>(expr);
+      // auto f = dynamic_cast<const AggregateValueExpression *>(expr);
+      vals.emplace_back(expr->Evaluate(tuple, nullptr));
     }
     return {vals};
   }

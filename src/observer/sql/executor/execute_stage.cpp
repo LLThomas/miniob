@@ -295,10 +295,10 @@ const AbstractExpression *MakeComparisonExpression(
   return expressions.back().get();
 }
 const AbstractExpression *MakeAggregateValueExpression(
-    bool is_group_by_term, uint32_t term_idx,
+    bool is_group_by_term, int term_idx, AttrType col_type,
     std::vector<std::unique_ptr<AbstractExpression>> &expressions) {
   expressions.emplace_back(std::make_unique<AggregateValueExpression>(
-      is_group_by_term, term_idx, AttrType::INTS));
+      is_group_by_term, term_idx, col_type));
   return expressions.back().get();
 }
 void MakeOutputSchema(
@@ -651,17 +651,16 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
   TableInfo scan_table_info = table_infos[table_name];
   // enum -> name
   std::unordered_map<int, std::string> agg_to_name;
-  agg_to_name[0] = "max";
-  agg_to_name[1] = "min";
-  agg_to_name[2] = "count";
-  agg_to_name[3] = "avg";
+  agg_to_name[FuncName::AGG_MAX] = "max";
+  agg_to_name[FuncName::AGG_MIN] = "min";
+  agg_to_name[FuncName::AGG_COUNT] = "count";
+  agg_to_name[FuncName::AGG_AVG] = "avg";
   // col -> agg type
   std::unordered_map<std::string, std::vector<int>> col_to_agg;
   for (int i = 0; i < selects.aggregation_num; i++) {
     Aggregation agg = selects.aggregations[i];
     col_to_agg[agg.attribute.attribute_name].push_back(agg.func_name);
   }
-
   // 1.agg plan node and combine
   TupleSchema *agg_schema = new TupleSchema();
   // col exp, agg exp -> schema
@@ -672,31 +671,38 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
   std::vector<AggregationType> agg_types;
   for (int i = 0; i < selects.aggregation_num; i++) {
     Aggregation agg = selects.aggregations[i];
-    col_exps.insert(
-        col_exps.begin(),
-        MakeColumnValueExpression(table_schema, 0, agg.attribute.attribute_name,
-                                  col_exp));
-    agg_exps.insert(
-        agg_exps.begin(),
-        {agg_to_name[agg.func_name] + "(" + agg.attribute.attribute_name + ")",
-         MakeAggregateValueExpression(
-             false, table_schema.GetFieldIdx(agg.attribute.attribute_name),
-             agg_exp)});
-    if (agg.func_name == 0) {
-      agg_types.push_back(AggregationType::MaxAggregate);
-    } else if (agg.func_name == 1) {
-      agg_types.push_back(AggregationType::MinAggregate);
-    } else if (agg.func_name == 2) {
-      agg_types.push_back(AggregationType::CountAggregate);
-    } else {
-      agg_types.push_back(AggregationType::AvgAggregate);
+    std::string agg_str =
+        agg_to_name[agg.func_name] + "(" + agg.attribute.attribute_name + ")";
+    std::string attr_name = std::string(agg.attribute.attribute_name) == "*"
+                                ? table_schema.field(0).field_name()
+                                : agg.attribute.attribute_name;
+    col_exps.insert(col_exps.begin(),
+                    MakeColumnValueExpression(
+                        table_schema, 0,
+                        std::string(table_name) + "." + attr_name, col_exp));
+    agg_exps.insert(agg_exps.begin(),
+                    {agg_str, MakeAggregateValueExpression(
+                                  false, table_schema.GetColIdx(attr_name),
+                                  col_exp.back()->GetReturnType(), agg_exp)});
+    switch (agg.func_name) {
+      case FuncName::AGG_MAX:
+        agg_types.push_back(AggregationType::MaxAggregate);
+        break;
+      case FuncName::AGG_MIN:
+        agg_types.push_back(AggregationType::MinAggregate);
+        break;
+      case FuncName::AGG_AVG:
+        agg_types.push_back(AggregationType::AvgAggregate);
+        break;
+      case FuncName::AGG_COUNT:
+        agg_types.push_back(AggregationType::CountAggregate);
+        break;
     }
   }
   MakeOutputSchema(agg_exps, agg_schema, table_name);
   // agg plan
   AggregationPlanNode *agg_plan =
-      new AggregationPlanNode(agg_schema, table_plan, nullptr,
-                              std::vector<const AbstractExpression *>{},
+      new AggregationPlanNode(agg_schema, table_plan, nullptr, {},
                               std::move(col_exps), std::move(agg_types));
 
   out_plans.emplace_back(agg_plan);

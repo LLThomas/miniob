@@ -54,7 +54,7 @@ class Tuple {
 
   void add(const char *s, int len);
 
-  void print(std::ostream &os);
+  void print(std::ostream &os) const;
 
   const std::vector<std::shared_ptr<TupleValue>> &values() const {
     return values_;

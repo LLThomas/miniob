@@ -11,7 +11,7 @@ class AggregateValueExpression : public AbstractExpression {
    * @param term_idx the index of the term
    * @param ret_type the return type of the aggregate value expression
    */
-  AggregateValueExpression(bool is_group_by_term, uint32_t term_idx,
+  AggregateValueExpression(bool is_group_by_term, int term_idx,
                            AttrType ret_type)
       : AbstractExpression({}, ret_type),
         is_group_by_term_{is_group_by_term},
@@ -32,14 +32,18 @@ class AggregateValueExpression : public AbstractExpression {
   }
 
   const std::shared_ptr<TupleValue> EvaluateAggregate(
-      const std::vector<std::shared_ptr<TupleValue>> &group_bys,
-      const std::vector<std::shared_ptr<TupleValue>> &aggregates)
-      const override {
-    return is_group_by_term_ ? group_bys[term_idx_] : aggregates[term_idx_];
+      std::vector<std::shared_ptr<TupleValue>> &group_bys,
+      std::vector<std::shared_ptr<TupleValue>> &aggregates) const override {
+    if (is_group_by_term_)
+      return group_bys[term_idx_];
+    else
+      return aggregates[term_idx_];
   }
+  bool GetIsGroupBy() const { return is_group_by_term_; }
+  uint32_t GetTermIdx() const { return term_idx_; }
 
  private:
   bool is_group_by_term_;
-  uint32_t term_idx_;
+  int term_idx_;
 };
 #endif

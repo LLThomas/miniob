@@ -62,7 +62,7 @@ void Tuple::add(uint16_t value) { add(new DateValue(value)); }
 void Tuple::add(float value) { add(new FloatValue(value)); }
 
 void Tuple::add(const char *s, int len) { add(new StringValue(s, len)); }
-void Tuple::print(std::ostream &os) {
+void Tuple::print(std::ostream &os) const {
   if (values_.empty()) return;
   for (std::vector<std::shared_ptr<TupleValue>>::const_iterator
            iter = values_.begin(),
@@ -85,10 +85,14 @@ void TupleSchema::from_table(const Table *table, TupleSchema &schema) {
   const char *table_name = table->name();
   const TableMeta &table_meta = table->table_meta();
   const int field_num = table_meta.field_num();
+
+  int col_idx = 0;
   for (int i = 0; i < field_num; i++) {
     const FieldMeta *field_meta = table_meta.field(i);
     if (field_meta->visible()) {
-      schema.add(field_meta->type(), table_name, field_meta->name());
+      AbstractExpression *col_exp =
+          new ColumnValueExpression(0, col_idx++, field_meta->type());
+      schema.add(field_meta->type(), table_name, field_meta->name(), col_exp);
     }
   }
 }
