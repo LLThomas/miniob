@@ -675,9 +675,9 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
   // 1.agg plan node and combine
   TupleSchema *agg_schema = new TupleSchema();
   // col exp, agg exp -> schema
-  std::vector<std::unique_ptr<AbstractExpression>> col_exp;
+  auto col_exp = new std::vector<std::unique_ptr<AbstractExpression>>{};
   std::vector<const AbstractExpression *> col_exps;
-  std::vector<std::unique_ptr<AbstractExpression>> agg_exp;
+  auto agg_exp = new std::vector<std::unique_ptr<AbstractExpression>>{};
   std::vector<std::pair<std::string, const AbstractExpression *>> agg_exps;
   std::vector<AggregationType> agg_types;
   for (int i = 0; i < selects.aggregation_num; i++) {
@@ -688,11 +688,11 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
                                 ? table_schema.field(0).field_name()
                                 : agg.attribute.attribute_name;
     col_exps.push_back(MakeColumnValueExpression(
-        table_schema, 0, std::string(table_name) + "." + attr_name, col_exp));
+        table_schema, 0, std::string(table_name) + "." + attr_name, *col_exp));
     agg_exps.push_back({agg_str, MakeAggregateValueExpression(
                                      false, table_schema.GetColIdx(attr_name),
-                                     col_exp.back()->GetReturnType(),
-                                     agg.func_name, agg_exp)});
+                                     col_exp->back()->GetReturnType(),
+                                     agg.func_name, *agg_exp)});
     switch (agg.func_name) {
       case FuncName::AGG_MAX:
         agg_types.push_back(AggregationType::MaxAggregate);
