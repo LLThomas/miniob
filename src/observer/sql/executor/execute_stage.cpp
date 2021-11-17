@@ -684,13 +684,17 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
     Aggregation agg = selects.aggregations[i];
     std::string agg_str =
         agg_to_name[agg.func_name] + "(" + agg.attribute.attribute_name + ")";
-    // bool is_star_attr = std::string(agg.attribute.attribute_name) == "*";
+    // bool is_star_attr = ;
     // if (agg.func_name != FuncName::AGG_COUNT && is_star_attr) {
     //   return RC::INVALID_ARGUMENT;
     // }
-    std::string attr_name = std::string(agg.attribute.attribute_name) == "*"
-                                ? table_schema.field(0).field_name()
-                                : agg.attribute.attribute_name;
+    std::string attr_name = agg.attribute.attribute_name;
+    if (attr_name == "*") {
+      if (agg.func_name != FuncName::AGG_COUNT) {
+        return RC::INVALID_ARGUMENT;
+      }
+      attr_name = table_schema.field(0).field_name();
+    }
 
     col_exps.push_back(MakeColumnValueExpression(
         table_schema, 0, std::string(table_name) + "." + attr_name, *col_exp));
