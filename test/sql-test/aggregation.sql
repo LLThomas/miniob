@@ -21,6 +21,14 @@ select avg(price), max(id), min(price) from t;
 select max(*) from t;
 select min(*) from t;
 select avg(*) from t;
+
+drop table t;
+create table t(id int , age int nullable);
+insert into t values (1,null);
+select count(age) from t;
+select min(age) from t;
+select max(age) from t;
+select avg(age) from t;
 --select count(1) from t;
 --select count(1.1) from t;
 --select count('1998-01-01') from t;

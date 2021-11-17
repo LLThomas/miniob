@@ -674,7 +674,6 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
       // select attr check
       if (attr_name != "*" && scan_table_info.pointer->table_meta().field(
                                   attr_name.c_str()) == nullptr) {
-        LOG_WARN("No such field. %s.%s", table_name, attr_name);
         return RC::SCHEMA_FIELD_MISSING;
       }
     }

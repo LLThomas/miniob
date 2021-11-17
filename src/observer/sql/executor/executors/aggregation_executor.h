@@ -78,7 +78,8 @@ class SimpleAggregationHashTable {
           // Sum increases by addition.
           if (avg_map_.count(agg_key) == 0) {
             avg_map_[agg_key] = {0.0, 0};
-            result->aggregates_[i] = FloatValue(0.0).copy();
+            FloatValue f(0.0);
+            result->aggregates_[i] = f.copy();
           }
           float &old_sum = avg_map_[agg_key].first;
           int &old_cnt = avg_map_[agg_key].second;
