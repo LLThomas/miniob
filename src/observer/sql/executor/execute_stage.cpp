@@ -295,8 +295,19 @@ const AbstractExpression *MakeComparisonExpression(
   return expressions.back().get();
 }
 const AbstractExpression *MakeAggregateValueExpression(
-    bool is_group_by_term, int term_idx, AttrType col_type,
+    bool is_group_by_term, int term_idx, AttrType col_type, FuncName agg_func,
     std::vector<std::unique_ptr<AbstractExpression>> &expressions) {
+  switch (agg_func) {
+    case FuncName::AGG_COUNT:
+      col_type = AttrType::INTS;
+      break;
+    case FuncName::AGG_MIN:
+    case FuncName::AGG_MAX:
+      break;
+    case FuncName::AGG_AVG:
+      col_type = AttrType::FLOATS;
+      break;
+  }
   expressions.emplace_back(std::make_unique<AggregateValueExpression>(
       is_group_by_term, term_idx, col_type));
   return expressions.back().get();
@@ -676,14 +687,12 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
     std::string attr_name = std::string(agg.attribute.attribute_name) == "*"
                                 ? table_schema.field(0).field_name()
                                 : agg.attribute.attribute_name;
-    col_exps.insert(col_exps.begin(),
-                    MakeColumnValueExpression(
-                        table_schema, 0,
-                        std::string(table_name) + "." + attr_name, col_exp));
-    agg_exps.insert(agg_exps.begin(),
-                    {agg_str, MakeAggregateValueExpression(
-                                  false, table_schema.GetColIdx(attr_name),
-                                  col_exp.back()->GetReturnType(), agg_exp)});
+    col_exps.push_back(MakeColumnValueExpression(
+        table_schema, 0, std::string(table_name) + "." + attr_name, col_exp));
+    agg_exps.push_back({agg_str, MakeAggregateValueExpression(
+                                     false, table_schema.GetColIdx(attr_name),
+                                     col_exp.back()->GetReturnType(),
+                                     agg.func_name, agg_exp)});
     switch (agg.func_name) {
       case FuncName::AGG_MAX:
         agg_types.push_back(AggregationType::MaxAggregate);

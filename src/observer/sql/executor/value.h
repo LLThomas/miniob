@@ -33,7 +33,7 @@ class TupleValue {
   virtual void to_string(std::ostream &os) const = 0;
 
   virtual int compare(const TupleValue &other) const = 0;
-
+  virtual void set_value(const TupleValue &other) = 0;
   virtual AttrType get_type() const = 0;
 
  private:
@@ -47,10 +47,16 @@ class IntValue : public TupleValue {
 
   int compare(const TupleValue &other) const override {
     const IntValue &int_other = (const IntValue &)other;
-    return value_ - int_other.value_;
+    if (value_ > int_other.value_) return 1;
+    if (value_ == int_other.value_) return 0;
+    if (value_ < int_other.value_) return -1;
   }
   AttrType get_type() const override { return AttrType::INTS; }
   int get_value() { return value_; }
+  void set_value(const TupleValue &other) override {
+    const IntValue &int_other = (const IntValue &)other;
+    value_ = int_other.value_;
+  }
 
  private:
   int value_;
@@ -76,6 +82,10 @@ class DateValue : public TupleValue {
   }
   AttrType get_type() const override { return AttrType::DATES; }
   uint16_t get_value() { return value_; }
+  void set_value(const TupleValue &other) override {
+    const DateValue &date_other = (const DateValue &)other;
+    value_ = date_other.value_;
+  }
 
  private:
   uint16_t value_;
@@ -116,6 +126,10 @@ class FloatValue : public TupleValue {
   }
   AttrType get_type() const override { return AttrType::FLOATS; }
   float get_value() { return value_; }
+  void set_value(const TupleValue &other) override {
+    const FloatValue &float_other = (const FloatValue &)other;
+    value_ = float_other.value_;
+  }
 
  private:
   float value_;
@@ -135,6 +149,10 @@ class StringValue : public TupleValue {
   }
   AttrType get_type() const override { return AttrType::CHARS; }
   std::string get_value() { return value_; }
+  void set_value(const TupleValue &other) override {
+    const StringValue &string_other = (const StringValue &)other;
+    value_ = string_other.value_;
+  }
 
  private:
   std::string value_;
@@ -147,6 +165,7 @@ class NullValue : public TupleValue {
   int compare(const TupleValue &other) const override { return false; };
 
   virtual AttrType get_type() const override { return NULLS; }
+  virtual void set_value(const TupleValue &other) { assert(false && "gg"); }
 };
 
 #endif  //__OBSERVER_SQL_EXECUTOR_VALUE_H_

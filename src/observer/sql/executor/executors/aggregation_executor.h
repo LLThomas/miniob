@@ -37,7 +37,7 @@ class SimpleAggregationHashTable {
           break;
         case AggregationType::AvgAggregate:
           // Sum starts at zero.
-          values.emplace_back(std::make_shared<IntValue>(0));
+          values.emplace_back(std::make_shared<FloatValue>(0));
           break;
         case AggregationType::MinAggregate:
           // Min starts at INT_MAX.
@@ -54,37 +54,53 @@ class SimpleAggregationHashTable {
 
   /** Combines the input into the aggregation result. */
   void CombineAggregateValues(AggregateValue *result,
-                              const AggregateValue &input) {
+                              const AggregateValue &input,
+                              AggregateKey agg_key) {
+    // for (int i = 0; i < result->aggregates_.size(); i++) {
+    //   result->aggregates_[i]->to_string(std::cout);
+    //   std::cout << " " << std::endl;
+    // }
+    // for (int i = 0; i < input.aggregates_.size(); i++) {
+    //   input.aggregates_[i]->to_string(std::cout);
+    //   std::cout << " " << std::endl;
+    // }
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
       std::shared_ptr<TupleValue> result_ptr = result->aggregates_[i];
       std::shared_ptr<TupleValue> input_ptr = input.aggregates_[i];
       switch (agg_types_[i]) {
         case AggregationType::CountAggregate: {  // Count increases by one.
           int old_cnt = ((IntValue *)result_ptr.get())->get_value();
-          result_ptr = std::make_shared<IntValue>(old_cnt + 1);
+          result_ptr->set_value(IntValue(old_cnt + 1));
           break;
         }
         case AggregationType::AvgAggregate: {
           // Sum increases by addition.
-          int old_sum = ((IntValue *)result_ptr.get())->get_value();
-          int cur_num = ((IntValue *)input_ptr.get())->get_value();
-          result->aggregates_[i] =
-              std::make_shared<IntValue>(old_sum + cur_num);
+          if (avg_map_.count(agg_key) == 0) {
+            avg_map_[agg_key] = {0.0, 0};
+          }
+          float &old_sum = avg_map_[agg_key].first;
+          int &old_cnt = avg_map_[agg_key].second;
+          if (input_ptr->get_type() == AttrType::INTS) {
+            old_sum += ((IntValue *)input_ptr.get())->get_value();
+          }
+          if (input_ptr->get_type() == AttrType::FLOATS) {
+            old_sum += ((FloatValue *)input_ptr.get())->get_value();
+          }
+          old_cnt += 1;
+          result_ptr->set_value(FloatValue(old_sum / old_cnt));
           break;
         }
 
         case AggregationType::MinAggregate: {
-          int old_min = ((IntValue *)result_ptr.get())->get_value();
-          int cur_min = ((IntValue *)input_ptr.get())->get_value();
-          result_ptr =
-              std::make_shared<IntValue>(cur_min < old_min ? cur_min : old_min);
+          result_ptr->set_value(input_ptr.get()->compare(*result_ptr) < 0
+                                    ? *input_ptr
+                                    : *result_ptr);
           break;
         }
         case AggregationType::MaxAggregate: {
-          int old_max = ((IntValue *)result_ptr.get())->get_value();
-          int cur_max = ((IntValue *)input_ptr.get())->get_value();
-          result_ptr =
-              std::make_shared<IntValue>(cur_max > old_max ? cur_max : old_max);
+          result_ptr->set_value(input_ptr.get()->compare(*result_ptr) > 0
+                                    ? *input_ptr
+                                    : *result_ptr);
           break;
         }
       }
@@ -103,7 +119,7 @@ class SimpleAggregationHashTable {
     if (ht_.count(agg_key) == 0) {
       ht_.insert({agg_key, GenerateInitialAggregateValue()});
     }
-    CombineAggregateValues(&ht_[agg_key], agg_val);
+    CombineAggregateValues(&ht_[agg_key], agg_val, agg_key);
   }
 
   /**
@@ -157,6 +173,8 @@ class SimpleAggregationHashTable {
   const std::vector<const AbstractExpression *> &agg_exprs_;
   /** The types of aggregations that we have. */
   const std::vector<AggregationType> &agg_types_;
+  // AVG={SUM,COUNT}
+  std::unordered_map<AggregateKey, std::pair<float, int>> avg_map_;
 };
 
 /**
@@ -200,12 +218,13 @@ class AggregationExecutor : public AbstractExecutor {
   AggregateValue MakeVal(const Tuple *tuple) {
     std::vector<std::shared_ptr<TupleValue>> vals;
     for (const auto &expr : plan_->GetAggregates()) {
+      auto e = (ColumnValueExpression *)expr;
+
       // std::vector<std::shared_ptr<TupleValue>> null_group_by;
       // tuple->print(std::cout);  // debug
       // auto e = dynamic_cast<const AggregateValueExpression *>(expr);
-      // std::cout << e->GetIsGroupBy() << " " << e->GetTermIdx() << std::endl;
-      // auto vals = tuple->values();
-      // auto a = tuple->values()[0];
+      // std::cout << e->GetIsGroupBy() << " " << e->GetTermIdx() <<
+      // std::endl; auto vals = tuple->values(); auto a = tuple->values()[0];
       // a->to_string(std::cout);
       // std::cout.flush();
       // auto v = ;

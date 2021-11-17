@@ -4,6 +4,7 @@ insert into t values (2,'bob',2.222,'1999-01-01');
 insert into t values (3,'cin',3.333,'2000-01-01');
 insert into t values (4,'def',4.444,'2001-01-01');
 --select * from t;
+select max(id) from t;
 select count(*) from t;
 --select count(1) from t;
 --select count(1.1) from t;
@@ -12,7 +13,7 @@ select count(id) from t;
 select min(id) from t;
 select min(name) from t;
 select min(age) from t;
-select max(id) from t;
+
 select max(name) from t;
 select max(age) from t;
 select avg(id) from t;

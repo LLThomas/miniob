@@ -25,6 +25,11 @@ void AggregationExecutor::Init() {
 }
 
 RC AggregationExecutor::Next(Tuple *tuple, RID *rid) {
-
+  if (aht_iterator_ == aht_.End()) return RC::RECORD_EOF;
+  AggregateKey key = aht_iterator_.Key();
+  for (int i = 0; i < aht_iterator_.Val().aggregates_.size(); i++) {
+    tuple->add(aht_iterator_.Val().aggregates_[i]);
+  }
+  aht_iterator_.operator++();
   return RC::SUCCESS;
 }
