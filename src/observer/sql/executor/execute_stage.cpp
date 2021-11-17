@@ -669,12 +669,12 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
   // 【元数据校验】
   for (int i = 0; i < selects.aggregation_num; i++) {
     Aggregation agg = selects.aggregations[i];
-    std::string attr_name = agg.attribute.attribute_name;
+    std::string attr_name(agg.attribute.attribute_name);
     {
       // select attr check
       if (attr_name != "*" && scan_table_info.pointer->table_meta().field(
                                   attr_name.c_str()) == nullptr) {
-        return RC::SCHEMA_FIELD_MISSING;
+        return RC::FORMAT;
       }
     }
   }
@@ -694,7 +694,7 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
     // if (agg.func_name != FuncName::AGG_COUNT && is_star_attr) {
     //   return RC::INVALID_ARGUMENT;
     // }
-    std::string attr_name = agg.attribute.attribute_name;
+    std::string attr_name(agg.attribute.attribute_name);
     if (attr_name == "*") {
       if (agg.func_name != FuncName::AGG_COUNT) {
         return RC::FORMAT;
