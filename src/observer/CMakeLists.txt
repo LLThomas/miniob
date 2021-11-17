@@ -17,7 +17,7 @@ MESSAGE("MAIN SRC: " ${MAIN_SRC})
 FOREACH (F ${ALL_SRC})
 
     IF (NOT ${F} STREQUAL ${MAIN_SRC})
-        SET(LIB_SRC ${LIB_SRC} ${F})
+        SET(LIB_SRC ${LIB_SRC} ${F} sql/executor/plans/order_by_plan.h sql/executor/executors/order_by_executor.h sql/executor/executors/order_by_executor.cpp)
     ENDIF ()
 
     MESSAGE("Use " ${F})
