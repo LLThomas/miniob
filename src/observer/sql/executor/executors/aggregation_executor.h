@@ -37,7 +37,7 @@ class SimpleAggregationHashTable {
           break;
         case AggregationType::AvgAggregate:
           // Sum starts at zero.
-          values.emplace_back(std::make_shared<FloatValue>(0));
+          values.emplace_back(std::make_shared<NullValue>());
           break;
         case AggregationType::MinAggregate:
           // Min starts at INT_MAX.
@@ -78,6 +78,7 @@ class SimpleAggregationHashTable {
           // Sum increases by addition.
           if (avg_map_.count(agg_key) == 0) {
             avg_map_[agg_key] = {0.0, 0};
+            result->aggregates_[i] = FloatValue(0.0).copy();
           }
           float &old_sum = avg_map_[agg_key].first;
           int &old_cnt = avg_map_[agg_key].second;

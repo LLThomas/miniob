@@ -666,11 +666,18 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
   agg_to_name[FuncName::AGG_MIN] = "min";
   agg_to_name[FuncName::AGG_COUNT] = "count";
   agg_to_name[FuncName::AGG_AVG] = "avg";
-  // col -> agg type
-  std::unordered_map<std::string, std::vector<int>> col_to_agg;
+  // 【元数据校验】
   for (int i = 0; i < selects.aggregation_num; i++) {
     Aggregation agg = selects.aggregations[i];
-    col_to_agg[agg.attribute.attribute_name].push_back(agg.func_name);
+    std::string attr_name = agg.attribute.attribute_name;
+    {
+      // select attr check
+      if (attr_name != "*" && scan_table_info.pointer->table_meta().field(
+                                  attr_name.c_str()) == nullptr) {
+        LOG_WARN("No such field. %s.%s", table_name, attr_name);
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+    }
   }
   // 1.agg plan node and combine
   TupleSchema *agg_schema = new TupleSchema();
