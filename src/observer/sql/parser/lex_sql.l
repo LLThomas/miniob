@@ -80,6 +80,8 @@ QUOTE            [\'\"]
 [Aa][Vv][Gg]                RETURN_TOKEN(AGGAVG);
 [Ii][Nn][Nn][Ee][Rr]                RETURN_TOKEN(INNER);
 [Jj][Oo][Ii][Nn]                RETURN_TOKEN(JOIN);
+[Gg][Rr][Oo][Uu][Pp]        RETURN_TOKEN(GROUP);
+[Bb][Yy]                    RETURN_TOKEN(BY);
 [Nn][Oo][Tt]                RETURN_TOKEN(NOT);
 [Ii][Ss]                    RETURN_TOKEN(IS);
 [Nn][Uu][Ll][Ll]            RETURN_TOKEN(NULL_TOK);

@@ -88,6 +88,8 @@ typedef struct {
   Condition conditions[MAX_NUM];  // conditions in Where clause
   size_t aggregation_num;
   Aggregation aggregations[MAX_NUM];
+  size_t group_by_num;
+  RelAttr group_bys[MAX_NUM];
 } Selects;
 
 typedef struct {
@@ -244,6 +246,8 @@ void selects_append_conditions(Selects *selects, Condition conditions[],
                                size_t condition_num);
 
 void selects_append_aggregation(Selects *selects, Aggregation *aggregation);
+
+void selects_append_group_by(Selects *selects, RelAttr *rel_attr);
 
 void selects_destroy(Selects *selects);
 

@@ -217,12 +217,12 @@ class AggregationExecutor : public AbstractExecutor {
 
   /** @return the tuple as an AggregateKey */
   AggregateKey MakeKey(const Tuple *tuple) {
-    // std::vector<std::shared_ptr<TupleValue>> keys;
-    // for (const auto &expr : plan_->GetGroupBys()) {
-    //   keys.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
-    // }
-    // return {keys};
-    return {{}};
+     std::vector<std::shared_ptr<TupleValue>> keys;
+     for (const auto &expr : plan_->GetGroupBys()) {
+       keys.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
+     }
+     return {keys};
+//    return {{}};
   }
 
   /** @return the tuple as an AggregateValue */

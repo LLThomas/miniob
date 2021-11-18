@@ -152,6 +152,10 @@ void selects_append_aggregation(Selects *selects, Aggregation *aggregation) {
   selects->aggregations[selects->aggregation_num++] = *aggregation;
 }
 
+void selects_append_group_by(Selects *selects, RelAttr *rel_attr) {
+  selects->group_bys[selects->group_by_num++] = *rel_attr;
+}
+
 void selects_destroy(Selects *selects) {
   for (size_t i = 0; i < selects->attr_num; i++) {
     relation_attr_destroy(&selects->attributes[i]);

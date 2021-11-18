@@ -120,6 +120,8 @@ ParserContext *get_context(yyscan_t scanner)
 		UNIQUE
 		INNER
 		JOIN
+		GROUP
+		BY
 
 %code requires { #include <stdbool.h> }
 
@@ -376,11 +378,15 @@ update:			/*  update 语句的语法解析树*/
 		}
     ;
 select:				/*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where SEMICOLON
+    SELECT select_attr FROM ID rel_list where GROUP BY ID DOT ID groupby SEMICOLON
 		{
 			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
 
 			selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
+
+			RelAttr attr;
+			relation_attr_init(&attr, $9, $11);
+			selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
 
 			CONTEXT->ssql->flag=SCF_SELECT;//"select";
 
@@ -638,7 +644,13 @@ func:
     | AGGCOUNT { CONTEXT->func[CONTEXT->func_length++] = AGG_COUNT; }
     | AGGAVG { CONTEXT->func[CONTEXT->func_length++] = AGG_AVG; }
     ;
-
+groupby:
+	| COMMA ID DOT ID groupby {
+		RelAttr attr;
+		relation_attr_init(&attr, $2, $4);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
+	}
+	;
 load_data:
 		LOAD DATA INFILE SSS INTO TABLE ID SEMICOLON
 		{
