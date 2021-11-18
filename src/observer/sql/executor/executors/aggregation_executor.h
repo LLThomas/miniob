@@ -79,6 +79,7 @@ class SimpleAggregationHashTable {
             avg_map_[i] = {0.0, 0};
             FloatValue f(0.0);
             result->aggregates_[i] = f.copy();
+            result_ptr = result->aggregates_[i];
           }
           float &old_sum = avg_map_[i].first;
           int &old_cnt = avg_map_[i].second;
