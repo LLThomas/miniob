@@ -1,6 +1,6 @@
 
 %{
-
+//bison -d -b yacc_sql yacc_sql.y
 #include "sql/parser/parse_defs.h"
 #include "sql/parser/yacc_sql.tab.h"
 #include "sql/parser/lex.yy.h"
@@ -122,6 +122,8 @@ ParserContext *get_context(yyscan_t scanner)
 		JOIN
 		GROUP
 		BY
+		ASC
+		ORDER
 
 %code requires { #include <stdbool.h> }
 
@@ -378,15 +380,12 @@ update:			/*  update 语句的语法解析树*/
 		}
     ;
 select:				/*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where GROUP BY ID DOT ID groupby SEMICOLON
+    SELECT select_attr FROM ID rel_list where groupbys orderbys SEMICOLON
 		{
 			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
 
 			selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
 
-			RelAttr attr;
-			relation_attr_init(&attr, $9, $11);
-			selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
 
 			CONTEXT->ssql->flag=SCF_SELECT;//"select";
 
@@ -644,6 +643,12 @@ func:
     | AGGCOUNT { CONTEXT->func[CONTEXT->func_length++] = AGG_COUNT; }
     | AGGAVG { CONTEXT->func[CONTEXT->func_length++] = AGG_AVG; }
     ;
+groupbys:
+	| GROUP BY ID DOT ID groupby{
+		RelAttr attr;
+		relation_attr_init(&attr, $3, $5);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
+	}
 groupby:
 	| COMMA ID DOT ID groupby {
 		RelAttr attr;
@@ -651,6 +656,56 @@ groupby:
 		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
 	}
 	;
+orderbys:
+	| ORDER BY ID DOT ID ASC orderby{
+		RelAttr attr;
+		relation_attr_init(&attr, $3, $5);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, true);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
+	| ORDER BY ID DOT ID orderby{
+		RelAttr attr;
+		relation_attr_init(&attr, $3, $5);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, true);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
+	| ORDER BY ID DOT ID DESC orderby{
+		RelAttr attr;
+		relation_attr_init(&attr, $3, $5);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, false);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
+orderby:
+	| COMMA ID DOT ID ASC orderby{
+		RelAttr attr;
+		relation_attr_init(&attr, $2, $4);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, true);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
+	| COMMA ID DOT ID orderby{
+		RelAttr attr;
+		relation_attr_init(&attr, $2, $4);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, true);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
+	| COMMA ID DOT ID DESC orderby{
+		RelAttr attr;
+		relation_attr_init(&attr, $2, $4);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, false);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
 load_data:
 		LOAD DATA INFILE SSS INTO TABLE ID SEMICOLON
 		{

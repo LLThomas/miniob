@@ -156,6 +156,15 @@ void selects_append_group_by(Selects *selects, RelAttr *rel_attr) {
   selects->group_bys[selects->group_by_num++] = *rel_attr;
 }
 
+void order_by_init(OrderBy *orderBys, RelAttr *attr, bool asc) {
+  orderBys->order_by_attr = *attr;
+  orderBys->asc = asc;
+}
+
+void selects_append_order_by(Selects *selects, OrderBy *order_by) {
+  selects->order_bys[selects->order_by_num++] = *order_by;
+}
+
 void selects_destroy(Selects *selects) {
   for (size_t i = 0; i < selects->attr_num; i++) {
     relation_attr_destroy(&selects->attributes[i]);

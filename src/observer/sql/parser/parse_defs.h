@@ -78,6 +78,11 @@ typedef struct {
   Value value;   //表达式的值
 } Aggregation;   //聚合函数
 
+typedef struct {
+  RelAttr order_by_attr;
+  bool asc;
+} OrderBy;
+
 // struct of select
 typedef struct {
   size_t attr_num;                // Length of attrs in Select clause
@@ -90,6 +95,8 @@ typedef struct {
   Aggregation aggregations[MAX_NUM];
   size_t group_by_num;
   RelAttr group_bys[MAX_NUM];
+  size_t order_by_num;
+  OrderBy order_bys[MAX_NUM];
 } Selects;
 
 typedef struct {
@@ -141,9 +148,9 @@ typedef struct {
 
 // struct of create_index
 typedef struct {
-  char *index_name;      // Index name
-  char *relation_name;   // Relation name
-//  char *attribute_name;  // Attribute name
+  char *index_name;     // Index name
+  char *relation_name;  // Relation name
+                        //  char *attribute_name;  // Attribute name
   size_t attr_count;
   char *attribute_name[MAX_NUM];
   bool unique;
@@ -248,6 +255,10 @@ void selects_append_conditions(Selects *selects, Condition conditions[],
 void selects_append_aggregation(Selects *selects, Aggregation *aggregation);
 
 void selects_append_group_by(Selects *selects, RelAttr *rel_attr);
+
+void order_by_init(OrderBy *orderBys, RelAttr *attr, bool asc);
+
+void selects_append_order_by(Selects *selects, OrderBy *order_by);
 
 void selects_destroy(Selects *selects);
 

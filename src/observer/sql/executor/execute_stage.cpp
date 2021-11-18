@@ -762,9 +762,6 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     TupleSchema::from_table(from_tables[0], *table_schema);
     last_plan =
         new SeqScanPlanNode(table_schema, last_scan_table_name, predicates);
-    if (selects.aggregation_num > 0)
-      return PlanAggregation(selects, last_plan, from_tables[0]->name(),
-                             *table_schema, table_infos, out_plans);
   } else
     last_plan = ConstructScanTable(last_scan_table_name, table_infos);
   std::vector<std::string> last_scan_table_names{last_scan_table_name};
@@ -819,9 +816,12 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   }
   //    out_plans.emplace_back(std::move(left_plan));
   out_plans.emplace_back(last_plan);
+  TupleSchema *old_schema = out_plans[0]->OutputSchema();
+  if (selects.aggregation_num > 0)
+    return PlanAggregation(selects, last_plan, from_tables[0]->name(),
+                           *old_schema, table_infos, out_plans);
   //最后修改root plan的投影
   TupleSchema *out_schema = new TupleSchema;
-  TupleSchema *old_schema = out_plans[0]->OutputSchema();
   std::vector<std::pair<std::string, const AbstractExpression *>> projections;
   for (auto s : projections_str) {
     projections.push_back(
@@ -829,6 +829,7 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   }
   MakeOutputSchema(projections, out_schema, from_tables[0]->name());
   out_plans[0]->SetOutputSchema(out_schema);
+
   return RC::SUCCESS;
 }
 

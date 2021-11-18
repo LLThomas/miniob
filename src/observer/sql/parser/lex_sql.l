@@ -1,4 +1,4 @@
-%{
+%{//flex -header-file=lex.yy.h lex_sql.l
 #include<string.h>
 #include<stdio.h>
 
@@ -44,6 +44,7 @@ QUOTE            [\'\"]
 "*"                   					         RETURN_TOKEN(STAR);
 [Ee][Xx][Ii][Tt]						             RETURN_TOKEN(EXIT);
 [Hh][Ee][Ll][Pp]                    	   RETURN_TOKEN(HELP);
+[Aa][Ss][Cc]                         RETURN_TOKEN(ASC);
 [Dd][Ee][Ss][Cc]                         RETURN_TOKEN(DESC);
 [Cc][Rr][Ee][Aa][Tt][Ee]                 RETURN_TOKEN(CREATE);
 [Dd][Rr][Oo][Pp]                    	   RETURN_TOKEN(DROP);
@@ -81,6 +82,7 @@ QUOTE            [\'\"]
 [Ii][Nn][Nn][Ee][Rr]                RETURN_TOKEN(INNER);
 [Jj][Oo][Ii][Nn]                RETURN_TOKEN(JOIN);
 [Gg][Rr][Oo][Uu][Pp]        RETURN_TOKEN(GROUP);
+[Oo][Rr][Dd][Ee][Rr]		RETURN_TOKEN(ORDER);
 [Bb][Yy]                    RETURN_TOKEN(BY);
 [Nn][Oo][Tt]                RETURN_TOKEN(NOT);
 [Ii][Ss]                    RETURN_TOKEN(IS);
