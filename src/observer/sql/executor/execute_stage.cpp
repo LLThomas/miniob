@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 
 #include <sql/executor/executors/aggregation_executor.h>
 #include <sql/executor/plans/aggregation_plan.h>
+#include <sql/executor/plans/order_by_plan.h>
 
 #include <algorithm>
 #include <set>
@@ -261,6 +262,14 @@ std::unique_ptr<AbstractExecutor> CreateExecutor(ExecutorContext *exec_ctx,
       auto agg_plan = dynamic_cast<const AggregationPlanNode *>(plan);
       auto child_executor = CreateExecutor(exec_ctx, agg_plan->GetChildPlan());
       return std::make_unique<AggregationExecutor>(exec_ctx, agg_plan,
+                                                   std::move(child_executor));
+    }
+
+      // Create a new order by executor
+    case PlanType::OrderBy: {
+      auto order_by_plan = dynamic_cast<const AggregationPlanNode *>(plan);
+      auto child_executor = CreateExecutor(exec_ctx, order_by_plan->GetChildPlan());
+      return std::make_unique<AggregationExecutor>(exec_ctx, order_by_plan,
                                                    std::move(child_executor));
     }
 
@@ -729,9 +738,40 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *table_plan,
       new AggregationPlanNode(agg_schema, table_plan, nullptr, {},
                               std::move(col_exps), std::move(agg_types));
 
-  out_plans.emplace_back(agg_plan);
+//  out_plans.emplace_back(agg_plan);
+  out_plans.insert(out_plans.begin(), agg_plan);
   return RC::SUCCESS;
 }
+
+RC PlanOrderBy(const Selects &selects, AbstractPlanNode *table_plan,
+               const char *table_name, const TupleSchema &table_schema,
+               std::unordered_map<std::string, TableInfo> &table_infos,
+               std::vector<AbstractPlanNode *> &out_plans) {
+  // table info
+  TableInfo scan_table_info = table_infos[table_name];
+
+  // construct order_bys
+  std::vector<std::pair<std::string, int>> order_bys;
+  for (int i = 0; i < selects.order_by_num; i++) {
+    OrderBy orderBy = selects.order_bys[i];
+    int is_asc = 0;
+    if (orderBy.asc) {
+      is_asc = 1;
+    }
+    order_bys.push_back({
+       std::string(orderBy.order_by_attr.relation_name) + "." + orderBy.order_by_attr.attribute_name,
+        is_asc
+    });
+  }
+
+  // order by plan node
+  TupleSchema *order_by_schema = new TupleSchema();
+  MakeOutputSchema(scan_table_info.select_projs, order_by_schema, table_name);
+  OrderByPlanNode *order_by_plan = new OrderByPlanNode(order_by_schema, table_plan, order_bys);
+  out_plans.insert(out_plans.begin(), order_by_plan);
+  return RC::SUCCESS;
+}
+
 RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
                   std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
                   const char *db, const Selects &selects) {
@@ -820,6 +860,12 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
   if (selects.aggregation_num > 0)
     return PlanAggregation(selects, last_plan, from_tables[0]->name(),
                            *old_schema, table_infos, out_plans);
+
+  if (selects.order_by_num > 0) {
+    return PlanOrderBy(selects, last_plan, from_tables[0]->name(),
+                       *old_schema, table_infos, out_plans);
+  }
+
   //最后修改root plan的投影
   TupleSchema *out_schema = new TupleSchema;
   std::vector<std::pair<std::string, const AbstractExpression *>> projections;

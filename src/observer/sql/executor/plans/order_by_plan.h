@@ -18,6 +18,8 @@ class OrderByPlanNode : public AbstractPlanNode {
     return order_bys_;
   }
 
+  PlanType GetType() const override { return PlanType::OrderBy; }
+
  private:
   std::vector<std::pair<std::string, int>> order_bys_;
 };
