@@ -37,6 +37,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/executor/executors/abstract_executor.h"
 #include "sql/executor/executors/hash_join_executor.h"
 #include "sql/executor/executors/seq_scan_executor.h"
+#include "sql/executor/executors/order_by_executor.h"
 #include "sql/executor/expressions/abstract_expression.h"
 #include "sql/executor/expressions/aggregate_value_expression.h"
 #include "sql/executor/expressions/column_value_expression.h"
@@ -267,9 +268,12 @@ std::unique_ptr<AbstractExecutor> CreateExecutor(ExecutorContext *exec_ctx,
 
       // Create a new order by executor
     case PlanType::OrderBy: {
-      auto order_by_plan = dynamic_cast<const AggregationPlanNode *>(plan);
+
+      std::cout<<"create order by executor"<<std::endl;
+
+      auto order_by_plan = dynamic_cast<const OrderByPlanNode *>(plan);
       auto child_executor = CreateExecutor(exec_ctx, order_by_plan->GetChildPlan());
-      return std::make_unique<AggregationExecutor>(exec_ctx, order_by_plan,
+      return std::make_unique<OrderByExecutor>(exec_ctx, order_by_plan,
                                                    std::move(child_executor));
     }
 
@@ -750,23 +754,37 @@ RC PlanOrderBy(const Selects &selects, AbstractPlanNode *table_plan,
   // table info
   TableInfo scan_table_info = table_infos[table_name];
 
+  // construct proj
+  std::vector<std::unique_ptr<AbstractExpression>> order_by_exp;
+  std::vector<std::pair<std::string , const AbstractExpression *>> order_by_exps;
+  for (int i = selects.attr_num-1; i >= 0; i--) {
+    RelAttr attr = selects.attributes[i];
+    std::string order_by_str =
+        std::string(attr.relation_name) + "." +attr.attribute_name;
+    order_by_exps.push_back({
+        order_by_str,
+        MakeColumnValueExpression(table_schema, 0, order_by_str, order_by_exp)
+    });
+  }
+
   // construct order_bys
   std::vector<std::pair<std::string, int>> order_bys;
-  for (int i = 0; i < selects.order_by_num; i++) {
+  for (int i = selects.order_by_num-1; i >= 0 ; i--) {
     OrderBy orderBy = selects.order_bys[i];
     int is_asc = 0;
     if (orderBy.asc) {
       is_asc = 1;
     }
+//    std::string(orderBy.order_by_attr.relation_name) + "." + orderBy.order_by_attr.attribute_name
     order_bys.push_back({
-       std::string(orderBy.order_by_attr.relation_name) + "." + orderBy.order_by_attr.attribute_name,
+       orderBy.order_by_attr.attribute_name,
         is_asc
     });
   }
 
   // order by plan node
   TupleSchema *order_by_schema = new TupleSchema();
-  MakeOutputSchema(scan_table_info.select_projs, order_by_schema, table_name);
+  MakeOutputSchema(order_by_exps, order_by_schema, table_name);
   OrderByPlanNode *order_by_plan = new OrderByPlanNode(order_by_schema, table_plan, order_bys);
   out_plans.insert(out_plans.begin(), order_by_plan);
   return RC::SUCCESS;
@@ -918,6 +936,9 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   rid.slot_num = -1;
   while ((rc = executor->Next(&tuple, &rid)) == RC::SUCCESS) {
     tuple.print(ss);
+
+    std::cout<<"root: "<<ss.str()<<std::endl;
+
   }
 
   if (rc != RC::RECORD_EOF) {

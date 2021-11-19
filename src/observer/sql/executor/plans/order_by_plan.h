@@ -20,6 +20,13 @@ class OrderByPlanNode : public AbstractPlanNode {
 
   PlanType GetType() const override { return PlanType::OrderBy; }
 
+  /** @return the child of this order by plan node */
+  AbstractPlanNode *GetChildPlan() const {
+    assert(GetChildren().size() == 1 &&
+           "Order By expected to only have one child.");
+    return GetChildAt(0);
+  }
+
  private:
   std::vector<std::pair<std::string, int>> order_bys_;
 };

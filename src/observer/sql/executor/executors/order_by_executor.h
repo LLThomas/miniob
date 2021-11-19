@@ -17,6 +17,16 @@ class OrderByExecutor : public AbstractExecutor {
 
   TupleSchema *GetOutputSchema() override { return plan_->OutputSchema(); };
 
+  void SetTuples(std::vector<Tuple *> tuples) {
+    tuples_ = tuples;
+  }
+
+  Tuple *GetOneTuple() {
+    Tuple *tuple = tuples_.front();
+    tuples_.erase(tuples_.begin());
+    return tuple;
+  }
+
   std::vector<Tuple *> GetTuples() {
     return tuples_;
   }
