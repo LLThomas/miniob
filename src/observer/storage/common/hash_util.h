@@ -61,6 +61,12 @@ class HashUtil {
         auto raw = static_cast<int64_t>(((DateValue *)val)->get_value());
         return Hash<int64_t>(&raw);
       }
+      case AttrType::CHARS: {
+        std::string str = ((StringValue *)val)->get_value();
+        auto raw = str.c_str();
+        auto len = str.length();
+        return HashBytes(raw, len);
+      }
         //   case AttrType::DATES : {
         //     auto raw = static_cast<int64_t>(val->GetAs<int16_t>());
         //     return Hash<int64_t>(&raw);

@@ -3,12 +3,15 @@ insert into t values (1,'A',1.111,'1998-01-01');
 insert into t values (2,'A',2.222,'1999-01-01');
 insert into t values (3,'B',3.333,'2000-01-01');
 insert into t values (4,'B',4.444,'2001-01-01');
+insert into t values (5,'B',5.555,'2001-01-01');
 
+
+select name,count(*) from t group by t.name,t.age;
 select count(*) from t group by t.name;
 select count(*),min(price) from t group by t.name;
-select name,count(*) from t group by t.name,t.age;
-select * from t order by t.name, t.age;
-select * from t order by t.name desc, t.age asc;
+
+-- select * from t order by t.name, t.age;
+-- select * from t order by t.name desc, t.age asc;
 select count(*) from t;
 select count(id) from t;
 select min(id) from t;
