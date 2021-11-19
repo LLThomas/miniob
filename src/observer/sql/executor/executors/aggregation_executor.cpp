@@ -14,6 +14,13 @@ const AbstractExecutor *AggregationExecutor::GetChildExecutor() const {
 
 void AggregationExecutor::Init() {
   child_->Init();
+  std::cout << "[DEBUG] AggNode的InputSchema: ";
+  child_->GetOutputSchema()->print(std::cout, true);
+  std::cout << "[DEBUG] AggNode的GroupBy的列: ";
+  for (auto &e : plan_->GetGroupBys()) {
+    std::cout << ((ColumnValueExpression *)e)->GetColIdx() << " @ ";
+  };
+  std::cout << std::endl;
   RID rid;
   rid.page_num = 1;
   rid.slot_num = -1;
@@ -21,7 +28,7 @@ void AggregationExecutor::Init() {
   while (child_->Next(&tuple, &rid) == RC::SUCCESS) {
     AggregateKey key = MakeKey(&tuple);
     std::cout << "[DEBUG] 哈希表 MakeKey: ";
-    for (auto e : key.group_bys_) {
+    for (auto &e : key.group_bys_) {
       e->to_string(std::cout);
       std::cout << " ";
     }
@@ -29,7 +36,7 @@ void AggregationExecutor::Init() {
 
     AggregateValue value = MakeVal(&tuple);
     std::cout << "[DEBUG] 哈希表 MakeValue: ";
-    for (auto e : value.aggregates_) {
+    for (auto &e : value.aggregates_) {
       e->to_string(std::cout);
       std::cout << " ";
     }
@@ -41,13 +48,13 @@ void AggregationExecutor::Init() {
     for (SimpleAggregationHashTable::Iterator it = aht_.Begin();
          it != aht_.End(); it.operator++()) {
       std::cout << "( ";
-      for (auto e : it.Key().group_bys_) {
+      for (auto &e : it.Key().group_bys_) {
         e->to_string(std::cout);
         std::cout << ",";
       }
       std::cout << ")";
       std::cout << "  ";
-      for (auto e : it.Val().aggregates_) {
+      for (auto &e : it.Val().aggregates_) {
         e->to_string(std::cout);
         std::cout << " | ";
       }
@@ -66,7 +73,7 @@ RC AggregationExecutor::Next(Tuple *tuple, RID *rid) {
   for (int i = 0; i < aht_iterator_.Val().aggregates_.size(); i++) {
     big_tuple.add(aht_iterator_.Val().aggregates_[i]);
   }
-  for (auto k : key.group_bys_) {
+  for (auto &k : key.group_bys_) {
     big_tuple.add(k);
   }
   //投影操作

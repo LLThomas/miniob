@@ -674,32 +674,28 @@ SeqScanPlanNode *ConstructScanTable(
   //    std::unique_ptr<SeqScanPlanNode> scan_plan_1;
   std::vector<std::pair<std::string, const AbstractExpression *>> scan_proj;
   // from select
-  if (table_infos[scan_table_name].select_projs.empty() == false) {
-    //去重
-    for (auto &e : table_infos[scan_table_name].select_projs) {
-      bool is_unique = true;
-      for (auto &o : scan_proj) {
-        if (o.first == e.first) {
-          is_unique = false;
-          break;
-        }
+  //去重
+  for (auto &e : table_infos[scan_table_name].select_projs) {
+    bool is_unique = true;
+    for (auto &o : scan_proj) {
+      if (o.first == e.first) {
+        is_unique = false;
+        break;
       }
-      if (is_unique) scan_proj.push_back(e);
     }
+    if (is_unique) scan_proj.push_back(e);
   }
   // from on
-  if (table_infos[scan_table_name].on_projs.empty() == false) {
-    //去重
-    for (auto &e : table_infos[scan_table_name].on_projs) {
-      bool is_unique = true;
-      for (auto &o : scan_proj) {
-        if (o.first == e.first) {
-          is_unique = false;
-          break;
-        }
+  //去重
+  for (auto &e : table_infos[scan_table_name].on_projs) {
+    bool is_unique = true;
+    for (auto &o : scan_proj) {
+      if (o.first == e.first) {
+        is_unique = false;
+        break;
       }
-      if (is_unique) scan_proj.push_back(e);
     }
+    if (is_unique) scan_proj.push_back(e);
   }
 
   MakeOutputSchema(scan_proj, scan_schema, scan_table_name);
@@ -773,9 +769,9 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *&table_plan,
   for (int i = 0; i < selects.group_by_num; i++) {
     RelAttr group_key = selects.group_bys[i];
     std::string group_by_table_name =
-        group_key.relation_name == nullptr ? "" : group_key.relation_name;
-    TupleSchema schema;
-    TupleSchema::from_table(table_infos[group_by_table_name].pointer, schema);
+        group_key.relation_name == nullptr
+            ? table_infos[""].pointer->table_meta().name()
+            : std::string(group_key.relation_name);
     //每个group_key生成一个ColumnExpression插入到group_bys
     // group_bys.emplace_back(MakeColumnValueExpression(
     //     schema, 0,
@@ -783,7 +779,10 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *&table_plan,
     //     group_key.attribute_name, *group_exp));
 
     group_bys.emplace_back(
-        schema.field(schema.GetColIdx(group_key.attribute_name)).expr());
+        old_schema
+            ->field(old_schema->GetFieldIdx(group_by_table_name + "." +
+                                            group_key.attribute_name))
+            .expr());
   }
 
   MakeOutputSchema(agg_exps, agg_schema, selects.relations[0]);
@@ -791,14 +790,15 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *&table_plan,
   table_plan = new AggregationPlanNode(
       agg_schema, table_plan, nullptr, std::move(group_bys),
       std::move(col_exps), std::move(agg_types));
+  //增加groupby投影的可能（这里把所有的group_key都加了上去）
   for (int i = 0; i < selects.group_by_num; i++) {
     RelAttr group_key = selects.group_bys[i];
     std::string group_by_table_name =
-        group_key.relation_name == nullptr ? "" : group_key.relation_name;
-    TupleSchema schema;
-    TupleSchema::from_table(table_infos[group_by_table_name].pointer, schema);
-    //每个group_key生成一个ColumnExpression插入到group_bys
-    agg_schema->add(schema.field(schema.GetColIdx(group_key.attribute_name)));
+        group_key.relation_name == nullptr
+            ? table_infos[""].pointer->table_meta().name()
+            : std::string(group_key.relation_name);
+    agg_schema->add(old_schema->field(old_schema->GetFieldIdx(
+        group_by_table_name + "." + group_key.attribute_name)));
   }
   table_plan->SetOutputSchema(agg_schema);
   //  out_plans.emplace_back(agg_plan);

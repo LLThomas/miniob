@@ -238,8 +238,8 @@ class AggregationExecutor : public AbstractExecutor {
   /** @return the tuple as an AggregateValue */
   AggregateValue MakeVal(const Tuple *tuple) {
     std::vector<std::shared_ptr<TupleValue>> vals;
-    for (auto expr : plan_->GetAggregates()) {
-      auto e = dynamic_cast<const ColumnValueExpression *>(expr);
+    for (auto &expr : plan_->GetAggregates()) {
+      // auto e = dynamic_cast<const ColumnValueExpression *>(expr);
       // auto e = (ColumnValueExpression *)expr;
 
       // std::vector<std::shared_ptr<TupleValue>> null_group_by;
@@ -252,7 +252,7 @@ class AggregationExecutor : public AbstractExecutor {
       // auto v = ;
       // auto e = dynamic_cast<const ColumnValueExpression *>(expr);
       // auto f = dynamic_cast<const AggregateValueExpression *>(expr);
-      vals.emplace_back(e->Evaluate(tuple, nullptr));
+      vals.emplace_back(expr->Evaluate(tuple, nullptr));
     }
     return {vals};
   }
