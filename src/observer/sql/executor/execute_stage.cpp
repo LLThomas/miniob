@@ -772,9 +772,10 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *&table_plan,
   auto group_exp = new std::vector<std::unique_ptr<AbstractExpression>>{};
   for (int i = 0; i < selects.group_by_num; i++) {
     RelAttr group_key = selects.group_bys[i];
+    std::string group_by_table_name =
+        group_key.relation_name == nullptr ? "" : group_key.relation_name;
     TupleSchema schema;
-    TupleSchema::from_table(table_infos[group_key.relation_name].pointer,
-                            schema);
+    TupleSchema::from_table(table_infos[group_by_table_name].pointer, schema);
     //每个group_key生成一个ColumnExpression插入到group_bys
     // group_bys.emplace_back(MakeColumnValueExpression(
     //     schema, 0,
@@ -792,9 +793,10 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *&table_plan,
       std::move(col_exps), std::move(agg_types));
   for (int i = 0; i < selects.group_by_num; i++) {
     RelAttr group_key = selects.group_bys[i];
+    std::string group_by_table_name =
+        group_key.relation_name == nullptr ? "" : group_key.relation_name;
     TupleSchema schema;
-    TupleSchema::from_table(table_infos[group_key.relation_name].pointer,
-                            schema);
+    TupleSchema::from_table(table_infos[group_by_table_name].pointer, schema);
     //每个group_key生成一个ColumnExpression插入到group_bys
     agg_schema->add(schema.field(schema.GetColIdx(group_key.attribute_name)));
   }

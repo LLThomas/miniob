@@ -658,10 +658,20 @@ groupbys:
 		relation_attr_init(&attr, $3, $5);
 		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
 	}
+	| GROUP BY ID groupby{
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, $3);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
+	}
 groupby:
 	| COMMA ID DOT ID groupby {
 		RelAttr attr;
 		relation_attr_init(&attr, $2, $4);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
+	}
+	| COMMA ID groupby {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL,$2);
 		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
 	}
 	;

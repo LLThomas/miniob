@@ -5,6 +5,9 @@ insert into t values (3,'B',3.333,'2000-01-01');
 insert into t values (4,'B',4.444,'2001-01-01');
 insert into t values (5,'B',5.555,'2001-01-01');
 
+select name,count(*) from t group by name,age;
+select count(*) from t group by name;
+select count(*),min(price) from t group by name;
 
 select name,count(*) from t group by t.name,t.age;
 select count(*) from t group by t.name;
