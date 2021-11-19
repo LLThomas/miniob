@@ -2,6 +2,7 @@
 #include <climits>
 #include <limits>
 #include <unordered_map>
+#include <vector>
 
 #include "sql/executor/executor_context.h"
 #include "sql/executor/executors/abstract_executor.h"
@@ -54,7 +55,8 @@ class SimpleAggregationHashTable {
 
   /** Combines the input into the aggregation result. */
   void CombineAggregateValues(AggregateValue *result,
-                              const AggregateValue &input) {
+                              const AggregateValue &input,
+                              const AggregateKey &key) {
     // for (int i = 0; i < result->aggregates_.size(); i++) {
     //   result->aggregates_[i]->to_string(std::cout);
     //   std::cout << " " << std::endl;
@@ -75,14 +77,17 @@ class SimpleAggregationHashTable {
         }
         case AggregationType::AvgAggregate: {
           // Sum increases by addition.
-          if (avg_map_.count(i) == 0) {
-            avg_map_[i] = {0.0, 0};
+          if (avg_map_.count(key) == 0) {
+            avg_map_[key] = std::unordered_map<int, std::pair<float, int>>{};
+          }
+          if (avg_map_[key].count(i) == 0) {
+            avg_map_[key][i] = {0.0, 0};
             FloatValue f(0.0);
             result->aggregates_[i] = f.copy();
             result_ptr = result->aggregates_[i];
           }
-          float &old_sum = avg_map_[i].first;
-          int &old_cnt = avg_map_[i].second;
+          float &old_sum = avg_map_[key][i].first;
+          int &old_cnt = avg_map_[key][i].second;
           if (input_ptr->get_type() == AttrType::INTS) {
             old_sum += ((IntValue *)input_ptr.get())->get_value();
           }
@@ -127,10 +132,13 @@ class SimpleAggregationHashTable {
    */
   void InsertCombine(const AggregateKey &agg_key,
                      const AggregateValue &agg_val) {
+    // for (auto a : agg_key.group_bys_) {
+    //   a->to_string(std::cout);
+    // }
     if (ht_.count(agg_key) == 0) {
       ht_.insert({agg_key, GenerateInitialAggregateValue()});
     }
-    CombineAggregateValues(&ht_[agg_key], agg_val);
+    CombineAggregateValues(&ht_[agg_key], agg_val, agg_key);
   }
 
   /**
@@ -185,7 +193,9 @@ class SimpleAggregationHashTable {
   /** The types of aggregations that we have. */
   const std::vector<AggregationType> &agg_types_;
   // AVG={SUM,COUNT}
-  std::unordered_map<uint32_t, std::pair<float, int>> avg_map_;
+  std::unordered_map<AggregateKey,
+                     std::unordered_map<int, std::pair<float, int>>>
+      avg_map_;
 };
 
 /**
@@ -217,19 +227,19 @@ class AggregationExecutor : public AbstractExecutor {
 
   /** @return the tuple as an AggregateKey */
   AggregateKey MakeKey(const Tuple *tuple) {
-     std::vector<std::shared_ptr<TupleValue>> keys;
-     for (const auto &expr : plan_->GetGroupBys()) {
-       keys.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
-     }
-     return {keys};
-//    return {{}};
+    std::vector<std::shared_ptr<TupleValue>> keys;
+    for (const auto &expr : plan_->GetGroupBys()) {
+      keys.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
+    }
+    return {keys};
+    //    return {{}};
   }
 
   /** @return the tuple as an AggregateValue */
   AggregateValue MakeVal(const Tuple *tuple) {
     std::vector<std::shared_ptr<TupleValue>> vals;
-    for (auto expr : plan_->GetAggregates()) {
-      auto e = dynamic_cast<const ColumnValueExpression *>(expr);
+    for (auto &expr : plan_->GetAggregates()) {
+      // auto e = dynamic_cast<const ColumnValueExpression *>(expr);
       // auto e = (ColumnValueExpression *)expr;
 
       // std::vector<std::shared_ptr<TupleValue>> null_group_by;
@@ -242,7 +252,7 @@ class AggregationExecutor : public AbstractExecutor {
       // auto v = ;
       // auto e = dynamic_cast<const ColumnValueExpression *>(expr);
       // auto f = dynamic_cast<const AggregateValueExpression *>(expr);
-      vals.emplace_back(e->Evaluate(tuple, nullptr));
+      vals.emplace_back(expr->Evaluate(tuple, nullptr));
     }
     return {vals};
   }

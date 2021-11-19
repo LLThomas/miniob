@@ -157,23 +157,16 @@ void TupleSchema::print(std::ostream &os, bool multi_table) const {
     os << "No schema";
     return;
   }
-
-  // 判断有多张表还是只有一张表
-  std::set<std::string> table_names;
-  for (const auto &field : fields_) {
-    table_names.insert(field.table_name());
-  }
-
   for (std::vector<TupleField>::const_iterator iter = fields_.begin(),
                                                end = --fields_.end();
        iter != end; ++iter) {
-    if (multi_table) {
+    if (multi_table && strlen(iter->table_name()) > 0) {
       os << iter->table_name() << ".";
     }
     os << iter->field_name() << " | ";
   }
 
-  if (multi_table) {
+  if (multi_table && strlen(fields_.back().table_name()) > 0) {
     os << fields_.back().table_name() << ".";
   }
   os << fields_.back().field_name() << std::endl;
@@ -209,12 +202,15 @@ size_t TupleSchema::GetColIdx(const std::string &col_name) const {
 
 size_t TupleSchema::GetFieldIdx(const std::string &field_name) const {
   for (size_t i = 0; i < fields_.size(); ++i) {
-    if (std::string{fields_[i].table_name()} + "." +
-            std::string{fields_[i].field_name()} ==
-        field_name) {
+    std::string table_name = strlen(fields_[i].table_name()) == 0
+                                 ? ""
+                                 : std::string(fields_[i].table_name()) + ".";
+    std::string field = fields_[i].field_name();
+    if (table_name + field == field_name) {
       return i;
     }
   }
+  assert(false && "field not found");
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -441,6 +441,15 @@ expression:
 			aggr.is_value = 0;
 			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
+	| ID DOT ID{// age
+			RelAttr attr;
+			relation_attr_init(&attr, $1, $3);
+			Aggregation aggr;
+			aggr.attribute = attr;
+			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.is_value = 0;
+			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
+	}
 	| value{ // 1
 			Aggregation aggr;
 			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
@@ -649,10 +658,20 @@ groupbys:
 		relation_attr_init(&attr, $3, $5);
 		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
 	}
+	| GROUP BY ID groupby{
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, $3);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
+	}
 groupby:
 	| COMMA ID DOT ID groupby {
 		RelAttr attr;
 		relation_attr_init(&attr, $2, $4);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
+	}
+	| COMMA ID groupby {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL,$2);
 		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &attr);
 	}
 	;

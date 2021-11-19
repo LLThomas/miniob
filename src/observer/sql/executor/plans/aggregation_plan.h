@@ -119,9 +119,17 @@ template <>
 struct hash<AggregateKey> {
   size_t operator()(const AggregateKey &agg_key) const {
     size_t curr_hash = 0;
+    // std::string temp = "";
     for (const auto &key : agg_key.group_bys_) {
+      // string s;
+      // stringstream ss;
+      // key->to_string(ss);
+      // ss >> s;
+      // temp += " | " + s;
       curr_hash =
           HashUtil::CombineHashes(curr_hash, HashUtil::HashValue(key.get()));
+
+      // cout << temp << "的哈希值为：" << curr_hash << endl;
       // if (!key.IsNull()) {
 
       // }
