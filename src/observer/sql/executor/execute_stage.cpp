@@ -755,17 +755,17 @@ RC PlanOrderBy(const Selects &selects, AbstractPlanNode *table_plan,
   TableInfo scan_table_info = table_infos[table_name];
 
   // construct proj
-  std::vector<std::unique_ptr<AbstractExpression>> order_by_exp;
-  std::vector<std::pair<std::string , const AbstractExpression *>> order_by_exps;
-  for (int i = selects.attr_num-1; i >= 0; i--) {
-    RelAttr attr = selects.attributes[i];
-    std::string order_by_str =
-        std::string(attr.relation_name) + "." +attr.attribute_name;
-    order_by_exps.push_back({
-        order_by_str,
-        MakeColumnValueExpression(table_schema, 0, order_by_str, order_by_exp)
-    });
-  }
+//  std::vector<std::unique_ptr<AbstractExpression>> order_by_exp;
+//  std::vector<std::pair<std::string , const AbstractExpression *>> order_by_exps;
+//  for (int i = selects.attr_num-1; i >= 0; i--) {
+//    RelAttr attr = selects.attributes[i];
+//    std::string order_by_str =
+//        std::string(attr.relation_name) + "." +attr.attribute_name;
+//    order_by_exps.push_back({
+//        order_by_str,
+//        MakeColumnValueExpression(table_schema, 0, order_by_str, order_by_exp)
+//    });
+//  }
 
   // construct order_bys
   std::vector<std::pair<std::string, int>> order_bys;
@@ -784,7 +784,12 @@ RC PlanOrderBy(const Selects &selects, AbstractPlanNode *table_plan,
 
   // order by plan node
   TupleSchema *order_by_schema = new TupleSchema();
-  MakeOutputSchema(order_by_exps, order_by_schema, table_name);
+//  if (star) {
+//    MakeOutputSchema(scan_table_info.select_projs, order_by_schema, table_name);
+//  } else {
+//    MakeOutputSchema(order_by_exps, order_by_schema, table_name);
+//  }
+  MakeOutputSchema(scan_table_info.select_projs, order_by_schema, table_name);
   OrderByPlanNode *order_by_plan = new OrderByPlanNode(order_by_schema, table_plan, order_bys);
   out_plans.insert(out_plans.begin(), order_by_plan);
   return RC::SUCCESS;

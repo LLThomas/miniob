@@ -657,6 +657,30 @@ groupby:
 	}
 	;
 orderbys:
+	| ORDER BY ID {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, $3);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, true);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
+	| ORDER BY ID ASC {
+        	RelAttr attr;
+		relation_attr_init(&attr, NULL, $3);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, true);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+        }
+	| ORDER BY ID DESC {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, $3);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, false);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
 	| ORDER BY ID DOT ID ASC orderby{
 		RelAttr attr;
 		relation_attr_init(&attr, $3, $5);
