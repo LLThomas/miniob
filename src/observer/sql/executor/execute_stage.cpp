@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 
 #include <sql/executor/executors/aggregation_executor.h>
 #include <sql/executor/plans/aggregation_plan.h>
+#include <sql/executor/plans/order_by_plan.h>
 
 #include <algorithm>
 #include <set>
@@ -35,6 +36,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/executor/executor_context.h"
 #include "sql/executor/executors/abstract_executor.h"
 #include "sql/executor/executors/hash_join_executor.h"
+#include "sql/executor/executors/order_by_executor.h"
 #include "sql/executor/executors/seq_scan_executor.h"
 #include "sql/executor/expressions/abstract_expression.h"
 #include "sql/executor/expressions/aggregate_value_expression.h"
@@ -262,6 +264,17 @@ std::unique_ptr<AbstractExecutor> CreateExecutor(ExecutorContext *exec_ctx,
       auto child_executor = CreateExecutor(exec_ctx, agg_plan->GetChildPlan());
       return std::make_unique<AggregationExecutor>(exec_ctx, agg_plan,
                                                    std::move(child_executor));
+    }
+
+      // Create a new order by executor
+    case PlanType::OrderBy: {
+      std::cout << "create order by executor" << std::endl;
+
+      auto order_by_plan = dynamic_cast<const OrderByPlanNode *>(plan);
+      auto child_executor =
+          CreateExecutor(exec_ctx, order_by_plan->GetChildPlan());
+      return std::make_unique<OrderByExecutor>(exec_ctx, order_by_plan,
+                                               std::move(child_executor));
     }
 
     default: {
@@ -786,8 +799,57 @@ RC PlanAggregation(const Selects &selects, AbstractPlanNode *&table_plan,
     agg_schema->add(schema.field(schema.GetColIdx(group_key.attribute_name)));
   }
   table_plan->SetOutputSchema(agg_schema);
+  //  out_plans.emplace_back(agg_plan);
   return RC::SUCCESS;
 }
+
+RC PlanOrderBy(const Selects &selects, AbstractPlanNode *&table_plan,
+               const char *table_name, const TupleSchema &table_schema,
+               std::unordered_map<std::string, TableInfo> &table_infos,
+               std::vector<AbstractPlanNode *> &out_plans) {
+  // table info
+  TableInfo scan_table_info = table_infos[table_name];
+
+  // construct proj
+  //  std::vector<std::unique_ptr<AbstractExpression>> order_by_exp;
+  //  std::vector<std::pair<std::string , const AbstractExpression *>>
+  //  order_by_exps; for (int i = selects.attr_num-1; i >= 0; i--) {
+  //    RelAttr attr = selects.attributes[i];
+  //    std::string order_by_str =
+  //        std::string(attr.relation_name) + "." +attr.attribute_name;
+  //    order_by_exps.push_back({
+  //        order_by_str,
+  //        MakeColumnValueExpression(table_schema, 0, order_by_str,
+  //        order_by_exp)
+  //    });
+  //  }
+
+  // construct order_bys
+  std::vector<std::pair<std::string, int>> order_bys;
+  for (int i = selects.order_by_num - 1; i >= 0; i--) {
+    OrderBy orderBy = selects.order_bys[i];
+    int is_asc = 0;
+    if (orderBy.asc) {
+      is_asc = 1;
+    }
+    //    std::string(orderBy.order_by_attr.relation_name) + "." +
+    //    orderBy.order_by_attr.attribute_name
+    order_bys.push_back({orderBy.order_by_attr.attribute_name, is_asc});
+  }
+
+  // order by plan node
+  TupleSchema *order_by_schema = new TupleSchema();
+  //  if (star) {
+  //    MakeOutputSchema(scan_table_info.select_projs, order_by_schema,
+  //    table_name);
+  //  } else {
+  //    MakeOutputSchema(order_by_exps, order_by_schema, table_name);
+  //  }
+  MakeOutputSchema(scan_table_info.select_projs, order_by_schema, table_name);
+  table_plan = new OrderByPlanNode(order_by_schema, table_plan, order_bys);
+  return RC::SUCCESS;
+}
+
 RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
                   std::vector<std::unique_ptr<AbstractExpression>> &out_exprs,
                   const char *db, const Selects &selects) {
@@ -880,6 +942,14 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     out_plans[0] = last_plan;
     old_schema = out_plans[0]->OutputSchema();
   }
+  if (selects.order_by_num > 0) {
+    rc = PlanOrderBy(selects, last_plan, from_tables[0]->name(), *old_schema,
+                     table_infos, out_plans);
+    if (rc != RC::SUCCESS) return rc;
+    out_plans[0] = last_plan;
+    old_schema = out_plans[0]->OutputSchema();
+  }
+
   //最后修改root plan的投影
   TupleSchema *out_schema = new TupleSchema;
   std::vector<std::pair<std::string, const AbstractExpression *>> projections;
@@ -932,6 +1002,8 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   rid.slot_num = -1;
   while ((rc = executor->Next(&tuple, &rid)) == RC::SUCCESS) {
     tuple.print(ss);
+
+    std::cout << "root: " << ss.str() << std::endl;
   }
 
   if (rc != RC::RECORD_EOF) {
