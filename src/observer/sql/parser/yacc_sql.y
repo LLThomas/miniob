@@ -657,7 +657,7 @@ groupby:
 	}
 	;
 orderbys:
-	| ORDER BY ID {
+	| ORDER BY ID orderby {
 		RelAttr attr;
 		relation_attr_init(&attr, NULL, $3);
 
@@ -665,7 +665,7 @@ orderbys:
 		order_by_init(&order_by, &attr, true);
 		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
 	}
-	| ORDER BY ID ASC {
+	| ORDER BY ID ASC orderby {
         	RelAttr attr;
 		relation_attr_init(&attr, NULL, $3);
 
@@ -673,7 +673,7 @@ orderbys:
 		order_by_init(&order_by, &attr, true);
 		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
         }
-	| ORDER BY ID DESC {
+	| ORDER BY ID DESC orderby {
 		RelAttr attr;
 		relation_attr_init(&attr, NULL, $3);
 
@@ -706,6 +706,30 @@ orderbys:
 		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
 	}
 orderby:
+	| COMMA ID orderby{
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, $2);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, true);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
+	| COMMA ID ASC orderby{
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, $2);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, true);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
+	| COMMA ID DESC orderby {
+		RelAttr attr;
+		relation_attr_init(&attr, NULL, $2);
+
+		OrderBy order_by;
+		order_by_init(&order_by, &attr, false);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
+	}
 	| COMMA ID DOT ID ASC orderby{
 		RelAttr attr;
 		relation_attr_init(&attr, $2, $4);
