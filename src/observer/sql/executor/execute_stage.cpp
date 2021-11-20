@@ -1179,8 +1179,8 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
           r->to_string(std::cout);
           std::cout << std::endl;
           int is_in_comp = sub_comp == CompOp::IN_COMP;
-          if (is_in == is_in_comp) {
-            tuple.print(ss);
+          if (is_in) {
+            if (is_in == is_in_comp) tuple.print(ss);
             break;
           }
         }

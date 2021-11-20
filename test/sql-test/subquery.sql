@@ -7,8 +7,7 @@ insert into t1 values(2, 5.0);
 insert into t1 values(2, 7.0);
 insert into t2 values(1, 2.0);
 insert into t2 values(1, 3.0);
- SELECT * FROM t1 WHERE id IN (SELECT t2.id FROM t2);
-select * from t1 where id not in (select t2.id from t2 where 1=0);
+
 select * from t1 where t1.age > (select avg(t2.age) from t2) and t1.age <6.0;
 
  SELECT * FROM t1 WHERE id IN (SELECT t2.id FROM t2);
