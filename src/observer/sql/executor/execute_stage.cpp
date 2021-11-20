@@ -1148,12 +1148,20 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
           rc = RC::ABORT;
           break;
         }
-        const AbstractExpression *next_tuple_exp = MakeColumnValueExpression(
-            my_schema, 0, sub_attr_name, allocated_expressions);
-
-        const AbstractExpression *comp_exp = MakeComparisonExpression(
-            next_tuple_exp, sub_agg_exp, my_selects.conditions[0].comp,
-            allocated_expressions);
+        const AbstractExpression *next_tuple_exp, *comp_exp;
+        if (my_selects.conditions[0].left_is_subquery) {
+          next_tuple_exp = MakeColumnValueExpression(
+              my_schema, 0, sub_attr_name, allocated_expressions);
+          comp_exp = MakeComparisonExpression(next_tuple_exp, sub_agg_exp,
+                                              my_selects.conditions[0].comp,
+                                              allocated_expressions);
+        } else {
+          next_tuple_exp = MakeColumnValueExpression(
+              my_schema, 1, sub_attr_name, allocated_expressions);
+          comp_exp = MakeComparisonExpression(sub_agg_exp, next_tuple_exp,
+                                              my_selects.conditions[0].comp,
+                                              allocated_expressions);
+        }
         if (comp_exp->Evaluate(&tuple, nullptr)->compare(IntValue(true)) == 0) {
           tuple.print(ss);
         }

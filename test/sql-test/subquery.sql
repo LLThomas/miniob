@@ -1,14 +1,16 @@
 create table t1(id int, age float);
 create table t2(id int, age float);
 
-insert into t1 values(1, 25.0);
+insert into t1 values(1, 7.0);
+insert into t1 values(4, 1.0);
 insert into t1 values(2, 2.0);
 insert into t1 values(2, 5.0);
 insert into t1 values(4, 3.0);
 insert into t1 values(2, 7.0);
 insert into t2 values(1, 2.0);
 insert into t2 values(1, 6.0);
-
+SELECT * FROM t1 WHERE (SELECT min(t2.age) FROM t2) <= age;
+SELECT * FROM t1 WHERE age >= (SELECT min(t2.age) FROM t2);
 SELECT * FROM t1 WHERE id = (SELECT avg(t2.age) FROM t2);
 SELECT * FROM t1 WHERE (SELECT avg(t2.age) FROM t2) = id;
 
