@@ -73,7 +73,8 @@ void value_destroy(Value *value) {
 }
 
 void condition_init(Condition *condition, CompOp comp, int left_is_attr,
-                    RelAttr *left_attr, Value *left_value, int right_is_attr,
+                    RelAttr *left_attr, Value *left_value,
+                    int right_is_subquery, int right_is_attr, Selects *subquery,
                     RelAttr *right_attr, Value *right_value) {
   condition->comp = comp;
   condition->left_is_attr = left_is_attr;
@@ -83,7 +84,11 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr,
     condition->left_value = *left_value;
   }
 
-  if (comp != IS_LEFT_NULL && comp != IS_LEFT_NOT_NULL) {
+  if (right_is_subquery) {
+    condition->right_is_subquery = right_is_subquery;
+    condition->right_is_attr = false;
+    condition->subquery = subquery;
+  } else if (comp != IS_LEFT_NULL && comp != IS_LEFT_NOT_NULL) {
     condition->right_is_attr = right_is_attr;
     if (right_is_attr) {
       condition->right_attr = *right_attr;
@@ -101,7 +106,11 @@ void condition_destroy(Condition *condition) {
   } else {
     value_destroy(&condition->left_value);
   }
-  if (condition->right_is_attr) {
+  if (condition->right_is_subquery) {
+    selects_destroy(condition->subquery);
+    delete condition->subquery;
+    condition->subquery = nullptr;
+  } else if (condition->right_is_attr) {
     relation_attr_destroy(&condition->right_attr);
   } else {
     value_destroy(&condition->right_value);
@@ -139,13 +148,13 @@ void selects_append_relation(Selects *selects, const char *relation_name) {
 }
 
 void selects_append_conditions(Selects *selects, Condition conditions[],
-                               size_t condition_num) {
-  assert(condition_num <=
+                               size_t last_condition_length, size_t current_condition_length) {
+  assert(current_condition_length <=
          sizeof(selects->conditions) / sizeof(selects->conditions[0]));
-  for (size_t i = 0; i < condition_num; i++) {
-    selects->conditions[i] = conditions[i];
+  selects->condition_num = current_condition_length - last_condition_length;
+  for (size_t i = 0; i < selects->condition_num; i++) {
+    selects->conditions[i] = conditions[i + last_condition_length];
   }
-  selects->condition_num = condition_num;
 }
 
 void selects_append_aggregation(Selects *selects, Aggregation *aggregation) {

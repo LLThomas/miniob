@@ -11,19 +11,24 @@
 #include<string.h>
 
 typedef struct ParserContext {
-  Query * ssql;
-  size_t select_length;
+  Query *ssql;
+
+  size_t query_length;
+  Query *queries[MAX_NUM];
+  size_t last_condition_length_length;
+  // 每次 begin_select 会记录当前的 condition_length 到 last_condition_length
+  size_t last_condition_length[MAX_NUM];
+
   size_t condition_length;
-  size_t from_length;
+  Condition conditions[MAX_NUM];
   size_t value_length;
   Value values[MAX_NUM];
   size_t tuple_length;
   InsertTuple tuples[MAX_NUM];
-  Condition conditions[MAX_NUM];
+
   CompOp comp;
   char id[MAX_NUM];
-  size_t func_length;
-  FuncName func[MAX_NUM]; 
+  FuncName func;
 } ParserContext;
 
 //获取子串
@@ -44,11 +49,10 @@ void yyerror(yyscan_t scanner, const char *str)
   query_reset(context->ssql);
   context->ssql->flag = SCF_ERROR;
   context->condition_length = 0;
-  context->from_length = 0;
-  context->select_length = 0;
   context->value_length = 0;
   context->tuple_length = 0;
-  memset(context->tuples, 0, sizeof(context->tuples));
+  context->query_length = 0;
+  context->last_condition_length_length = 0;
   printf("parse sql failed. error=%s", str);
 }
 
@@ -124,6 +128,7 @@ ParserContext *get_context(yyscan_t scanner)
 		BY
 		ASC
 		ORDER
+		IN
 
 %code requires { #include <stdbool.h> }
 
@@ -139,7 +144,7 @@ ParserContext *get_context(yyscan_t scanner)
 }
 
 %token <number> NUMBER
-%token <floats> FLOAT 
+%token <floats> FLOAT
 %token <string> ID
 %token <string> PATH
 %token <string> SSS
@@ -159,9 +164,11 @@ commands:		//commands or sqls. parser starts here.
     /* empty */
     | commands command
     ;
-
 command:
-	  select  
+	q SEMICOLON;
+
+q:
+	  select
 	| insert
 	| update
 	| delete
@@ -169,7 +176,7 @@ command:
 	| drop_table
 	| show_tables
 	| desc_table
-	| create_index	
+	| create_index
 	| drop_index
 	| sync
 	| begin
@@ -180,66 +187,66 @@ command:
 	| exit
     ;
 
-exit:			
-    EXIT SEMICOLON {
+exit:
+    EXIT  {
         CONTEXT->ssql->flag=SCF_EXIT;//"exit";
     };
 
 help:
-    HELP SEMICOLON {
+    HELP  {
         CONTEXT->ssql->flag=SCF_HELP;//"help";
     };
 
 sync:
-    SYNC SEMICOLON {
+    SYNC  {
       CONTEXT->ssql->flag = SCF_SYNC;
     }
     ;
 
 begin:
-    TRX_BEGIN SEMICOLON {
+    TRX_BEGIN  {
       CONTEXT->ssql->flag = SCF_BEGIN;
     }
     ;
 
 commit:
-    TRX_COMMIT SEMICOLON {
+    TRX_COMMIT  {
       CONTEXT->ssql->flag = SCF_COMMIT;
     }
     ;
 
 rollback:
-    TRX_ROLLBACK SEMICOLON {
+    TRX_ROLLBACK  {
       CONTEXT->ssql->flag = SCF_ROLLBACK;
     }
     ;
 
 drop_table:		/*drop table 语句的语法解析树*/
-    DROP TABLE ID SEMICOLON {
+    DROP TABLE ID  {
         CONTEXT->ssql->flag = SCF_DROP_TABLE;//"drop_table";
         drop_table_init(&CONTEXT->ssql->sstr.drop_table, $3);
     };
 
 show_tables:
-    SHOW TABLES SEMICOLON {
+    SHOW TABLES  {
       CONTEXT->ssql->flag = SCF_SHOW_TABLES;
     }
     ;
 
 desc_table:
-    DESC ID SEMICOLON {
+    DESC ID  {
       CONTEXT->ssql->flag = SCF_DESC_TABLE;
       desc_table_init(&CONTEXT->ssql->sstr.desc_table, $2);
     }
     ;
 
 create_index:		/*create index 语句的语法解析树*/
-    CREATE INDEX ID ON ID LBRACE ID col_list RBRACE SEMICOLON
+    CREATE INDEX ID ON ID LBRACE ID col_list RBRACE
 		{
 			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
 			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, $7, false);
 		}
-    | CREATE UNIQUE INDEX ID ON ID LBRACE ID RBRACE SEMICOLON
+    | CREATE UNIQUE INDEX ID ON ID LBRACE ID RBRACE
     		{
 			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
 			create_index_init(&CONTEXT->ssql->sstr.create_index, $4, $6, $8, true);
@@ -251,18 +258,18 @@ col_list:
 	}
 
 drop_index:			/*drop index 语句的语法解析树*/
-    DROP INDEX ID  SEMICOLON 
+    DROP INDEX ID
 		{
 			CONTEXT->ssql->flag=SCF_DROP_INDEX;//"drop_index";
 			drop_index_init(&CONTEXT->ssql->sstr.drop_index, $3);
 		}
     ;
 create_table:		/*create table 语句的语法解析树*/
-    CREATE TABLE ID LBRACE attr_def attr_def_list RBRACE SEMICOLON 
+    CREATE TABLE ID LBRACE attr_def attr_def_list RBRACE
 		{
 			CONTEXT->ssql->flag=SCF_CREATE_TABLE;//"create_table";
 			create_table_init_name(&CONTEXT->ssql->sstr.create_table, $3);
-			//临时变量清零	
+			//临时变量清零
 			CONTEXT->value_length = 0;
 		}
     ;
@@ -270,7 +277,7 @@ attr_def_list:
     /* empty */
     | COMMA attr_def attr_def_list {    }
     ;
-    
+
 attr_def:
     ID_get type LBRACE number RBRACE nullable
 		{
@@ -306,15 +313,15 @@ type:
        | TEXT_T { $$=TEXTS; }
        ;
 ID_get:
-	ID 
+	ID
 	{
-		char *temp=$1; 
+		char *temp=$1;
 		snprintf(CONTEXT->id, sizeof(CONTEXT->id), "%s", temp);
 	}
 	;
-	
+
 insert:				/*insert   语句的语法解析树*/
-    INSERT INTO ID VALUES tuple tuple_list SEMICOLON
+    INSERT INTO ID VALUES tuple tuple_list
 		{
 			CONTEXT->ssql->flag=SCF_INSERT;//"insert";
 			inserts_init(&CONTEXT->ssql->sstr.insertion, $3, CONTEXT->tuples, CONTEXT->tuple_length);
@@ -358,48 +365,52 @@ value:
     		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
     }
     ;
-    
+
 delete:		/*  delete 语句的语法解析树*/
-    DELETE FROM ID where SEMICOLON 
+    DELETE FROM ID where
 		{
 			CONTEXT->ssql->flag = SCF_DELETE;//"delete";
 			deletes_init_relation(&CONTEXT->ssql->sstr.deletion, $3);
-			deletes_set_conditions(&CONTEXT->ssql->sstr.deletion, 
+			deletes_set_conditions(&CONTEXT->ssql->sstr.deletion,
 					CONTEXT->conditions, CONTEXT->condition_length);
-			CONTEXT->condition_length = 0;	
+			CONTEXT->condition_length = 0;
     }
     ;
 update:			/*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value where SEMICOLON
+    UPDATE ID SET ID EQ value where
 		{
 			CONTEXT->ssql->flag = SCF_UPDATE;//"update";
 			Value *value = &CONTEXT->values[0];
-			updates_init(&CONTEXT->ssql->sstr.update, $2, $4, value, 
+			updates_init(&CONTEXT->ssql->sstr.update, $2, $4, value,
 					CONTEXT->conditions, CONTEXT->condition_length);
+			CONTEXT->value_length = 0;
 			CONTEXT->condition_length = 0;
 		}
     ;
 select:				/*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where groupbys orderbys SEMICOLON
+    begin_select SELECT select_attr FROM ID rel_list where groupbys orderbys
 		{
-			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
+			selects_append_relation(&CONTEXT->ssql->sstr.selection, $5);
 
-			selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
-
-
+			selects_append_conditions(&CONTEXT->ssql->sstr.selection,
+				CONTEXT->conditions,
+				CONTEXT->last_condition_length[CONTEXT->last_condition_length_length - 1],
+				CONTEXT->condition_length);
 			CONTEXT->ssql->flag=SCF_SELECT;//"select";
-
-			//临时变量清零
-			CONTEXT->condition_length=0;
-			CONTEXT->from_length=0;
-			CONTEXT->select_length=0;
-			CONTEXT->value_length = 0;
-			CONTEXT->func_length=0;
 	}
 	;
 
+begin_select: {
+	if (CONTEXT->last_condition_length_length != 0) {
+		CONTEXT->queries[CONTEXT->query_length++] = CONTEXT->ssql;
+		CONTEXT->ssql = query_create();
+	}
+	CONTEXT->last_condition_length[CONTEXT->last_condition_length_length++] = CONTEXT->condition_length;
+}
+;
+
 select_attr:
-    STAR {  
+    STAR {
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, "*");
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
@@ -428,7 +439,7 @@ expression:
 			relation_attr_init(&attr, NULL, "*");
 			Aggregation aggr;
 			aggr.attribute = attr;
-			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.func_name = CONTEXT->func;
 			aggr.is_value = 0;
 			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
@@ -437,7 +448,7 @@ expression:
 			relation_attr_init(&attr, NULL, $1);
 			Aggregation aggr;
 			aggr.attribute = attr;
-			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.func_name = CONTEXT->func;
 			aggr.is_value = 0;
 			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
@@ -446,15 +457,16 @@ expression:
 			relation_attr_init(&attr, $1, $3);
 			Aggregation aggr;
 			aggr.attribute = attr;
-			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.func_name = CONTEXT->func;
 			aggr.is_value = 0;
 			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
 	| value{ // 1
 			Aggregation aggr;
-			aggr.func_name = CONTEXT->func[CONTEXT->func_length-1];
+			aggr.func_name = CONTEXT->func;
 			aggr.is_value = 1;
 			aggr.value = CONTEXT->values[CONTEXT->value_length - 1];
+			CONTEXT->value_length = 0;
 			selects_append_aggregation(&CONTEXT->ssql->sstr.selection,&aggr);
 	}
 
@@ -491,8 +503,8 @@ rel_list:
 	}
     ;
 where:
-    /* empty */ 
-    | WHERE condition condition_list {	
+    /* empty */
+    | WHERE condition condition_list {
 			}
     ;
 condition_list:
@@ -507,7 +519,7 @@ condition:
 			relation_attr_init(&left_attr, NULL, $1);
 
 			Condition condition;
-			condition_init(&condition, IS_LEFT_NULL, 1, &left_attr, NULL, 0, NULL, NULL);
+			condition_init(&condition, IS_LEFT_NULL, 1, &left_attr, NULL, 0, 0, NULL, NULL, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
                 | ID IS NOT NULL_TOK
@@ -516,7 +528,7 @@ condition:
 			relation_attr_init(&left_attr, NULL, $1);
 
 			Condition condition;
-			condition_init(&condition, IS_LEFT_NOT_NULL, 1, &left_attr, NULL, 0, NULL, NULL);
+			condition_init(&condition, IS_LEFT_NOT_NULL, 1, &left_attr, NULL, 0, 0, NULL, NULL, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
                 | ID DOT ID IS NULL_TOK
@@ -525,7 +537,7 @@ condition:
 			relation_attr_init(&left_attr, $1, $3);
 
 			Condition condition;
-			condition_init(&condition, IS_LEFT_NULL, 1, &left_attr, NULL, 0, NULL, NULL);
+			condition_init(&condition, IS_LEFT_NULL, 1, &left_attr, NULL, 0, 0, NULL, NULL, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
                 | ID DOT ID IS NOT NULL_TOK
@@ -534,7 +546,7 @@ condition:
 			relation_attr_init(&left_attr, NULL, $1);
 
 			Condition condition;
-			condition_init(&condition, IS_LEFT_NOT_NULL, 1, &left_attr, NULL, 0, NULL, NULL);
+			condition_init(&condition, IS_LEFT_NOT_NULL, 1, &left_attr, NULL, 0, 0, NULL, NULL, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
                 | ID comOp value
@@ -543,34 +555,38 @@ condition:
 			relation_attr_init(&left_attr, NULL, $1);
 
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			CONTEXT->value_length = 0;
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 		}
 		| value comOp value
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			CONTEXT->value_length = 0;
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, NULL, right_value);
+			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, 0, NULL, NULL, right_value);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 		}
 		| value IS NULL_TOK
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			CONTEXT->value_length = 0;
 
 			Condition condition;
-			condition_init(&condition, IS_LEFT_NULL, 0, NULL, left_value, 0, NULL, NULL);
+			condition_init(&condition, IS_LEFT_NULL, 0, NULL, left_value, 0, 0, NULL, NULL, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 		}
 		| value IS NOT NULL_TOK
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			CONTEXT->value_length = 0;
 
 			Condition condition;
-			condition_init(&condition, IS_LEFT_NOT_NULL, 0, NULL, left_value, 0, NULL, NULL);
+			condition_init(&condition, IS_LEFT_NOT_NULL, 0, NULL, left_value, 0, 0, NULL, NULL, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 		}
 		| ID comOp ID
@@ -581,48 +597,45 @@ condition:
 			relation_attr_init(&right_attr, NULL, $3);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-			// $$=( Condition *)malloc(sizeof( Condition));
-			// $$->left_is_attr = 1;
-			// $$->left_attr.relation_name=NULL;
-			// $$->left_attr.attribute_name=$1;
-			// $$->comp = CONTEXT->comp;
-			// $$->right_is_attr = 1;
-			// $$->right_attr.relation_name=NULL;
-			// $$->right_attr.attribute_name=$3;
-
 		}
                 | value comOp ID
 		{
+			fprintf(stderr, "Enter");
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			CONTEXT->value_length = 0;
+
 			RelAttr right_attr;
 			relation_attr_init(&right_attr, NULL, $3);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 1, &right_attr, NULL);
+			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 
 		}
                 | ID DOT ID comOp value
 		{
+			fprintf(stderr, "Enter");
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, $1, $3);
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			CONTEXT->value_length = 0;
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
                 | value comOp ID DOT ID
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			CONTEXT->value_length = 0;
 
 			RelAttr right_attr;
 			relation_attr_init(&right_attr, $3, $5);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 1, &right_attr, NULL);
+			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
                 |ID DOT ID comOp ID DOT ID
@@ -633,10 +646,37 @@ condition:
 			relation_attr_init(&right_attr, $5, $7);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
-    ;
+                | ID comOp LBRACE select RBRACE
+                {
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, 0, &CONTEXT->ssql->sstr.selection, NULL, NULL);
+			CONTEXT->ssql = CONTEXT->queries[CONTEXT->query_length - 1];
+			CONTEXT->query_length--;
+			CONTEXT->condition_length = CONTEXT->last_condition_length[CONTEXT->last_condition_length_length - 1];
+			CONTEXT->last_condition_length_length--;
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+
+                }
+                | ID DOT ID comOp LBRACE select RBRACE
+                {
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, 0, &CONTEXT->ssql->sstr.selection, NULL, NULL);
+			CONTEXT->ssql = CONTEXT->queries[CONTEXT->query_length - 1];
+			CONTEXT->query_length--;
+			CONTEXT->condition_length = CONTEXT->last_condition_length[CONTEXT->last_condition_length_length - 1];
+			CONTEXT->last_condition_length_length--;
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+                }
+    		;
 
 comOp:
   	  EQ { CONTEXT->comp = EQUAL_TO; }
@@ -645,13 +685,17 @@ comOp:
     | LE { CONTEXT->comp = LESS_EQUAL; }
     | GE { CONTEXT->comp = GREAT_EQUAL; }
     | NE { CONTEXT->comp = NOT_EQUAL; }
+    | IN { CONTEXT->comp = IN_COMP; }
+    | NOT IN { CONTEXT->comp = NOT_IN_COMP; }
     ;
+
 func:
-  	  AGGMAX { CONTEXT->func[CONTEXT->func_length++] = AGG_MAX; }
-    | AGGMIN { CONTEXT->func[CONTEXT->func_length++] = AGG_MIN; }
-    | AGGCOUNT { CONTEXT->func[CONTEXT->func_length++] = AGG_COUNT; }
-    | AGGAVG { CONTEXT->func[CONTEXT->func_length++] = AGG_AVG; }
+  	  AGGMAX { CONTEXT->func = AGG_MAX; }
+    | AGGMIN { CONTEXT->func = AGG_MIN; }
+    | AGGCOUNT { CONTEXT->func = AGG_COUNT; }
+    | AGGAVG { CONTEXT->func = AGG_AVG; }
     ;
+
 groupbys:
 	| GROUP BY ID DOT ID groupby{
 		RelAttr attr;
@@ -774,7 +818,7 @@ orderby:
 		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_by);
 	}
 load_data:
-		LOAD DATA INFILE SSS INTO TABLE ID SEMICOLON
+		LOAD DATA INFILE SSS INTO TABLE ID
 		{
 		  CONTEXT->ssql->flag = SCF_LOAD_DATA;
 			load_data_init(&CONTEXT->ssql->sstr.load_data, $7, $4);
