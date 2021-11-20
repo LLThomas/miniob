@@ -142,6 +142,7 @@ void ExecuteStage::handle_request(common::StageEvent *event) {
 
   switch (sql->flag) {
     case SCF_SELECT: {  // select
+
       RC rc = volcano_do_select(current_db, sql,
                                 exe_event->sql_event()->session_event());
       if (rc != RC::SUCCESS) {
@@ -811,43 +812,44 @@ RC PlanOrderBy(const Selects &selects, AbstractPlanNode *table_plan,
                std::vector<AbstractPlanNode *> &out_plans,
                std::vector<Table *> from_tables) {
   // table info
-//  TableInfo scan_table_info = table_infos[table_name];
+  //  TableInfo scan_table_info = table_infos[table_name];
 
   // construct proj
   std::vector<std::unique_ptr<AbstractExpression>> order_by_exp;
-  std::vector<std::pair<std::string , const AbstractExpression *>> order_by_exps;
-  for (int i = selects.attr_num-1; i >= 0; i--) {
+  std::vector<std::pair<std::string, const AbstractExpression *>> order_by_exps;
+  for (int i = selects.attr_num - 1; i >= 0; i--) {
     RelAttr attr = selects.attributes[i];
     std::string order_by_str;
     // *
     if (strcmp(attr.attribute_name, "*") == 0) {
-      Table *current_table = from_tables[selects.relation_num-i-1];
+      Table *current_table = from_tables[selects.relation_num - i - 1];
       TupleSchema current_schema;
       TupleSchema::from_table(current_table, current_schema);
       for (int k = 0; k < current_schema.fields().size(); k++) {
         const char *temp_attr_name = current_schema.field(k).field_name();
-        order_by_str = std::string(current_table->name()) + "." +temp_attr_name;
-        order_by_exps.push_back({
-          order_by_str,
-            MakeColumnValueExpression(current_schema, 0, order_by_str, order_by_exp)
-        });
+        order_by_str =
+            std::string(current_table->name()) + "." + temp_attr_name;
+        order_by_exps.push_back(
+            {order_by_str, MakeColumnValueExpression(
+                               current_schema, 0, order_by_str, order_by_exp)});
       }
     } else {
       if (attr.relation_name == nullptr) {
-        order_by_str = std::string(from_tables[0]->name()) + "." + attr.attribute_name;
+        order_by_str =
+            std::string(from_tables[0]->name()) + "." + attr.attribute_name;
       } else {
-        order_by_str = std::string(attr.relation_name) + "." + attr.attribute_name;
+        order_by_str =
+            std::string(attr.relation_name) + "." + attr.attribute_name;
       }
-      order_by_exps.push_back({
-          order_by_str,
-          MakeColumnValueExpression(table_schema, 0, order_by_str, order_by_exp)
-      });
+      order_by_exps.push_back(
+          {order_by_str, MakeColumnValueExpression(
+                             table_schema, 0, order_by_str, order_by_exp)});
     }
   }
 
   // construct order_bys
   std::vector<std::pair<std::string, int>> order_bys;
-  for (int i = selects.order_by_num-1; i >= 0 ; i--) {
+  for (int i = selects.order_by_num - 1; i >= 0; i--) {
     OrderBy order_by = selects.order_bys[i];
     int is_asc = 0;
     if (order_by.asc) {
@@ -859,9 +861,9 @@ RC PlanOrderBy(const Selects &selects, AbstractPlanNode *table_plan,
                      order_by.order_by_attr.attribute_name;
     } else {
       order_by_str = std::string(order_by.order_by_attr.relation_name) + "." +
-                 order_by.order_by_attr.attribute_name;
+                     order_by.order_by_attr.attribute_name;
     }
-    order_bys.push_back({ order_by_str, is_asc });
+    order_bys.push_back({order_by_str, is_asc});
     bool find = false;
     for (int j = 0; j < order_by_exps.size(); j++) {
       if (strcmp(order_by_exps[j].first.c_str(), order_by_str.c_str()) == 0) {
@@ -882,17 +884,17 @@ RC PlanOrderBy(const Selects &selects, AbstractPlanNode *table_plan,
         }
       }
       TupleSchema::from_table(c_table, c_schema);
-      order_by_exps.push_back({
-         order_by_str,
-          MakeColumnValueExpression(c_schema, 0, order_by_str, order_by_exp)
-      });
+      order_by_exps.push_back(
+          {order_by_str,
+           MakeColumnValueExpression(c_schema, 0, order_by_str, order_by_exp)});
     }
   }
 
   // order by plan node
   TupleSchema *order_by_schema = new TupleSchema();
   MakeOutputSchema(order_by_exps, order_by_schema, table_name);
-  OrderByPlanNode *order_by_plan = new OrderByPlanNode(order_by_schema, table_plan, order_bys);
+  OrderByPlanNode *order_by_plan =
+      new OrderByPlanNode(order_by_schema, table_plan, order_bys);
   out_plans.insert(out_plans.begin(), order_by_plan);
   return RC::SUCCESS;
 }
@@ -990,8 +992,8 @@ RC BuildQueryPlan(std::vector<AbstractPlanNode *> &out_plans,
     old_schema = out_plans[0]->OutputSchema();
   }
   if (selects.order_by_num > 0) {
-    return PlanOrderBy(selects, last_plan, from_tables[0]->name(),
-                       *old_schema, table_infos, out_plans, from_tables);
+    return PlanOrderBy(selects, last_plan, from_tables[0]->name(), *old_schema,
+                       table_infos, out_plans, from_tables);
     rc = PlanOrderBy(selects, last_plan, from_tables[0]->name(), *old_schema,
                      table_infos, out_plans, from_tables);
     if (rc != RC::SUCCESS) return rc;
@@ -1018,7 +1020,18 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   Session *session = session_event->get_client()->session;
   Trx *trx = session->current_trx();
   std::stringstream ss;
-
+  //试一试，模拟子查询
+  Selects sub_select;
+  if (true) {
+    sub_select.aggregation_num = 1;
+    sub_select.aggregations[0].func_name = FuncName::AGG_MAX;
+    sub_select.aggregations[0].attribute.relation_name =
+        (char *)std::string("t2").c_str();
+    sub_select.aggregations[0].attribute.attribute_name =
+        (char *)std::string("age").c_str();
+    sub_select.relation_num = 1;
+    sub_select.relations[0] = (char *)std::string("t2").c_str();
+  }
   // build query plan
   //  std::vector<std::unique_ptr<AbstractPlanNode>>
   //      allocated_plans;  //储存计划树的所有节点（指针均指向堆）

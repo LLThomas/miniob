@@ -84,7 +84,8 @@ typedef struct {
 } OrderBy;
 
 // struct of select
-typedef struct {
+
+typedef struct Selects {
   size_t attr_num;                // Length of attrs in Select clause
   RelAttr attributes[MAX_NUM];    // attrs in Select clause
   size_t relation_num;            // Length of relations in Fro clause
@@ -97,6 +98,7 @@ typedef struct {
   RelAttr group_bys[MAX_NUM];
   size_t order_by_num;
   OrderBy order_bys[MAX_NUM];
+  Selects *sub_select;
 } Selects;
 
 typedef struct {
