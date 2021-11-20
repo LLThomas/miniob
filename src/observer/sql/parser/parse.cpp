@@ -61,7 +61,7 @@ void value_init_float(Value *value, float v) {
 
 void value_init_string(Value *value, const char *v) {
   value->type = CHARS;
-  value->data = (void *)v;
+  value->data = strdup(v);
 }
 
 void value_destroy(Value *value) {
