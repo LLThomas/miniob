@@ -65,7 +65,7 @@ class ComparisonExpression : public AbstractExpression {
                         const std::shared_ptr<TupleValue> &rhs) const {
     if (comp_type_ != IS_LEFT_NULL && comp_type_ != IS_LEFT_NOT_NULL &&
         (std::dynamic_pointer_cast<NullValue>(lhs) != nullptr ||
-         std::dynamic_pointer_cast<NullValue>(lhs) != nullptr)) {
+         std::dynamic_pointer_cast<NullValue>(rhs) != nullptr)) {
       return 0;
     }
     TupleValue *l = lhs.get(), *r = rhs.get();
