@@ -4,14 +4,19 @@ create table t2(id int, age float);
 insert into t1 values(1, 25.0);
 insert into t1 values(2, 2.0);
 insert into t1 values(2, 5.0);
+insert into t1 values(4, 3.0);
 insert into t1 values(2, 7.0);
 insert into t2 values(1, 2.0);
-insert into t2 values(1, 3.0);
+insert into t2 values(1, 6.0);
+
+SELECT * FROM t1 WHERE id = (SELECT avg(t2.age) FROM t2);
+SELECT * FROM t1 WHERE (SELECT avg(t2.age) FROM t2) = id;
 
 select * from t1 where t1.age > (select avg(t2.age) from t2) and t1.age <6.0;
 
- SELECT * FROM t1 WHERE id IN (SELECT t2.id FROM t2);
- SELECT * FROM t1 WHERE age NOT IN (SELECT t2.age FROM t2);
+SELECT * FROM t1 WHERE id IN (SELECT t2.id FROM t2);
+SELECT * FROM t1 WHERE age NOT IN (SELECT t2.age FROM t2);
+
 
 SELECT * FROM t1 WHERE age < (SELECT MAX(t2.age) FROM t2 WHERE 1=0);
 select * from t1 where id in (select t2.id from t2 where 1=0);

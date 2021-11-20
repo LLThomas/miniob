@@ -30,11 +30,11 @@ class ComparisonExpression : public AbstractExpression {
     if (comp_type_ != IS_LEFT_NULL && comp_type_ != IS_LEFT_NOT_NULL) {
       rhs = GetChildAt(1)->Evaluate(tuple, schema);
     }
-    std::cout << "[DEBUG] 比较表达式：";
-    GetChildAt(0)->Evaluate(tuple, nullptr)->to_string(std::cout);
-    std::cout << " " << GetCompOp() << " ";
-    GetChildAt(1)->Evaluate(tuple, nullptr)->to_string(std::cout);
-    std::cout << std::endl;
+    // std::cout << "[DEBUG] 比较表达式：";
+    // GetChildAt(0)->Evaluate(tuple, nullptr)->to_string(std::cout);
+    // std::cout << " " << GetCompOp() << " ";
+    // GetChildAt(1)->Evaluate(tuple, nullptr)->to_string(std::cout);
+    // std::cout << std::endl;
     return std::make_shared<IntValue>(PerformComparison(lhs, rhs));
   }
 
@@ -64,27 +64,34 @@ class ComparisonExpression : public AbstractExpression {
   int PerformComparison(const std::shared_ptr<TupleValue> &lhs,
                         const std::shared_ptr<TupleValue> &rhs) const {
     if (comp_type_ != IS_LEFT_NULL && comp_type_ != IS_LEFT_NOT_NULL &&
-        (std::dynamic_pointer_cast<NullValue>(lhs) != nullptr ||
-         std::dynamic_pointer_cast<NullValue>(rhs) != nullptr)) {
+        (lhs->get_type() == AttrType::NULLS ||
+         rhs->get_type() == AttrType::NULLS)) {
       return 0;
+    }
+    TupleValue *l = lhs.get(), *r = rhs.get();
+    if (lhs->get_type() == AttrType::INTS) {
+      l = new FloatValue((float)((IntValue *)lhs.get())->get_value());
+    }
+    if (rhs->get_type() == AttrType::INTS) {
+      r = new FloatValue((float)((IntValue *)rhs.get())->get_value());
     }
     switch (comp_type_) {
       case CompOp::EQUAL_TO:
-        return lhs->compare(*rhs) == 0;
+        return l->compare(*r) == 0;
       case CompOp::NOT_EQUAL:
-        return lhs->compare(*rhs) != 0;
+        return l->compare(*r) != 0;
       case CompOp::LESS_THAN:
-        return lhs->compare(*rhs) < 0;
+        return l->compare(*r) < 0;
       case CompOp::LESS_EQUAL:
-        return lhs->compare(*rhs) <= 0;
+        return l->compare(*r) <= 0;
       case CompOp::GREAT_THAN:
-        return lhs->compare(*rhs) > 0;
+        return l->compare(*r) > 0;
       case CompOp::GREAT_EQUAL:
-        return lhs->compare(*rhs) >= 0;
+        return l->compare(*r) >= 0;
       case CompOp::IS_LEFT_NULL:
-        return std::dynamic_pointer_cast<NullValue>(lhs) != nullptr;
+        return lhs->get_type() == AttrType::NULLS;
       case CompOp::IS_LEFT_NOT_NULL:
-        return std::dynamic_pointer_cast<NullValue>(lhs) == nullptr;
+        return lhs->get_type() != AttrType::NULLS;
       default:
         assert(false && "Unsupported comparison type.");
     }
