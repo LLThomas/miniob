@@ -63,7 +63,9 @@ struct sel;
 typedef struct sel Selects;
 
 typedef struct _Condition {
+  int left_is_subquery;  // 1时左边是子查询，这玩意优先级比 left_is_attr 高
   int left_is_attr;  // TRUE if left-hand side is an attribute
+  Selects *left_subquery;
   // 1时，操作符左边是属性名，0时，是属性值
   Value left_value;   // left-hand side value if left_is_attr = FALSE
   RelAttr left_attr;  // left-hand side attribute
@@ -71,7 +73,7 @@ typedef struct _Condition {
   int right_is_subquery;  // 1时右边是子查询，这玩意优先级比 right_is_attr 高
   int right_is_attr;  // TRUE if right-hand side is an attribute
   // 1时，操作符右边是属性名，0时，是属性值
-  Selects *subquery;
+  Selects *right_subquery;
   RelAttr right_attr;  // right-hand side attribute if right_is_attr = TRUE
                        // 右边的属性
   Value right_value;   // right-hand side value if right_is_attr = FALSE
@@ -238,10 +240,12 @@ void value_init_string(Value *value, const char *v);
 
 void value_destroy(Value *value);
 
-void condition_init(Condition *condition, CompOp comp, int left_is_attr,
+void condition_init(Condition *condition, CompOp comp, int left_is_subquery,
+                    int left_is_attr, Selects *left_subquery,
                     RelAttr *left_attr, Value *left_value,
-                    int right_is_subquery, int right_is_attr, Selects *subquery,
-                    RelAttr *right_attr, Value *right_value);
+                    int right_is_subquery, int right_is_attr,
+                    Selects *right_subquery, RelAttr *right_attr,
+                    Value *right_value);
 
 void condition_destroy(Condition *condition);
 
@@ -259,7 +263,8 @@ void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 
 void selects_append_conditions(Selects *selects, Condition conditions[],
-                               size_t last_condition_length, size_t current_condition_length);
+                               size_t last_condition_length,
+                               size_t current_condition_length);
 
 void selects_append_aggregation(Selects *selects, Aggregation *aggregation);
 

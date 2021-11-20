@@ -72,13 +72,18 @@ void value_destroy(Value *value) {
   value->data = nullptr;
 }
 
-void condition_init(Condition *condition, CompOp comp, int left_is_attr,
+void condition_init(Condition *condition, CompOp comp, int left_is_subquery,
+                    int left_is_attr, Selects *left_subquery,
                     RelAttr *left_attr, Value *left_value,
-                    int right_is_subquery, int right_is_attr, Selects *subquery,
-                    RelAttr *right_attr, Value *right_value) {
+                    int right_is_subquery, int right_is_attr,
+                    Selects *right_subquery, RelAttr *right_attr,
+                    Value *right_value) {
   condition->comp = comp;
   condition->left_is_attr = left_is_attr;
-  if (left_is_attr) {
+  condition->left_is_subquery = left_is_subquery;
+  if (left_is_subquery) {
+    condition->left_subquery = left_subquery;
+  } else if (left_is_attr) {
     condition->left_attr = *left_attr;
   } else {
     condition->left_value = *left_value;
@@ -87,8 +92,9 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr,
   if (right_is_subquery) {
     condition->right_is_subquery = right_is_subquery;
     condition->right_is_attr = false;
-    condition->subquery = subquery;
+    condition->right_subquery = right_subquery;
   } else if (comp != IS_LEFT_NULL && comp != IS_LEFT_NOT_NULL) {
+    condition->right_is_subquery = false;
     condition->right_is_attr = right_is_attr;
     if (right_is_attr) {
       condition->right_attr = *right_attr;
@@ -96,6 +102,7 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr,
       condition->right_value = *right_value;
     }
   } else {
+    condition->right_is_subquery = false;
     condition->right_is_attr = false;
   }
 }
@@ -107,9 +114,9 @@ void condition_destroy(Condition *condition) {
     value_destroy(&condition->left_value);
   }
   if (condition->right_is_subquery) {
-    selects_destroy(condition->subquery);
-    delete condition->subquery;
-    condition->subquery = nullptr;
+    selects_destroy(condition->right_subquery);
+    delete condition->right_subquery;
+    condition->right_subquery = nullptr;
   } else if (condition->right_is_attr) {
     relation_attr_destroy(&condition->right_attr);
   } else {
@@ -148,7 +155,8 @@ void selects_append_relation(Selects *selects, const char *relation_name) {
 }
 
 void selects_append_conditions(Selects *selects, Condition conditions[],
-                               size_t last_condition_length, size_t current_condition_length) {
+                               size_t last_condition_length,
+                               size_t current_condition_length) {
   assert(current_condition_length <=
          sizeof(selects->conditions) / sizeof(selects->conditions[0]));
   selects->condition_num = current_condition_length - last_condition_length;
