@@ -26,7 +26,6 @@ typedef struct ParserContext {
   size_t tuple_length;
   InsertTuple tuples[MAX_NUM];
 
-  CompOp comp;
   char id[MAX_NUM];
   FuncName func;
 } ParserContext;
@@ -157,6 +156,7 @@ ParserContext *get_context(yyscan_t scanner)
 %type <value1> value;
 %type <number> number;
 %type <bools> nullable;
+%type <number> comOp;
 
 %%
 
@@ -655,7 +655,7 @@ condition:
 			relation_attr_init(&left_attr, NULL, $1);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 1, NULL, &left_attr, NULL, 1, 0, &CONTEXT->ssql->sstr.selection, NULL, NULL);
+			condition_init(&condition, $2, 0, 1, NULL, &left_attr, NULL, 1, 0, &CONTEXT->ssql->sstr.selection, NULL, NULL);
 			CONTEXT->ssql = CONTEXT->queries[CONTEXT->query_length - 1];
 			CONTEXT->query_length--;
 			CONTEXT->condition_length = CONTEXT->last_condition_length[CONTEXT->last_condition_length_length - 1];
@@ -668,7 +668,7 @@ condition:
 			relation_attr_init(&left_attr, $1, $3);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 1, NULL, &left_attr, NULL, 1, 0, &CONTEXT->ssql->sstr.selection, NULL, NULL);
+			condition_init(&condition, $4, 0, 1, NULL, &left_attr, NULL, 1, 0, &CONTEXT->ssql->sstr.selection, NULL, NULL);
 			CONTEXT->ssql = CONTEXT->queries[CONTEXT->query_length - 1];
 			CONTEXT->query_length--;
 			CONTEXT->condition_length = CONTEXT->last_condition_length[CONTEXT->last_condition_length_length - 1];
@@ -680,7 +680,7 @@ condition:
 			relation_attr_init(&right_attr, NULL, $5);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, 0, &CONTEXT->ssql->sstr.selection, NULL, NULL, 0, 1, NULL, &right_attr, NULL);
+			condition_init(&condition, $4, 1, 0, &CONTEXT->ssql->sstr.selection, NULL, NULL, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->ssql = CONTEXT->queries[CONTEXT->query_length - 1];
 			CONTEXT->query_length--;
 			CONTEXT->condition_length = CONTEXT->last_condition_length[CONTEXT->last_condition_length_length - 1];
@@ -692,7 +692,7 @@ condition:
 			relation_attr_init(&right_attr, $5, $7);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, 0, &CONTEXT->ssql->sstr.selection, NULL, NULL, 0, 1, NULL, &right_attr, NULL);
+			condition_init(&condition, $4, 1, 0, &CONTEXT->ssql->sstr.selection, NULL, NULL, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->ssql = CONTEXT->queries[CONTEXT->query_length - 1];
 			CONTEXT->query_length--;
 			CONTEXT->condition_length = CONTEXT->last_condition_length[CONTEXT->last_condition_length_length - 1];
@@ -702,14 +702,14 @@ condition:
     		;
 
 comOp:
-  	  EQ { CONTEXT->comp = EQUAL_TO; }
-    | LT { CONTEXT->comp = LESS_THAN; }
-    | GT { CONTEXT->comp = GREAT_THAN; }
-    | LE { CONTEXT->comp = LESS_EQUAL; }
-    | GE { CONTEXT->comp = GREAT_EQUAL; }
-    | NE { CONTEXT->comp = NOT_EQUAL; }
-    | IN { CONTEXT->comp = IN_COMP; }
-    | NOT IN { CONTEXT->comp = NOT_IN_COMP; }
+  	  EQ { $$ = EQUAL_TO; }
+    | LT { $$ = LESS_THAN; }
+    | GT { $$ = GREAT_THAN; }
+    | LE { $$ = LESS_EQUAL; }
+    | GE { $$ = GREAT_EQUAL; }
+    | NE { $$ = NOT_EQUAL; }
+    | IN { $$ = IN_COMP; }
+    | NOT IN { $$ = NOT_IN_COMP; }
     ;
 
 func:
