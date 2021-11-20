@@ -440,7 +440,7 @@ RC PlanSelect(const char *db, Selects &selects, std::vector<Table *> tables,
     }
     TupleSchema current_schema;
     TupleSchema::from_table(current_table, current_schema);
-    if (attr_name == "*") {
+    if (attr_name == "*" || selects.conditions[0].right_is_subquery == 1) {
       // "*" 代表映射所有字段
       for (size_t f = 0; f < current_schema.fields().size(); f++) {
         const char *temp_attr_name = current_schema.field(f).field_name();
@@ -526,6 +526,10 @@ RC PlanWhere(const char *db, const Selects &selects,
              std::unordered_map<std::string, TableInfo> &table_infos) {
   for (size_t i = 0; i < selects.condition_num; i++) {
     Condition con = selects.conditions[i];
+    // skip subquery
+    if (con.right_is_subquery == 1) {
+      continue;
+    }
     std::string left_attr_table_name = "";
     std::string right_attr_table_name = "";
     bool is_join = false;
@@ -1020,21 +1024,68 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   Session *session = session_event->get_client()->session;
   Trx *trx = session->current_trx();
   std::stringstream ss;
-  //试一试，模拟子查询
-  Selects sub_select;
-  if (true) {
-    sub_select.aggregation_num = 1;
-    sub_select.aggregations[0].func_name = FuncName::AGG_MAX;
-    sub_select.aggregations[0].attribute.relation_name =
-        (char *)std::string("t2").c_str();
-    sub_select.aggregations[0].attribute.attribute_name =
-        (char *)std::string("age").c_str();
-    sub_select.relation_num = 1;
-    sub_select.relations[0] = (char *)std::string("t2").c_str();
+
+  bool have_subquery = false;
+  Selects my_selects = sql->sstr.selection;
+  Selects *sub_selects;
+  if (my_selects.condition_num > 0 &&
+      (my_selects.conditions[0].right_is_subquery == 1 ||
+       my_selects.conditions[0].left_is_subquery == 1)) {
+    have_subquery = true;
+    if (my_selects.conditions[0].right_is_subquery == 1) {
+      sub_selects = my_selects.conditions[0].right_subquery;
+    } else {
+      sub_selects = my_selects.conditions[0].left_subquery;
+    }
   }
-  // build query plan
-  //  std::vector<std::unique_ptr<AbstractPlanNode>>
-  //      allocated_plans;  //储存计划树的所有节点（指针均指向堆）
+
+  // subquery
+  std::vector<Tuple *> subquery_result;
+  TupleSchema *subquery_schema;
+  if (have_subquery) {
+    std::vector<std::unique_ptr<AbstractExpression>>
+        allocated_expressions;  //储存所有表达式
+    // get subquery result
+    std::vector<AbstractPlanNode *> subquery_allocated_plans;
+    std::vector<std::unique_ptr<TupleSchema>> allocated_schemas;  //储存所有schema
+    rc = BuildQueryPlan(subquery_allocated_plans,
+                        allocated_expressions, db, *sub_selects);
+    if (rc != RC::SUCCESS) {
+      end_trx_if_need(session, trx, false);
+      return rc;
+    }
+    subquery_allocated_plans[0]->OutputSchema()->print(
+        ss, sql->sstr.selection.relation_num > 1);
+    // execute plan
+    ExecutorContext exec_ctx{trx, db};
+    //  auto executor = CreateExecutor(&exec_ctx, allocated_plans[0].get());
+    auto executor = CreateExecutor(&exec_ctx, subquery_allocated_plans[0]);
+
+    // get output schema
+    subquery_schema = executor->GetOutputSchema();
+
+    executor->Init();
+
+    Tuple tuple;
+    RID rid;
+    rid.page_num = 1;
+    rid.slot_num = -1;
+    while ((rc = executor->Next(&tuple, &rid)) == RC::SUCCESS) {
+      Tuple *next_tuple = new Tuple();
+      for (int i = 0; i < tuple.size(); i++) {
+        next_tuple->add(tuple.get_pointer(i));
+      }
+      subquery_result.push_back(next_tuple);
+    }
+  }
+
+  for (int i = 0; i < subquery_result.size(); i++) {
+    std::stringstream ss;
+    subquery_result[i]->print(ss);
+    std::cout<<"subquery: "<<ss.str()<<std::endl;
+  }
+
+  // main query
   std::vector<AbstractPlanNode *> allocated_plans;  //储存所有表达式
   std::vector<std::unique_ptr<AbstractExpression>>
       allocated_expressions;  //储存所有表达式
@@ -1058,12 +1109,50 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
 
   executor->Init();
 
+  // parse subquery
+  const AbstractExpression *sub_agg_exp;
+  std::string sub_attr_name;
+  if (my_selects.conditions[0].left_is_subquery == 1) {
+    sub_attr_name = std::string(my_selects.relations[0]) + "." +
+                    my_selects.conditions[0].right_attr.attribute_name;
+  } else {
+    sub_attr_name = std::string(my_selects.relations[0]) + "." +
+                    my_selects.conditions[0].left_attr.attribute_name;
+  }
+  TupleSchema my_schema;
+  Table *my_table = DefaultHandler::get_default().find_table(db,my_selects.relations[0]);
+  TupleSchema::from_table(my_table, my_schema);
+  if (subquery_result.size() == 1) {
+    sub_agg_exp = MakeConstantValueExpression(subquery_result[0]->get_pointer(0), allocated_expressions);
+  } else {
+
+  }
+
   Tuple tuple;
   RID rid;
   rid.page_num = 1;
   rid.slot_num = -1;
   while ((rc = executor->Next(&tuple, &rid)) == RC::SUCCESS) {
-    tuple.print(ss);
+    // no sub_query
+    if (subquery_result.empty()) {
+      tuple.print(ss);
+    } else {
+      // constant value
+      if (subquery_result.size() == 1) {
+        const AbstractExpression *next_tuple_exp =
+            MakeColumnValueExpression(my_schema, 0,
+                                      sub_attr_name, allocated_expressions);
+        const AbstractExpression *comp_exp =
+            MakeComparisonExpression(next_tuple_exp, sub_agg_exp,
+                                     my_selects.conditions[0].comp, allocated_expressions);
+        if (comp_exp->Evaluate(&tuple, nullptr)->compare(IntValue(0)) != 0) {
+          tuple.print(ss);
+        }
+      } else {
+        // table
+
+      }
+    }
   }
 
   if (rc != RC::RECORD_EOF) {
