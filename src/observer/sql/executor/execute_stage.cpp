@@ -1167,23 +1167,27 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
           break;
         }
         // table
+        int is_in = 0;
+        int is_in_comp = sub_comp == CompOp::IN_COMP;
+        int is_not_in_comp = sub_comp == CompOp::NOT_IN_COMP;
         for (auto &sub_res : subquery_result) {
           const AbstractExpression *next_tuple_exp = MakeColumnValueExpression(
               my_schema, 0, sub_attr_name, allocated_expressions);
           auto l = next_tuple_exp->Evaluate(&tuple, nullptr);
           auto r = sub_res->get_pointer(0);
-          int is_in = (l->compare(*r)) == 0;
+          is_in = (l->compare(*r)) == 0;
           std::cout << "[DEBUG] A and B：";
           l->to_string(std::cout);
           std::cout << " ";
           r->to_string(std::cout);
           std::cout << std::endl;
-          int is_in_comp = sub_comp == CompOp::IN_COMP;
+
           if (is_in) {
-            if (is_in == is_in_comp) tuple.print(ss);
+            if (is_in && is_in_comp) tuple.print(ss);
             break;
           }
         }
+        if (!is_in && is_not_in_comp) tuple.print(ss);
       }
     }
   }
