@@ -558,7 +558,7 @@ condition:
 			CONTEXT->value_length -= 1;
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 1, NULL, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
+			condition_init(&condition, $2, 0, 1, NULL, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 		}
 		| value comOp value
@@ -568,7 +568,7 @@ condition:
 			CONTEXT->value_length -= 2;
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 0, NULL, NULL, left_value, 0, 0, NULL, NULL, right_value);
+			condition_init(&condition, $2, 0, 0, NULL, NULL, left_value, 0, 0, NULL, NULL, right_value);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 		}
 		| value IS NULL_TOK
@@ -597,7 +597,7 @@ condition:
 			relation_attr_init(&right_attr, NULL, $3);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 1, NULL, &left_attr, NULL, 0, 1, NULL, &right_attr, NULL);
+			condition_init(&condition, $2, 0, 1, NULL, &left_attr, NULL, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 		}
                 | value comOp ID
@@ -610,7 +610,7 @@ condition:
 			relation_attr_init(&right_attr, NULL, $3);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 0, NULL, NULL, left_value, 0, 1, NULL, &right_attr, NULL);
+			condition_init(&condition, $2, 0, 0, NULL, NULL, left_value, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 
 		}
@@ -623,7 +623,7 @@ condition:
 			CONTEXT->value_length -= 1;
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 1, NULL, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
+			condition_init(&condition, $4, 0, 1, NULL, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
                 | value comOp ID DOT ID
@@ -635,7 +635,7 @@ condition:
 			relation_attr_init(&right_attr, $3, $5);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 0, NULL, NULL, left_value, 0, 1, NULL, &right_attr, NULL);
+			condition_init(&condition, $2, 0, 0, NULL, NULL, left_value, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
                 |ID DOT ID comOp ID DOT ID
@@ -646,7 +646,7 @@ condition:
 			relation_attr_init(&right_attr, $5, $7);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 1, NULL, &left_attr, NULL, 0, 1, NULL, &right_attr, NULL);
+			condition_init(&condition, $4, 0, 1, NULL, &left_attr, NULL, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
                 | ID comOp LBRACE select RBRACE

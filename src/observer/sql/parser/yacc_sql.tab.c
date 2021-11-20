@@ -2214,7 +2214,7 @@ yyreduce:
 			CONTEXT->value_length -= 1;
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 1, NULL, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
+			condition_init(&condition, (yyvsp[-1].number), 0, 1, NULL, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 		}
 #line 2221 "yacc_sql.tab.c"
@@ -2228,7 +2228,7 @@ yyreduce:
 			CONTEXT->value_length -= 2;
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 0, NULL, NULL, left_value, 0, 0, NULL, NULL, right_value);
+			condition_init(&condition, (yyvsp[-1].number), 0, 0, NULL, NULL, left_value, 0, 0, NULL, NULL, right_value);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 		}
 #line 2235 "yacc_sql.tab.c"
@@ -2269,7 +2269,7 @@ yyreduce:
 			relation_attr_init(&right_attr, NULL, (yyvsp[0].string));
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 1, NULL, &left_attr, NULL, 0, 1, NULL, &right_attr, NULL);
+			condition_init(&condition, (yyvsp[-1].number), 0, 1, NULL, &left_attr, NULL, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 		}
 #line 2276 "yacc_sql.tab.c"
@@ -2286,7 +2286,7 @@ yyreduce:
 			relation_attr_init(&right_attr, NULL, (yyvsp[0].string));
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 0, NULL, NULL, left_value, 0, 1, NULL, &right_attr, NULL);
+			condition_init(&condition, (yyvsp[-1].number), 0, 0, NULL, NULL, left_value, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 
 		}
@@ -2303,7 +2303,7 @@ yyreduce:
 			CONTEXT->value_length -= 1;
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 1, NULL, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
+			condition_init(&condition, (yyvsp[-1].number), 0, 1, NULL, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
 #line 2310 "yacc_sql.tab.c"
@@ -2319,7 +2319,7 @@ yyreduce:
 			relation_attr_init(&right_attr, (yyvsp[-2].string), (yyvsp[0].string));
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 0, NULL, NULL, left_value, 0, 1, NULL, &right_attr, NULL);
+			condition_init(&condition, (yyvsp[-3].number), 0, 0, NULL, NULL, left_value, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
 #line 2326 "yacc_sql.tab.c"
@@ -2334,7 +2334,7 @@ yyreduce:
 			relation_attr_init(&right_attr, (yyvsp[-2].string), (yyvsp[0].string));
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, 1, NULL, &left_attr, NULL, 0, 1, NULL, &right_attr, NULL);
+			condition_init(&condition, (yyvsp[-3].number), 0, 1, NULL, &left_attr, NULL, 0, 1, NULL, &right_attr, NULL);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
                 }
 #line 2341 "yacc_sql.tab.c"
