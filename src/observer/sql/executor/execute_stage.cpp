@@ -1109,15 +1109,19 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   executor->Init();
 
   // parse subquery
+
   const AbstractExpression *sub_agg_exp;
   std::string sub_attr_name;
-  if (my_selects.conditions[0].left_is_subquery == 1) {
-    sub_attr_name = std::string(my_selects.relations[0]) + "." +
-                    my_selects.conditions[0].right_attr.attribute_name;
-  } else {
-    sub_attr_name = std::string(my_selects.relations[0]) + "." +
-                    my_selects.conditions[0].left_attr.attribute_name;
+  if (have_subquery) {
+    if (my_selects.conditions[0].left_is_subquery == 1) {
+      sub_attr_name = std::string(my_selects.relations[0]) + "." +
+                      my_selects.conditions[0].right_attr.attribute_name;
+    } else {
+      sub_attr_name = std::string(my_selects.relations[0]) + "." +
+                      my_selects.conditions[0].left_attr.attribute_name;
+    }
   }
+
   TupleSchema my_schema;
   Table *my_table =
       DefaultHandler::get_default().find_table(db, my_selects.relations[0]);
