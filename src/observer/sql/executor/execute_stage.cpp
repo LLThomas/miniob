@@ -1149,7 +1149,7 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
           break;
         }
         const AbstractExpression *next_tuple_exp, *comp_exp;
-        if (my_selects.conditions[0].left_is_subquery) {
+        if (my_selects.conditions[0].right_is_subquery) {
           next_tuple_exp = MakeColumnValueExpression(
               my_schema, 0, sub_attr_name, allocated_expressions);
           comp_exp = MakeComparisonExpression(next_tuple_exp, sub_agg_exp,
