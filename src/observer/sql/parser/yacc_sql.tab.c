@@ -2205,7 +2205,7 @@ yyreduce:
 			relation_attr_init(&left_attr, NULL, (yyvsp[-2].string));
 
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			Condition condition;
 			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
@@ -2219,7 +2219,7 @@ yyreduce:
                 {
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 2;
 
 			Condition condition;
 			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, 0, NULL, NULL, right_value);
@@ -2232,7 +2232,7 @@ yyreduce:
 #line 575 "yacc_sql.y"
                 {
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			Condition condition;
 			condition_init(&condition, IS_LEFT_NULL, 0, NULL, left_value, 0, 0, NULL, NULL, NULL);
@@ -2245,7 +2245,7 @@ yyreduce:
 #line 584 "yacc_sql.y"
                 {
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			Condition condition;
 			condition_init(&condition, IS_LEFT_NOT_NULL, 0, NULL, left_value, 0, 0, NULL, NULL, NULL);
@@ -2274,7 +2274,7 @@ yyreduce:
                 {
 			fprintf(stderr, "Enter");
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			RelAttr right_attr;
 			relation_attr_init(&right_attr, NULL, (yyvsp[0].string));
@@ -2294,7 +2294,7 @@ yyreduce:
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, (yyvsp[-4].string), (yyvsp[-2].string));
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			Condition condition;
 			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
@@ -2307,7 +2307,7 @@ yyreduce:
 #line 630 "yacc_sql.y"
                 {
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			RelAttr right_attr;
 			relation_attr_init(&right_attr, (yyvsp[-2].string), (yyvsp[0].string));

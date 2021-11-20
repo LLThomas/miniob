@@ -555,7 +555,7 @@ condition:
 			relation_attr_init(&left_attr, NULL, $1);
 
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			Condition condition;
 			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
@@ -565,7 +565,7 @@ condition:
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 2;
 
 			Condition condition;
 			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, 0, NULL, NULL, right_value);
@@ -574,7 +574,7 @@ condition:
 		| value IS NULL_TOK
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			Condition condition;
 			condition_init(&condition, IS_LEFT_NULL, 0, NULL, left_value, 0, 0, NULL, NULL, NULL);
@@ -583,7 +583,7 @@ condition:
 		| value IS NOT NULL_TOK
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			Condition condition;
 			condition_init(&condition, IS_LEFT_NOT_NULL, 0, NULL, left_value, 0, 0, NULL, NULL, NULL);
@@ -604,7 +604,7 @@ condition:
 		{
 			fprintf(stderr, "Enter");
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			RelAttr right_attr;
 			relation_attr_init(&right_attr, NULL, $3);
@@ -620,7 +620,7 @@ condition:
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, $1, $3);
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			Condition condition;
 			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, 0, NULL, NULL, right_value);
@@ -629,7 +629,7 @@ condition:
                 | value comOp ID DOT ID
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
-			CONTEXT->value_length = 0;
+			CONTEXT->value_length -= 1;
 
 			RelAttr right_attr;
 			relation_attr_init(&right_attr, $3, $5);
