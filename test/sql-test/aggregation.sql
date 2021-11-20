@@ -18,6 +18,8 @@ insert into t2 values (3,9.0,'B','2000-01-01');
 insert into t2 values (3,13.0,'B','2000-01-01');
 insert into t2 values (4,14.0,'B','2001-01-01');
 insert into t2 values (5,15.0,'B','2001-01-01');
+
+select max(*) from t;
 SELECT t.id, t.name, AVG(t.price), AVG(t2.price) FROM t, t2 WHERE t.id=t2.id GROUP BY t.id, t.name;
 select name,count(*) from t group by name,age;
 select count(*) from t group by name;
@@ -29,7 +31,6 @@ select count(*),min(price) from t group by t.name;
 
 -- select * from t order by t.name, t.age;
 -- select * from t order by t.name desc, t.age asc;
-select count(*) from t;
 select count(id) from t;
 select min(id) from t;
 select max(id) from t;

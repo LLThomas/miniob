@@ -527,7 +527,7 @@ RC PlanWhere(const char *db, const Selects &selects,
   for (size_t i = 0; i < selects.condition_num; i++) {
     Condition con = selects.conditions[i];
     // skip subquery
-    if (con.right_is_subquery == 1) {
+    if (con.right_is_subquery == 1 || con.left_is_subquery == 1) {
       continue;
     }
     std::string left_attr_table_name = "";
@@ -1047,15 +1047,14 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
         allocated_expressions;  //储存所有表达式
     // get subquery result
     std::vector<AbstractPlanNode *> subquery_allocated_plans;
-    std::vector<std::unique_ptr<TupleSchema>> allocated_schemas;  //储存所有schema
-    rc = BuildQueryPlan(subquery_allocated_plans,
-                        allocated_expressions, db, *sub_selects);
+    std::vector<std::unique_ptr<TupleSchema>>
+        allocated_schemas;  //储存所有schema
+    rc = BuildQueryPlan(subquery_allocated_plans, allocated_expressions, db,
+                        *sub_selects);
     if (rc != RC::SUCCESS) {
       end_trx_if_need(session, trx, false);
       return rc;
     }
-    subquery_allocated_plans[0]->OutputSchema()->print(
-        ss, sql->sstr.selection.relation_num > 1);
     // execute plan
     ExecutorContext exec_ctx{trx, db};
     //  auto executor = CreateExecutor(&exec_ctx, allocated_plans[0].get());
@@ -1082,7 +1081,7 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   for (int i = 0; i < subquery_result.size(); i++) {
     std::stringstream ss;
     subquery_result[i]->print(ss);
-    std::cout<<"subquery: "<<ss.str()<<std::endl;
+    std::cout << "subquery: " << ss.str() << std::endl;
   }
 
   // main query
@@ -1120,12 +1119,13 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
                     my_selects.conditions[0].left_attr.attribute_name;
   }
   TupleSchema my_schema;
-  Table *my_table = DefaultHandler::get_default().find_table(db,my_selects.relations[0]);
+  Table *my_table =
+      DefaultHandler::get_default().find_table(db, my_selects.relations[0]);
   TupleSchema::from_table(my_table, my_schema);
   if (subquery_result.size() == 1) {
-    sub_agg_exp = MakeConstantValueExpression(subquery_result[0]->get_pointer(0), allocated_expressions);
+    sub_agg_exp = MakeConstantValueExpression(
+        subquery_result[0]->get_pointer(0), allocated_expressions);
   } else {
-
   }
 
   Tuple tuple;
@@ -1133,24 +1133,50 @@ RC ExecuteStage::volcano_do_select(const char *db, const Query *sql,
   rid.page_num = 1;
   rid.slot_num = -1;
   while ((rc = executor->Next(&tuple, &rid)) == RC::SUCCESS) {
-    // no sub_query
-    if (subquery_result.empty()) {
+    if (!have_subquery)
       tuple.print(ss);
-    } else {
-      // constant value
-      if (subquery_result.size() == 1) {
-        const AbstractExpression *next_tuple_exp =
-            MakeColumnValueExpression(my_schema, 0,
-                                      sub_attr_name, allocated_expressions);
-        const AbstractExpression *comp_exp =
-            MakeComparisonExpression(next_tuple_exp, sub_agg_exp,
-                                     my_selects.conditions[0].comp, allocated_expressions);
-        if (comp_exp->Evaluate(&tuple, nullptr)->compare(IntValue(0)) != 0) {
+    else {
+      std::cout << "[DEBUG] 子查询运算符：" << my_selects.conditions[0].comp
+                << std::endl;
+      CompOp sub_comp = my_selects.conditions[0].comp;
+      // no sub_query
+      if (subquery_result.empty()) {
+        if (sub_comp == CompOp::NOT_IN_COMP) tuple.print(ss);
+      } else if (subquery_result.size() == 1) {
+        // constant value
+        if (subquery_result[0]->values().size() > 1) {
+          rc = RC::ABORT;
+          break;
+        }
+        const AbstractExpression *next_tuple_exp = MakeColumnValueExpression(
+            my_schema, 0, sub_attr_name, allocated_expressions);
+
+        const AbstractExpression *comp_exp = MakeComparisonExpression(
+            next_tuple_exp, sub_agg_exp, my_selects.conditions[0].comp,
+            allocated_expressions);
+        if (comp_exp->Evaluate(&tuple, nullptr)->compare(IntValue(true)) == 0) {
           tuple.print(ss);
         }
       } else {
+        if (sub_comp != CompOp::IN_COMP && sub_comp != CompOp::NOT_IN_COMP) {
+          rc = RC::ABORT;
+          break;
+        }
+        if (subquery_result[0]->values().size() > 1) {
+          rc = RC::ABORT;
+          break;
+        }
         // table
-
+        for (auto &sub_res : subquery_result) {
+          const AbstractExpression *next_tuple_exp = MakeColumnValueExpression(
+              my_schema, 0, sub_attr_name, allocated_expressions);
+          int is_in = next_tuple_exp->Evaluate(&tuple, nullptr)
+                          ->compare(sub_res->get(0));
+          if (is_in == (sub_comp == CompOp::IN_COMP)) {
+            tuple.print(ss);
+            break;
+          }
+        }
       }
     }
   }

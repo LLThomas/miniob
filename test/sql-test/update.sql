@@ -1,6 +1,7 @@
-create table t2(id int,age int);
-insert into t2 values (2, 80);
-insert into t2 values (102, 80);
-update t2 set age =100 where id = 2;
-update t2 set age=20 where id > 100;
+create table t2(id int,name char,price int);
+insert into t2 values (2, 'A',100);
+insert into t2 values (2, 'B',100);
+insert into t2 values (102, 'C',100);
+update t2 set name ='D' where id = 2 and price = 100;
+update t2 set name='E' where id > 100;
 select * from t2;

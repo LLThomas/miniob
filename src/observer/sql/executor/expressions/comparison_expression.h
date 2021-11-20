@@ -30,6 +30,11 @@ class ComparisonExpression : public AbstractExpression {
     if (comp_type_ != IS_LEFT_NULL && comp_type_ != IS_LEFT_NOT_NULL) {
       rhs = GetChildAt(1)->Evaluate(tuple, schema);
     }
+    std::cout << "[DEBUG] 比较表达式：";
+    GetChildAt(0)->Evaluate(tuple, nullptr)->to_string(std::cout);
+    std::cout << " " << GetCompOp() << " ";
+    GetChildAt(1)->Evaluate(tuple, nullptr)->to_string(std::cout);
+    std::cout << std::endl;
     return std::make_shared<IntValue>(PerformComparison(lhs, rhs));
   }
 
@@ -53,6 +58,7 @@ class ComparisonExpression : public AbstractExpression {
         GetChildAt(1)->EvaluateAggregate(group_bys, aggregates);
     return std::make_shared<IntValue>(PerformComparison(lhs, rhs));
   }
+  const CompOp GetCompOp() const { return comp_type_; }
 
  private:
   int PerformComparison(const std::shared_ptr<TupleValue> &lhs,
