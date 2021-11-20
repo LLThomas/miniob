@@ -69,10 +69,10 @@ class ComparisonExpression : public AbstractExpression {
       return 0;
     }
     TupleValue *l = lhs.get(), *r = rhs.get();
-    if (lhs->get_type() == AttrType::INTS) {
+    if (lhs != nullptr && lhs->get_type() == AttrType::INTS) {
       l = new FloatValue((float)((IntValue *)lhs.get())->get_value());
     }
-    if (rhs->get_type() == AttrType::INTS) {
+    if (rhs != nullptr && rhs->get_type() == AttrType::INTS) {
       r = new FloatValue((float)((IntValue *)rhs.get())->get_value());
     }
     switch (comp_type_) {
@@ -89,9 +89,9 @@ class ComparisonExpression : public AbstractExpression {
       case CompOp::GREAT_EQUAL:
         return l->compare(*r) >= 0;
       case CompOp::IS_LEFT_NULL:
-        return lhs->get_type() == AttrType::NULLS;
+        return std::dynamic_pointer_cast<NullValue>(lhs) != nullptr;
       case CompOp::IS_LEFT_NOT_NULL:
-        return lhs->get_type() != AttrType::NULLS;
+        return std::dynamic_pointer_cast<NullValue>(lhs) == nullptr;
       default:
         assert(false && "Unsupported comparison type.");
     }
