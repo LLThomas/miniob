@@ -64,8 +64,8 @@ class ComparisonExpression : public AbstractExpression {
   int PerformComparison(const std::shared_ptr<TupleValue> &lhs,
                         const std::shared_ptr<TupleValue> &rhs) const {
     if (comp_type_ != IS_LEFT_NULL && comp_type_ != IS_LEFT_NOT_NULL &&
-        (lhs->get_type() == AttrType::NULLS ||
-         rhs->get_type() == AttrType::NULLS)) {
+        (std::dynamic_pointer_cast<NullValue>(lhs) != nullptr ||
+         std::dynamic_pointer_cast<NullValue>(lhs) != nullptr)) {
       return 0;
     }
     TupleValue *l = lhs.get(), *r = rhs.get();
